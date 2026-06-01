@@ -2551,6 +2551,21 @@ export default function App() {
 
         {/* User Card */}
         <div className="mt-auto p-3 border-t border-[#E5E5EA] flex flex-col gap-2">
+           {/* 手动同步：PC 没有下拉刷新手势，这里提供桌面端的同步入口 */}
+           <button
+             type="button"
+             onClick={() => { void handleSync(); }}
+             disabled={isSyncing}
+             aria-label="Sync notes"
+             title="Sync notes"
+             className={cn(
+               "w-full flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold text-[#8E8E93] hover:text-[#007AFF] hover:bg-[#007AFF]/10 transition-all disabled:opacity-60",
+               isSidebarOpen ? "px-4 justify-start" : "px-0 justify-center"
+             )}
+           >
+             <RefreshCw size={14} className={isSyncing ? "animate-spin text-[#007AFF]" : ""} />
+             {isSidebarOpen && <span>{isSyncing ? 'Syncing…' : 'Sync'}</span>}
+           </button>
            <div className="bg-[#F2F2F7] rounded-2xl p-3 flex items-center gap-3 group">
               {user.photoURL ? (
                 <img src={user.photoURL} alt={user.displayName || ''} className="w-10 h-10 rounded-xl shadow-sm" referrerPolicy="no-referrer" />
@@ -3900,6 +3915,10 @@ const CapsuleItem = memo(function CapsuleItem({
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showReminderPicker, setShowReminderPicker] = useState(false);
   const [isConfiguringCustom, setIsConfiguringCustom] = useState(false);
+  const [showTagCat, setShowTagCat] = useState(false);
+  // Which menu the portal renders: 'actions' (left-click ⋮ → per-note quick
+  // actions) or 'batch' (desktop right-click → multi-select / management).
+  const [menuMode, setMenuMode] = useState<'actions' | 'batch'>('actions');
 
   const [tempCategory, setTempCategory] = useState(capsule.category || '');
   const [tempTags, setTempTags] = useState((capsule.tags || []).join(', '));
@@ -3926,10 +3945,13 @@ const CapsuleItem = memo(function CapsuleItem({
     setShowOptions(false);
     setShowReminderPicker(false);
     setIsConfiguringCustom(false);
+    setShowColorPicker(false);
+    setShowTagCat(false);
+    setMenuMode('actions');
     setMenuPos(null);
   }, []);
 
-  const openMenuAt = useCallback((x: number, y: number) => {
+  const openMenuAt = useCallback((x: number, y: number, mode: 'actions' | 'batch' = 'actions') => {
     // Reserve enough vertical room for the tallest panel (reminder picker) so
     // the menu flips above the anchor when near the bottom edge.
     const budgetH = 360;
@@ -3941,6 +3963,9 @@ const CapsuleItem = memo(function CapsuleItem({
     if (top < 8) top = 8;
     setShowReminderPicker(false);
     setIsConfiguringCustom(false);
+    setShowColorPicker(false);
+    setShowTagCat(false);
+    setMenuMode(mode);
     setMenuPos({ left, top });
     setShowOptions(true);
   }, []);
@@ -4043,6 +4068,8 @@ const CapsuleItem = memo(function CapsuleItem({
       setShowColorPicker(false);
       setShowReminderPicker(false);
       setIsConfiguringCustom(false);
+      setShowTagCat(false);
+      setMenuMode('actions');
       setMenuPos(null);
     };
 
@@ -4147,7 +4174,7 @@ const CapsuleItem = memo(function CapsuleItem({
 
       <div
         className={cn(
-          "w-full shrink-0 flex relative select-none border-b border-black/5",
+          "group w-full shrink-0 flex relative select-none border-b border-black/5",
           viewMode === 'grid'
             ? "flex-col justify-between min-h-[160px] md:min-h-[220px]"
             : "items-center gap-1.5 p-2.5 md:gap-3 md:p-6",
@@ -4173,11 +4200,12 @@ const CapsuleItem = memo(function CapsuleItem({
         onTouchCancel={handleTouchEndSwipe}
         onContextMenu={(e) => {
           // Always suppress the browser's native long-press / right-click menu
-          // on a note card. On desktop, open our own options menu at the cursor.
+          // on a note card. On desktop, open our batch/management menu at the
+          // cursor (Select / Select All / Archive / Delete / Tags & Category).
           e.preventDefault();
           if (window.innerWidth > 768 && !isSelectionMode) {
             e.stopPropagation();
-            openMenuAt(e.clientX, e.clientY);
+            openMenuAt(e.clientX, e.clientY, 'batch');
           }
         }}
         onClick={(e) => {
@@ -4196,8 +4224,14 @@ const CapsuleItem = memo(function CapsuleItem({
       >
         {(capsule.isPinned || capsule.isStarred || (capsule.reminder && capsule.reminder.type !== 'none' && capsule.reminder.date)) && (
           <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
-            {capsule.isPinned && <Pin size={13} className="text-white/80 fill-white/80 rotate-45 shrink-0" />}
-            {capsule.isStarred && <Star size={13} className="text-[#FFCC00] fill-[#FFCC00] shrink-0" />}
+            {/* 置顶 / 星标：桌面端默认隐藏，悬浮卡片时淡入；移动端常显 */}
+            {capsule.isPinned && (
+              <Pin size={13} className="text-white/80 fill-white/80 rotate-45 shrink-0 transition-opacity md:opacity-0 md:group-hover:opacity-100" />
+            )}
+            {capsule.isStarred && (
+              <Star size={13} className="text-[#FFCC00] fill-[#FFCC00] shrink-0 transition-opacity md:opacity-0 md:group-hover:opacity-100" />
+            )}
+            {/* 提醒铃铛：始终显示，是极简态下唯一可见的元数据标记 */}
             {capsule.reminder && capsule.reminder.type !== 'none' && capsule.reminder.date && (
               <Bell size={13} className={cn("shrink-0", capsule.reminder.date <= Date.now() ? "text-red-200 animate-pulse" : "text-white/80")} />
             )}
@@ -4353,7 +4387,84 @@ const CapsuleItem = memo(function CapsuleItem({
             onTouchStart={(e) => e.stopPropagation()}
             onContextMenu={(e) => e.preventDefault()}
           >
-            {!showReminderPicker ? (
+            {showTagCat ? (
+              /* 子面板：设置标签 & 分类（右键批量菜单进入） */
+              <div className="p-3 space-y-3">
+                <div className="flex items-center gap-1 mb-1">
+                  <button onClick={(e) => { e.stopPropagation(); setShowTagCat(false); }} className="p-1 hover:bg-[#F2F2F7] rounded-md">
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span className="text-xs font-bold uppercase tracking-tight">Tags &amp; Category</span>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-[9px] font-bold text-[#8E8E93] uppercase block mb-1">Category</label>
+                    <input
+                      type="text"
+                      value={tempCategory}
+                      onChange={(e) => setTempCategory(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder="e.g. Work"
+                      className="w-full px-2 py-1.5 bg-[#F2F2F7] rounded-md text-xs border-none outline-none focus:ring-2 focus:ring-[#007AFF]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold text-[#8E8E93] uppercase block mb-1">Tags (comma separated)</label>
+                    <input
+                      type="text"
+                      value={tempTags}
+                      onChange={(e) => setTempTags(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder="idea, follow-up"
+                      className="w-full px-2 py-1.5 bg-[#F2F2F7] rounded-md text-xs border-none outline-none focus:ring-2 focus:ring-[#007AFF]"
+                    />
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const cat = tempCategory.trim();
+                      const tags = tempTags.split(',').map((t) => t.trim()).filter(Boolean);
+                      void onUpdate({ category: cat || undefined, tags: tags.length ? tags : undefined });
+                      closeMenu();
+                    }}
+                    className="w-full py-2 bg-[#007AFF] text-white rounded-lg text-xs font-bold shadow-md hover:bg-[#0051FF] transition-all"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : showColorPicker ? (
+              /* 子面板：更换颜色（左键 ⋮ 菜单进入） */
+              <div className="p-3 space-y-3">
+                <div className="flex items-center gap-1 mb-1">
+                  <button onClick={(e) => { e.stopPropagation(); setShowColorPicker(false); }} className="p-1 hover:bg-[#F2F2F7] rounded-md">
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span className="text-xs font-bold uppercase tracking-tight">Change Color</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {PRESET_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      aria-label={`Set color ${c}`}
+                      onClick={(e) => { e.stopPropagation(); void onUpdate({ color: c }); closeMenu(); }}
+                      className="w-7 h-7 rounded-full shadow-sm transition-transform hover:scale-110 flex items-center justify-center"
+                      style={{
+                        backgroundColor: c,
+                        outline: (capsule.color || '') === c ? '2px solid #007AFF' : '2px solid transparent',
+                        outlineOffset: '2px',
+                      }}
+                    >
+                      {(capsule.color || '') === c && <Check size={12} className="text-white drop-shadow" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : menuMode === 'batch' ? (
+              /* 批量 / 管理菜单（桌面右键，后续手机端长按复用）：
+                 多选 / 全选 / 归档 / 删除 / 标签与分类 / 分享。
+                 部分项与单条菜单重合，是为了支持批量操作。 */
               <div className="p-1.5 space-y-0.5">
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggleSelection(); closeMenu(); }}
@@ -4363,11 +4474,61 @@ const CapsuleItem = memo(function CapsuleItem({
                   Select
                 </button>
                 <button
-                  onClick={(e) => { e.stopPropagation(); onUpdate({ isStarred: !capsule.isStarred }); closeMenu(); }}
+                  onClick={(e) => { e.stopPropagation(); onSelectAll?.(); closeMenu(); }}
                   className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
                 >
-                  <Star size={16} className={capsule.isStarred ? "text-[#FFCC00] fill-[#FFCC00]" : "text-[#8E8E93]"} />
-                  {capsule.isStarred ? 'Unstar' : 'Star'}
+                  <CheckSquare size={16} className="text-[#8E8E93]" />
+                  Select All
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); void onUpdate({ isArchived: true }); closeMenu(); }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
+                >
+                  <Archive size={16} className="text-[#8E8E93]" />
+                  Archive
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); void onUpdate({ isDeleted: true }); closeMenu(); }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#FFF5F5] text-[#FF3B30] font-medium rounded-lg transition-colors"
+                >
+                  <Trash2 size={16} />
+                  Delete
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowTagCat(true); }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
+                >
+                  <Folder size={16} className="text-[#8E8E93]" />
+                  Category &amp; Tag
+                </button>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const shareText = plainTextFromContent(capsule.content);
+                    if (typeof navigator !== 'undefined' && navigator.share) {
+                      try { await navigator.share({ title: 'Lumi Note Share', text: shareText }); } catch (err) { console.log('Share failed or aborted', err); }
+                    } else {
+                      try { await navigator.clipboard.writeText(shareText); showToast('Note content copied to clipboard!', 'success'); } catch (err) { console.error('Copy to clipboard failed: ', err); }
+                    }
+                    closeMenu();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
+                >
+                  <Share2 size={16} className="text-[#8E8E93]" />
+                  Share
+                </button>
+              </div>
+            ) : !showReminderPicker ? (
+              /* 单条快捷操作菜单（左键 ⋮）：
+                 设为待办 / 设提醒 / 改颜色 / 归档 / 星标 / 置顶 / 分享。
+                 删除属于管理动作，仅放在右键批量菜单中。 */
+              <div className="p-1.5 space-y-0.5">
+                <button
+                  onClick={(e) => { e.stopPropagation(); void onUpdate({ isTodo: !capsule.isTodo }); closeMenu(); }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
+                >
+                  {capsule.isTodo ? <CheckSquare size={16} className="text-[#007AFF]" /> : <Square size={16} className="text-[#8E8E93]" />}
+                  {capsule.isTodo ? 'Cancel To-do' : 'Set To-do'}
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowReminderPicker(true); }}
@@ -4376,13 +4537,49 @@ const CapsuleItem = memo(function CapsuleItem({
                   <Calendar size={16} className="text-[#8E8E93]" />
                   Set Reminder
                 </button>
-                <div className="h-px bg-[#F2F2F7] mx-1 my-1" />
                 <button
-                  onClick={(e) => { e.stopPropagation(); onUpdate({ isDeleted: true }); closeMenu(); }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#FFF5F5] text-[#FF3B30] font-medium rounded-lg transition-colors"
+                  onClick={(e) => { e.stopPropagation(); setShowColorPicker(true); }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
                 >
-                  <Trash2 size={16} />
-                  Delete
+                  <Palette size={16} className="text-[#8E8E93]" />
+                  Change Color
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); void onUpdate({ isArchived: true }); closeMenu(); }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
+                >
+                  <Archive size={16} className="text-[#8E8E93]" />
+                  Archive
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); void onUpdate({ isStarred: !capsule.isStarred }); closeMenu(); }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
+                >
+                  <Star size={16} className={capsule.isStarred ? "text-[#FFCC00] fill-[#FFCC00]" : "text-[#8E8E93]"} />
+                  {capsule.isStarred ? 'Unstar' : 'Star'}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); void onUpdate({ isPinned: !capsule.isPinned }); closeMenu(); }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
+                >
+                  <Pin size={16} className={capsule.isPinned ? "text-[#007AFF] fill-[#007AFF] rotate-45" : "text-[#8E8E93]"} />
+                  {capsule.isPinned ? 'Unpin' : 'Pin'}
+                </button>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const shareText = plainTextFromContent(capsule.content);
+                    if (typeof navigator !== 'undefined' && navigator.share) {
+                      try { await navigator.share({ title: 'Lumi Note Share', text: shareText }); } catch (err) { console.log('Share failed or aborted', err); }
+                    } else {
+                      try { await navigator.clipboard.writeText(shareText); showToast('Note content copied to clipboard!', 'success'); } catch (err) { console.error('Copy to clipboard failed: ', err); }
+                    }
+                    closeMenu();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
+                >
+                  <Share2 size={16} className="text-[#8E8E93]" />
+                  Share
                 </button>
               </div>
             ) : !isConfiguringCustom ? (
