@@ -424,7 +424,7 @@ export default function App() {
     if (!user) return false;
     return safeLocalStorageGet(ONBOARDING_STORAGE_KEY) === 'true' || user.onboarded === true;
   }, [user]);
-  const [isCaptureCollapsed, setIsCaptureCollapsed] = useState(false);
+  const [isCaptureCollapsed, setIsCaptureCollapsed] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
   const [capsules, setCapsules] = useState<Capsule[]>([
     {
@@ -3346,7 +3346,7 @@ export default function App() {
               exit={{ opacity: 0, y: 50, scale: 0.8 }}
               transition={{ type: 'spring', damping: 25, stiffness: 350 }}
               onClick={() => setIsCaptureCollapsed(false)}
-              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-[#007AFF] to-[#00C6FF] text-white font-bold text-xs shadow-2xl border border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-[#007AFF] to-[#00C6FF] text-white font-bold text-xs shadow-2xl border border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
             >
               <Zap size={14} className="animate-pulse" />
               <span>Quick Capture</span>
@@ -3879,16 +3879,17 @@ const CapsuleItem = memo(function CapsuleItem({
       Notification.requestPermission();
     }
     
-    if (tempReminderType === 'none') {
+    if (tempReminderType === 'none' && !tempReminderDate) {
       void onUpdate({ reminder: undefined });
     } else {
+      const type = tempReminderType === 'none' ? 'once' : tempReminderType;
       const date = tempReminderDate || (Date.now() + 3600000);
       void onUpdate({
         reminder: {
-          type: tempReminderType,
+          type,
           date,
-          customInterval: tempReminderType === 'custom' ? customInterval : undefined,
-          customUnit: tempReminderType === 'custom' ? customUnit : undefined
+          customInterval: type === 'custom' ? customInterval : undefined,
+          customUnit: type === 'custom' ? customUnit : undefined
         }
       });
     }
@@ -4106,20 +4107,6 @@ const CapsuleItem = memo(function CapsuleItem({
                     month: 'short',
                     day: 'numeric',
                   })}
-                </span>
-              </span>
-              <span className="text-white/35 mx-0.5">|</span>
-              <span className="inline-flex items-center gap-1">
-                <Star
-                  size={12}
-                  className={
-                    capsule.isStarred
-                      ? 'text-[#FFCC00] fill-[#FFCC00]'
-                      : 'text-white/55'
-                  }
-                />
-                <span className="uppercase tracking-wider text-white/80">
-                  {capsule.isStarred ? 'starred' : 'not starred'}
                 </span>
               </span>
             </div>
