@@ -830,30 +830,32 @@ export default function App() {
     setAuthProcessing(true);
     try {
       console.log("[GoogleSignIn] Initiating authentication with signInWithPopup...");
-      await signInWithPopup(getAuth(), getGoogleProvider());
+      const popupPromise = signInWithPopup(getAuth(), getGoogleProvider());
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error("Sign-in request timed out. Please check your network or try again.")), 10000)
+      );
+      await Promise.race([popupPromise, timeoutPromise]);
     } catch (err: any) {
       console.error("Google Sign-In Error Captured:", err);
       if (err.code === 'auth/unauthorized-domain') {
-        alert(
-          `【网域未授权 / Unauthorized Domain】\n\n` +
-          `当前访问域名 "${window.location.hostname}" 尚未在您的 Firebase Console 授权网域列表中配置。\n\n` +
-          `开发与调试指引：\n请前往 Firebase 控制台 -> Authentication -> Settings -> Authorized Domains，把当前域名添加进去，即可瞬间修复 Google 登录！`
+        setAuthError(
+          `Unauthorized Domain: Current host "${window.location.hostname}" is not authorized for Google Sign-In in Firebase Console. Please add it under Authentication -> Settings.`
         );
       } else if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
         console.log("[GoogleSignIn] Popup blocked or cancelled, falling back to signInWithRedirect...");
         try {
           await signInWithRedirect(getAuth(), getGoogleProvider());
         } catch (redirectErr: any) {
-          alert(`Google Redirect Login failed: ${redirectErr.message}`);
+          setAuthError(`Google Redirect Login failed: ${redirectErr.message}`);
         }
       } else if (err.code === 'auth/popup-closed-by-user') {
         console.log("[GoogleSignIn] Popup closed by user.");
       } else {
-        console.log("[GoogleSignIn] Encountered other Auth restriction, attempting redirect fallback...");
+        console.log("[GoogleSignIn] Encountered restriction or timeout, attempting redirect fallback...");
         try {
           await signInWithRedirect(getAuth(), getGoogleProvider());
         } catch (fallbackErr: any) {
-          alert(`Google 登录失败: ${err.message || '未知错误'} (错误码: ${err.code || 'unknown'})`);
+          setAuthError(`Google Sign-In failed: ${err.message || 'Unknown error'}`);
         }
       }
     } finally {
@@ -875,13 +877,11 @@ export default function App() {
       } catch (err: any) {
         console.error("[GoogleSignIn] Error retrieving Redirect result:", err);
         if (err.code === 'auth/unauthorized-domain') {
-          alert(
-            `【网域未授权 / Unauthorized Domain】\n\n` +
-            `由于当前访问域名 "${window.location.hostname}" 尚未在您的 Firebase Console 授权网域列表中配置，重定向认证失败。\n\n` +
-            `开发与调试指引：\n请前往 Firebase 控制台 -> Authentication -> Settings -> Authorized Domains，把当前域名添加进去，即可瞬间修复 Google 登录！`
+          setAuthError(
+            `Unauthorized Domain: Current host "${window.location.hostname}" is not authorized for Google Sign-In in Firebase Console. Please add it under Authentication -> Settings.`
           );
         } else if (err.code !== 'auth/web-storage-unsupported') {
-          alert(`Google Redirect Login failed: ${err.message} (Code: ${err.code})`);
+          setAuthError(`Google Redirect Login failed: ${err.message}`);
         }
       }
     };
@@ -889,7 +889,28 @@ export default function App() {
 
     const unsubscribe = onAuthStateChanged(getAuth(), (firebaseUser: User | null) => {
       if (firebaseUser) {
-        // Listen to user document for premium status
+        // 1. 快速通道：使用缓存的用户数据或基础 Firebase 身份在 1ms 内登入主界面，绝不 pending 卡死！
+        const cachedRaw = localStorage.getItem('luminote_auth_user');
+        let quickUser = null;
+        if (cachedRaw) {
+          try {
+            quickUser = JSON.parse(cachedRaw);
+          } catch { /* ignore */ }
+        }
+        if (!quickUser || quickUser.uid !== firebaseUser.uid) {
+          quickUser = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Lumi User',
+            photoURL: firebaseUser.photoURL,
+            isPremium: false,
+            onboarded: true // 默认为 true 避开 tour 干扰
+          };
+        }
+        setUser(quickUser);
+        setAuthLoading(false);
+
+        // 2. 启动后台静默实时监听，网络慢用户也完全无感！
         const userDocRef = doc(getDb(), 'users', firebaseUser.uid);
         userDocUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -914,7 +935,6 @@ export default function App() {
             };
             setUser(userData);
             localStorage.setItem('luminote_auth_user', JSON.stringify(userData));
-            // Initial sync
             setDoc(userDocRef, {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
@@ -924,44 +944,11 @@ export default function App() {
               onboarded: false,
               updatedAt: Date.now()
             }, { merge: true }).catch((e) => {
-              // Silently degrade when Firestore quota is exceeded — user auth still works via local fallback
               console.error('Firestore setDoc user error (silenced):', e);
             });
           }
-           setAuthLoading(false);
         }, (error) => {
-          console.error("user doc snapshot error", error);
-          handleFirestoreError(error, OperationType.GET, 'users');
-          
-          // 【高可用物理容灾 / High Availability Fallback】
-          // 当数据库被云端限额锁定（Quota Limit Exceeded）无法返回用户文档时，
-          // 平滑退避到本地高速缓存或利用基础 Firebase 用户信息为用户瞬间完成认证。
-          // 这样即使云端停机，用户也绝不会卡死在登录界面，而是可以畅通无阻地登入后台，使用卓越的本地离线缓存继续记录灵感！
-          const cachedUser = localStorage.getItem('luminote_auth_user');
-          if (cachedUser) {
-            try {
-              setUser(JSON.parse(cachedUser));
-            } catch (e) {
-              setUser({
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Lumi User',
-                photoURL: firebaseUser.photoURL,
-                isPremium: false,
-                onboarded: true
-              });
-            }
-          } else {
-            setUser({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Lumi User',
-              photoURL: firebaseUser.photoURL,
-              isPremium: false,
-              onboarded: true
-            });
-          }
-          setAuthLoading(false);
+          console.error("user doc snapshot background error (silenced):", error);
         });
       } else {
         if (userDocUnsubscribe) {
@@ -2065,7 +2052,61 @@ export default function App() {
     }
 
     return (
-      <div id="login-screen" className="min-h-[100dvh] md:h-[100dvh] w-screen flex flex-col md:flex-row bg-white overflow-y-auto md:overflow-hidden py-8 md:py-0">
+      <div id="login-screen" className="min-h-[100dvh] md:h-[100dvh] w-screen flex flex-col md:flex-row bg-white overflow-y-auto md:overflow-hidden py-8 md:py-0 relative">
+        {/* 全屏磨砂模糊登录 Toast / Fullscreen backdrop-blur Auth Toast */}
+        {authProcessing && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#F8F9FA]/40 dark:bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-white dark:bg-[#1C1C1E] p-8 rounded-3xl shadow-2xl border border-black/5 dark:border-white/10 flex flex-col items-center max-w-sm mx-4 text-center gap-5 animate-in zoom-in-95 duration-200">
+              <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center bg-[#007AFF]/10 text-[#007AFF] rounded-full">
+                <Zap size={24} className="animate-bounce" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-base font-bold text-[#1D1D1F] dark:text-[#F2F2F7]">Signing You In</h3>
+                <p className="text-xs font-semibold text-[#8E8E93] leading-relaxed">
+                  Securely authenticating and syncing your notes. This can take a few seconds. Thanks for your patience.
+                </p>
+              </div>
+              <div className="w-6 h-6 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mt-1" />
+              <button 
+                type="button"
+                onClick={() => setAuthProcessing(false)}
+                className="mt-2 text-xs font-bold text-[#8E8E93] hover:text-[#1D1D1F] dark:hover:text-white transition-colors underline cursor-pointer"
+              >
+                Cancel & Go Back
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 全屏聚焦模态错误 Toast / Fullscreen backdrop-blur Error Toast */}
+        {authError && (
+          <div 
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-300 cursor-pointer"
+            onClick={() => setAuthError(null)}
+          >
+            <div 
+              className="bg-white dark:bg-[#1C1C1E] p-8 rounded-3xl shadow-2xl border border-black/5 dark:border-white/10 flex flex-col items-center max-w-sm mx-4 text-center gap-5 animate-in zoom-in-95 duration-200 cursor-default"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center bg-red-500/10 text-red-500 rounded-full">
+                <AlertCircle size={24} />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-base font-bold text-[#1D1D1F] dark:text-[#F2F2F7]">Authentication Error</h3>
+                <p className="text-xs font-semibold text-[#8E8E93] leading-relaxed">
+                  {authError}
+                </p>
+              </div>
+              <button 
+                onClick={() => setAuthError(null)}
+                className="w-full bg-[#007AFF] text-white py-3 rounded-xl font-bold text-sm shadow-md hover:bg-[#007AFF]/90 active:scale-95 transition-all outline-none cursor-pointer"
+              >
+                Got It
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Back button */}
         <button 
           onClick={() => setShowAuthScreen(false)}
@@ -2152,13 +2193,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {authError && (
-                  <div className="flex items-center gap-2 text-red-500 text-xs font-bold bg-red-50 p-4 rounded-2xl">
-                    <AlertCircle size={14} className="shrink-0" />
-                    {authError}
-                  </div>
-                )}
-
                 <button 
                   type="submit"
                   disabled={authProcessing}
@@ -2166,18 +2200,11 @@ export default function App() {
                 >
                   {authProcessing ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : (isRegistering ? 'Create Account' : 'Sign In')}
                 </button>
-
-                {/* 登录通常需要几秒（安全校验 + 数据同步），给一个温馨提示安抚等待 */}
-                {authProcessing && (
-                  <p className="text-center text-[11px] font-semibold text-[#8E8E93] mt-1 animate-pulse">
-                    Securely signing you in — this can take a few seconds. Thanks for your patience.
-                  </p>
-                )}
               </form>
 
               <div className="relative my-5 md:my-10">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[#E5E5EA]"></div></div>
-                <div className="relative flex justify-center text-[10px] uppercase font-black text-[#8E8E93]"><span className="bg-white px-4 tracking-widest">Or social sign in</span></div>
+                <div className="relative flex justify-center text-[10px] uppercase font-black text-[#8E8E93]"><span className="bg-white px-4 tracking-widest lowercase">or sign in with</span></div>
               </div>
 
               <div className="flex justify-center">

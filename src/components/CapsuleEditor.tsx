@@ -9,6 +9,7 @@ import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
 import BubbleMenuExtension from '@tiptap/extension-bubble-menu';
+import { NodeSelection } from '@tiptap/pm/state';
 import {
   Bold,
   Italic,
@@ -28,6 +29,9 @@ import {
   ZoomIn,
   ZoomOut,
   X,
+  ChevronDown,
+  Trash2,
+  Maximize2,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import './CapsuleEditor.css';
@@ -154,11 +158,25 @@ export function CapsuleEditor({
   const [slashFilter, setSlashFilter] = useState('');
   const [slashIndex, setSlashIndex] = useState(0);
 
+  const [headingMenuOpen, setHeadingMenuOpen] = useState(false);
+  const headingMenuRef = useRef<HTMLDivElement>(null);
+
   const imageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const prevModeRef = useRef<'plain' | 'rich' | 'markdown' | null>(null);
 
   const isVisual = editMode !== 'plain';
+
+  // Handle clicking outside heading dropdown to close it
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (headingMenuRef.current && !headingMenuRef.current.contains(e.target as Node)) {
+        setHeadingMenuOpen(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   const lastLoadedContentRef = useRef(content);
 
@@ -314,8 +332,61 @@ export function CapsuleEditor({
               <ToolBtn active={editor.isActive('underline')} title="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()}><UnderlineIcon size={15} /></ToolBtn>
               <ToolBtn active={editor.isActive('strike')} title="Strikethrough" onClick={() => editor.chain().focus().toggleStrike().run()}><Strikethrough size={15} /></ToolBtn>
               <div className="capsule-toolbar-divider" />
-              <ToolBtn active={editor.isActive('heading', { level: 1 })} title="Heading 1" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}><Heading1 size={15} /></ToolBtn>
-              <ToolBtn active={editor.isActive('heading', { level: 2 })} title="Heading 2" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}><Heading2 size={15} /></ToolBtn>
+              <div className="capsule-heading-dropdown" ref={headingMenuRef}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setHeadingMenuOpen(!headingMenuOpen)}
+                  className={cn(
+                    "capsule-heading-btn",
+                    editor.isActive('heading') && "active"
+                  )}
+                  title="Headings"
+                >
+                  <span>
+                    {editor.isActive('heading', { level: 1 }) ? 'H1' :
+                     editor.isActive('heading', { level: 2 }) ? 'H2' :
+                     editor.isActive('heading', { level: 3 }) ? 'H3' : 'Text'}
+                  </span>
+                  <ChevronDown size={12} className={cn("transition-transform", headingMenuOpen && "rotate-180")} />
+                </button>
+                {headingMenuOpen && (
+                  <div className="capsule-heading-menu">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => { editor.chain().focus().setParagraph().run(); setHeadingMenuOpen(false); }}
+                      className={cn("capsule-heading-option", !editor.isActive('heading') && "active")}
+                    >
+                      Normal Text
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => { editor.chain().focus().toggleHeading({ level: 1 }).run(); setHeadingMenuOpen(false); }}
+                      className={cn("capsule-heading-option font-extrabold", editor.isActive('heading', { level: 1 }) && "active")}
+                    >
+                      Heading 1
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => { editor.chain().focus().toggleHeading({ level: 2 }).run(); setHeadingMenuOpen(false); }}
+                      className={cn("capsule-heading-option font-bold", editor.isActive('heading', { level: 2 }) && "active")}
+                    >
+                      Heading 2
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => { editor.chain().focus().toggleHeading({ level: 3 }).run(); setHeadingMenuOpen(false); }}
+                      className={cn("capsule-heading-option font-semibold", editor.isActive('heading', { level: 3 }) && "active")}
+                    >
+                      Heading 3
+                    </button>
+                  </div>
+                )}
+              </div>
               <ToolBtn active={editor.isActive('bulletList')} title="Bullet list" onClick={() => editor.chain().focus().toggleBulletList().run()}><List size={15} /></ToolBtn>
               <ToolBtn active={editor.isActive('orderedList')} title="Ordered list" onClick={() => editor.chain().focus().toggleOrderedList().run()}><ListOrdered size={15} /></ToolBtn>
               <ToolBtn active={editor.isActive('blockquote')} title="Quote" onClick={() => editor.chain().focus().toggleBlockquote().run()}><Quote size={15} /></ToolBtn>
@@ -350,21 +421,50 @@ export function CapsuleEditor({
             </BubbleMenu>
           )}
 
-          {/* Image Bubble Menu — 选中图片时弹出缩放工具条 */}
+          {/* Image Bubble Menu — 选中图片时弹出锤子便签样式快捷工具条 */}
           {!readOnly && (
             <BubbleMenu
               editor={editor}
               shouldShow={({ editor }) => editor.isActive('image')}
-              className="capsule-image-bubble-menu bg-[#1D1D1F] p-1.5 rounded-xl shadow-2xl flex items-center gap-1.5 z-50 border border-white/10"
+              className="capsule-image-bubble-menu bg-[#1D1D1F]/90 backdrop-blur-md p-2 rounded-2xl shadow-2xl flex items-center gap-2 z-50 border border-white/10"
             >
-              <span className="text-[10px] font-bold text-white/55 px-1.5 uppercase tracking-wider">Width</span>
+              {/* 删除图片按钮 */}
+              <button
+                type="button"
+                onClick={() => editor.chain().focus().deleteSelection().run()}
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-[#FF3B30] text-white hover:bg-[#FF3B30]/80 transition-colors shadow-sm cursor-pointer"
+                title="Delete image"
+              >
+                <Trash2 size={13} />
+              </button>
+
+              {/* 放大预览按钮 */}
+              <button
+                type="button"
+                onClick={() => {
+                  const attrs = editor.getAttributes('image');
+                  if (attrs && attrs.src) {
+                    setLightboxZoom(1);
+                    setLightboxSrc(attrs.src);
+                  }
+                }}
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors shadow-sm cursor-pointer"
+                title="Zoom image"
+              >
+                <Maximize2 size={13} />
+              </button>
+
+              {/* 分割线 */}
+              <div className="w-[1px] h-4 bg-white/10 mx-1 flex-shrink-0" />
+
+              {/* 缩放宽度选项 */}
               {['25%', '50%', '75%', '100%'].map(w => (
                 <button
                   key={w}
                   type="button"
                   onClick={() => editor.chain().focus().updateAttributes('image', { width: w }).run()}
                   className={cn(
-                    "px-2 py-0.5 text-[11px] font-bold rounded transition-colors cursor-pointer",
+                    "px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer",
                     editor.getAttributes('image').width === w
                       ? "bg-[#007AFF] text-white"
                       : "text-white/80 hover:bg-white/10"
@@ -388,15 +488,32 @@ export function CapsuleEditor({
               backgroundPositionY: '1.25rem'
             }}
           >
-            {/* Tiptap body — 点击图片放大查看（缩放） */}
+            {/* Tiptap body — 点击图片通过 NodeSelection 高亮选中 */}
             <EditorContent
               editor={editor}
               className="capsule-editor-content"
               onClick={(e) => {
                 const t = e.target as HTMLElement;
                 if (t && t.tagName === 'IMG') {
-                  setLightboxZoom(1);
-                  setLightboxSrc((t as HTMLImageElement).src);
+                  e.preventDefault();
+                  if (editor) {
+                    try {
+                      const { state, view } = editor;
+                      const pos = view.posAtDOM(t, 0);
+                      let selection;
+                      try {
+                        selection = NodeSelection.create(state.doc, pos);
+                      } catch {
+                        selection = NodeSelection.create(state.doc, pos - 1);
+                      }
+                      if (selection) {
+                        view.dispatch(state.tr.setSelection(selection));
+                        editor.commands.focus();
+                      }
+                    } catch (err) {
+                      console.error("Failed to select image node on click:", err);
+                    }
+                  }
                 }
               }}
             />
