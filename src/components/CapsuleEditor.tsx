@@ -29,7 +29,26 @@ import {
   ZoomOut,
   X,
 } from 'lucide-react';
+import { cn } from '../lib/utils';
 import './CapsuleEditor.css';
+
+const CustomImage = ImageExtension.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        default: '100%',
+        renderHTML: attributes => {
+          return {
+            width: attributes.width,
+            style: `width: ${attributes.width}; max-width: 100%; height: auto; display: block; margin: 8px auto; border-radius: 10px; cursor: pointer; transition: all 0.2s;`,
+          }
+        },
+        parseHTML: element => element.getAttribute('width') || '100%',
+      },
+    }
+  },
+});
 
 // ---------------------------------------------------------------------------
 // Types
@@ -141,6 +160,8 @@ export function CapsuleEditor({
 
   const isVisual = editMode !== 'plain';
 
+  const lastLoadedContentRef = useRef(content);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
@@ -149,7 +170,7 @@ export function CapsuleEditor({
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({ placeholder }),
       Link.configure({ openOnClick: false }),
-      ImageExtension.configure({ inline: false }),
+      CustomImage.configure({ inline: false }),
       BubbleMenuExtension,
     ],
     content: parseContent(content) as any,
@@ -158,20 +179,29 @@ export function CapsuleEditor({
     onUpdate({ editor }) {
       // 可视化模式（rich / markdown）统一以 Tiptap JSON 持久化。
       if (editMode !== 'plain') {
-        onChange(JSON.stringify(editor.getJSON()), editor.getText());
+        const json = JSON.stringify(editor.getJSON());
+        lastLoadedContentRef.current = json;
+        onChange(json, editor.getText());
       }
     },
   });
 
-  // External content sync (仅在可视化模式生效；纯文本由 plainSource 受控)。
+  // External content sync (仅当外部真的更换了文档或者从 plain 源码编辑切回时生效)
   useEffect(() => {
     if (!editor || editMode === 'plain') return;
+    
+    // 拦截 React 属性异步传递导致的旧内容覆盖
+    if (content === lastLoadedContentRef.current && prevModeRef.current !== 'plain') {
+      return;
+    }
+    
     const parsed = parseContent(content);
     const current = JSON.stringify(editor.getJSON());
     const incoming = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
     if (current !== incoming) {
       editor.commands.setContent(parsed as any);
     }
+    lastLoadedContentRef.current = content;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, editMode]);
 
@@ -186,7 +216,9 @@ export function CapsuleEditor({
     } else if (prev === 'plain') {
       // 离开纯文本：把源码解析回可视化文档（Tiptap 原生支持 HTML 解析）。
       editor.commands.setContent(plainSource || '');
-      onChange(JSON.stringify(editor.getJSON()), editor.getText());
+      const json = JSON.stringify(editor.getJSON());
+      lastLoadedContentRef.current = json;
+      onChange(json, editor.getText());
     }
     prevModeRef.current = editMode;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -194,6 +226,7 @@ export function CapsuleEditor({
 
   const handlePlainChange = (val: string) => {
     setPlainSource(val);
+    lastLoadedContentRef.current = val;
     // 纯文本下以 HTML 源码持久化；纯文本回传用于卡片预览。
     onChange(val, stripHtml(val));
   };
@@ -273,9 +306,9 @@ export function CapsuleEditor({
     <div className="capsule-editor-root" onKeyDown={handleKeyDown}>
       {isVisual ? (
         <>
-          {/* 常驻可视化工具栏：加粗/斜体/下划线/删除线/标题/列表/引用/对齐/链接/图片 */}
+          {/* 常驻可视化工具栏：移到外面，使用干净的扁平化底色 */}
           {!readOnly && (
-            <div className="capsule-editor-toolbar">
+            <div className="capsule-editor-toolbar mb-3">
               <ToolBtn active={editor.isActive('bold')} title="Bold" onClick={() => editor.chain().focus().toggleBold().run()}><Bold size={15} /></ToolBtn>
               <ToolBtn active={editor.isActive('italic')} title="Italic" onClick={() => editor.chain().focus().toggleItalic().run()}><Italic size={15} /></ToolBtn>
               <ToolBtn active={editor.isActive('underline')} title="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()}><UnderlineIcon size={15} /></ToolBtn>
@@ -317,18 +350,57 @@ export function CapsuleEditor({
             </BubbleMenu>
           )}
 
-          {/* Tiptap body — 点击图片放大查看（缩放） */}
-          <EditorContent
-            editor={editor}
-            className="capsule-editor-content"
-            onClick={(e) => {
-              const t = e.target as HTMLElement;
-              if (t && t.tagName === 'IMG') {
-                setLightboxZoom(1);
-                setLightboxSrc((t as HTMLImageElement).src);
-              }
+          {/* Image Bubble Menu — 选中图片时弹出缩放工具条 */}
+          {!readOnly && (
+            <BubbleMenu
+              editor={editor}
+              shouldShow={({ editor }) => editor.isActive('image')}
+              className="capsule-image-bubble-menu bg-[#1D1D1F] p-1.5 rounded-xl shadow-2xl flex items-center gap-1.5 z-50 border border-white/10"
+            >
+              <span className="text-[10px] font-bold text-white/55 px-1.5 uppercase tracking-wider">Width</span>
+              {['25%', '50%', '75%', '100%'].map(w => (
+                <button
+                  key={w}
+                  type="button"
+                  onClick={() => editor.chain().focus().updateAttributes('image', { width: w }).run()}
+                  className={cn(
+                    "px-2 py-0.5 text-[11px] font-bold rounded transition-colors cursor-pointer",
+                    editor.getAttributes('image').width === w
+                      ? "bg-[#007AFF] text-white"
+                      : "text-white/80 hover:bg-white/10"
+                  )}
+                >
+                  {w}
+                </button>
+              ))}
+            </BubbleMenu>
+          )}
+
+          {/* 纸张容器 */}
+          <div 
+            className="w-full flex-1 min-h-[220px] rounded-xl bg-[#FFFBE6] paper-preview p-4 relative"
+            style={{ 
+              backgroundImage: 'repeating-linear-gradient(to bottom, #FFFBE6, #FFFBE6 calc(2rem - 1px), #F0E6C0 calc(2rem - 1px), #F0E6C0 2rem)', 
+              backgroundSize: '100% 2rem', 
+              lineHeight: '2rem',
+              backgroundAttachment: 'local',
+              paddingTop: '1.55rem',
+              backgroundPositionY: '1.25rem'
             }}
-          />
+          >
+            {/* Tiptap body — 点击图片放大查看（缩放） */}
+            <EditorContent
+              editor={editor}
+              className="capsule-editor-content"
+              onClick={(e) => {
+                const t = e.target as HTMLElement;
+                if (t && t.tagName === 'IMG') {
+                  setLightboxZoom(1);
+                  setLightboxSrc((t as HTMLImageElement).src);
+                }
+              }}
+            />
+          </div>
 
           {/* Slash command panel */}
           {showSlash && filteredSlash.length > 0 && (
@@ -357,18 +429,30 @@ export function CapsuleEditor({
           )}
         </>
       ) : (
-        /* 纯文本模式：展示底层源码（HTML 标记），可直接编辑标记 */
-        <div className="capsule-plain-editor w-full bg-transparent border-none shadow-none overflow-hidden">
-          <textarea
-            ref={textareaRef}
-            value={plainSource}
-            onChange={(e) => handlePlainChange(e.target.value)}
-            placeholder={placeholder}
-            disabled={readOnly}
-            autoFocus={autoFocus}
-            spellCheck={false}
-            className="w-full min-h-[220px] bg-transparent border-none outline-none resize-none text-[13px] font-mono leading-[2rem] text-[#2c2c2e] placeholder-[#8E8E93]/40 focus:ring-0 focus:border-none focus:outline-none p-0 whitespace-pre-wrap break-words"
-          />
+        /* 纯文本模式：展示底层源码（HTML 标记），同样包裹在信纸背景中 */
+        <div 
+          className="w-full flex-1 min-h-[220px] rounded-xl bg-[#FFFBE6] paper-preview p-4 relative"
+          style={{ 
+            backgroundImage: 'repeating-linear-gradient(to bottom, #FFFBE6, #FFFBE6 calc(2rem - 1px), #F0E6C0 calc(2rem - 1px), #F0E6C0 2rem)', 
+            backgroundSize: '100% 2rem', 
+            lineHeight: '2rem',
+            backgroundAttachment: 'local',
+            paddingTop: '1.55rem',
+            backgroundPositionY: '1.25rem'
+          }}
+        >
+          <div className="capsule-plain-editor w-full bg-transparent border-none shadow-none overflow-hidden">
+            <textarea
+              ref={textareaRef}
+              value={plainSource}
+              onChange={(e) => handlePlainChange(e.target.value)}
+              placeholder={placeholder}
+              disabled={readOnly}
+              autoFocus={autoFocus}
+              spellCheck={false}
+              className="w-full min-h-[220px] bg-transparent border-none outline-none resize-none text-[13px] font-mono leading-[2rem] text-[#2c2c2e] placeholder-[#8E8E93]/40 focus:ring-0 focus:border-none focus:outline-none p-0 whitespace-pre-wrap break-words"
+            />
+          </div>
         </div>
       )}
 

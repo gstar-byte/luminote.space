@@ -2974,17 +2974,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div 
-                      className="w-full flex-1 min-h-[220px] rounded-xl bg-[#FFFBE6] paper-preview p-4 relative"
-                      style={{ 
-                        backgroundImage: 'repeating-linear-gradient(to bottom, #FFFBE6, #FFFBE6 calc(2rem - 1px), #F0E6C0 calc(2rem - 1px), #F0E6C0 2rem)', 
-                        backgroundSize: '100% 2rem', 
-                        lineHeight: '2rem',
-                        backgroundAttachment: 'local',
-                        paddingTop: '1.55rem',
-                        backgroundPositionY: '1.25rem'
-                      }}
-                    >
+                    <div className="w-full flex-1 min-h-[220px] flex flex-col relative">
                       <CapsuleEditor
                         content={editContentDraft}
                         onChange={(json, text) => {
