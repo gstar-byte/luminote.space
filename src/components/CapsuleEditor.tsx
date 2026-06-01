@@ -25,6 +25,9 @@ import {
   Image as ImageIcon,
   Link as LinkIcon,
   Type,
+  ZoomIn,
+  ZoomOut,
+  X,
 } from 'lucide-react';
 import './CapsuleEditor.css';
 
@@ -40,8 +43,8 @@ interface CapsuleEditorProps {
   readOnly?: boolean;
   /** Autofocus the editor on mount. */
   autoFocus?: boolean;
-  editMode?: 'rich' | 'markdown';
-  onModeChange?: (mode: 'rich' | 'markdown') => void;
+  editMode?: 'plain' | 'rich' | 'markdown';
+  onModeChange?: (mode: 'plain' | 'rich' | 'markdown') => void;
 }
 
 // Helper: parse content that might be legacy plain-text or Tiptap JSON
@@ -117,7 +120,10 @@ export function CapsuleEditor({
   editMode: externalEditMode,
   onModeChange,
 }: CapsuleEditorProps) {
-  const [localEditMode, setLocalEditMode] = useState<'rich' | 'markdown'>('rich');
+  const [localEditMode, setLocalEditMode] = useState<'plain' | 'rich' | 'markdown'>('plain');
+  // 图片查看缩放（点击编辑器内图片放大查看，参考锤子便签）。
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightboxZoom, setLightboxZoom] = useState(1);
   const editMode = externalEditMode ?? localEditMode;
   const setEditMode = onModeChange ?? setLocalEditMode;
   const [markdownText, setMarkdownText] = useState('');
@@ -167,7 +173,7 @@ export function CapsuleEditor({
   }, [content, editMode]);
 
   // Mode switcher handler
-  const handleModeToggle = (mode: 'rich' | 'markdown') => {
+  const handleModeToggle = (mode: 'plain' | 'rich' | 'markdown') => {
     if (mode === editMode) return;
     if (mode === 'markdown') {
       if (editor) {
@@ -221,7 +227,8 @@ export function CapsuleEditor({
   // -------------------------------------------------------------------------
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (editMode === 'markdown') return;
+      // Slash 菜单仅在富文本模式生效；纯文本/Markdown 直接放行键入。
+      if (editMode !== 'rich') return;
       if (e.key === '/') {
         setShowSlash(true);
         setSlashFilter('');
@@ -319,8 +326,18 @@ export function CapsuleEditor({
             </BubbleMenu>
           )}
 
-          {/* Rich text TipTap body */}
-          <EditorContent editor={editor} className="capsule-editor-content" />
+          {/* Rich text TipTap body — 点击图片放大查看（缩放） */}
+          <EditorContent
+            editor={editor}
+            className="capsule-editor-content"
+            onClick={(e) => {
+              const t = e.target as HTMLElement;
+              if (t && t.tagName === 'IMG') {
+                setLightboxZoom(1);
+                setLightboxSrc((t as HTMLImageElement).src);
+              }
+            }}
+          />
 
           {/* Slash command panel */}
           {showSlash && filteredSlash.length > 0 && (
@@ -348,6 +365,19 @@ export function CapsuleEditor({
             </div>
           )}
         </>
+      ) : editMode === 'plain' ? (
+        /* 纯文本模式（默认）：聚焦输入，无格式工具栏，所见即所得的纯文本 */
+        <div className="capsule-plain-editor w-full bg-transparent border-none shadow-none overflow-hidden">
+          <textarea
+            ref={textareaRef}
+            value={markdownText}
+            onChange={(e) => handleMarkdownChange(e.target.value)}
+            placeholder={placeholder}
+            disabled={readOnly}
+            autoFocus={autoFocus}
+            className="w-full min-h-[220px] bg-transparent border-none outline-none resize-none text-[15px] font-medium leading-[2rem] text-[#2c2c2e] placeholder-[#8E8E93]/40 font-sans focus:ring-0 focus:border-none focus:outline-none p-0"
+          />
+        </div>
       ) : (
         /* Markdown Editor Mode */
         <div className="capsule-markdown-editor w-full bg-transparent border-none shadow-none overflow-hidden">
@@ -488,6 +518,58 @@ export function CapsuleEditor({
         style={{ display: 'none' }}
         onChange={handleImageFile}
       />
+
+      {/* 图片缩放查看层（Lightbox）：点击图片放大，支持 +/- 缩放 */}
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <div
+            className="absolute top-4 right-4 flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              title="Zoom out"
+              onClick={() => setLightboxZoom((z) => Math.max(0.25, +(z - 0.25).toFixed(2)))}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25 transition-colors"
+            >
+              <ZoomOut size={18} />
+            </button>
+            <span className="text-white text-xs font-bold w-12 text-center tabular-nums">{Math.round(lightboxZoom * 100)}%</span>
+            <button
+              type="button"
+              title="Zoom in"
+              onClick={() => setLightboxZoom((z) => Math.min(5, +(z + 0.25).toFixed(2)))}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25 transition-colors"
+            >
+              <ZoomIn size={18} />
+            </button>
+            <button
+              type="button"
+              title="Close"
+              onClick={() => setLightboxSrc(null)}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25 transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <img
+            src={lightboxSrc}
+            alt=""
+            onClick={(e) => e.stopPropagation()}
+            onWheel={(e) => {
+              setLightboxZoom((z) => {
+                const next = e.deltaY < 0 ? z + 0.15 : z - 0.15;
+                return Math.min(5, Math.max(0.25, +next.toFixed(2)));
+              });
+            }}
+            style={{ transform: `scale(${lightboxZoom})` }}
+            className="max-w-[90vw] max-h-[85vh] object-contain transition-transform duration-150 select-none"
+          />
+        </div>
+      )}
     </div>
   );
 }

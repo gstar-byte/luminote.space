@@ -1132,10 +1132,10 @@ export default function App() {
   const allCategories = Array.from(new Set(allCapsules.map(c => c.category).filter(Boolean) as string[])).sort();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [batchColorOpen, setBatchColorOpen] = useState(false);
-  const [batchReminderOpen, setBatchReminderOpen] = useState(false);
-  const [batchRemDate, setBatchRemDate] = useState<number | null>(null);
-  const [batchRemType, setBatchRemType] = useState<ReminderType>('once');
+  // 批量「分类 & 标签」面板（批量场景下的唯一弹层，颜色/提醒已从批量中移除）
+  const [batchTagCatOpen, setBatchTagCatOpen] = useState(false);
+  const [batchCat, setBatchCat] = useState('');
+  const [batchTags, setBatchTags] = useState('');
 
   const toggleSelection = (id: string) => {
     const newSelection = new Set(selectedIds);
@@ -1280,7 +1280,7 @@ export default function App() {
   const editingCapsuleRef = useRef<Capsule | null>(null);
   editingCapsuleRef.current = editingCapsule;
   const [isMarkdownPreview, setIsMarkdownPreview] = useState(false);
-  const [editMode, setEditMode] = useState<'rich' | 'markdown'>('rich');
+  const [editMode, setEditMode] = useState<'plain' | 'rich' | 'markdown'>('plain');
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isUploadingMediaRef = useRef(false);
 
@@ -2146,6 +2146,13 @@ export default function App() {
                 >
                   {authProcessing ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : (isRegistering ? 'Create Account' : 'Sign In')}
                 </button>
+
+                {/* 登录通常需要几秒（安全校验 + 数据同步），给一个温馨提示安抚等待 */}
+                {authProcessing && (
+                  <p className="text-center text-[11px] font-semibold text-[#8E8E93] mt-1 animate-pulse">
+                    Securely signing you in — this can take a few seconds. Thanks for your patience.
+                  </p>
+                )}
               </form>
 
               <div className="relative my-5 md:my-10">
@@ -2881,75 +2888,9 @@ export default function App() {
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: editingCapsule.color || '#F2F2F7' }} />
                     <span className="font-black tracking-tight text-lg md:text-xl text-[#1D1D1F] truncate">Edit Note</span>
                   </div>
+                  {/* 详情页聚焦编辑：分类/标签/颜色/置顶/星标/待办/分享均下沉到列表卡片的 ⋮ 菜单，
+                      由 AI 解析意图自动归类，这里仅保留关闭按钮。 */}
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      aria-label={editingCapsule.isPinned ? 'Unpin note' : 'Pin note'}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        patchCapsule(editingCapsule.id, { isPinned: !editingCapsule.isPinned });
-                      }}
-                      className="w-11 h-11 flex items-center justify-center rounded-full bg-[#1D1D1F] shadow-md hover:opacity-90 transition-opacity"
-                    >
-                      <Pin
-                        size={22}
-                        className={editingCapsule.isPinned ? 'text-[#007AFF] fill-[#007AFF]' : 'text-white'}
-                        strokeWidth={2}
-                      />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={editingCapsule.isStarred ? 'Unstar note' : 'Star note'}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        patchCapsule(editingCapsule.id, { isStarred: !editingCapsule.isStarred });
-                      }}
-                      className="w-11 h-11 flex items-center justify-center rounded-full bg-[#1D1D1F] shadow-md hover:opacity-90 transition-opacity"
-                    >
-                      <Star
-                        size={22}
-                        className={editingCapsule.isStarred ? 'text-[#FFCC00] fill-[#FFCC00]' : 'text-white'}
-                        strokeWidth={2}
-                      />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={editingCapsule.isTodo ? 'Cancel to-do' : 'Set as to-do'}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        patchCapsule(editingCapsule.id, { isTodo: !editingCapsule.isTodo });
-                      }}
-                      className="w-11 h-11 flex items-center justify-center rounded-full bg-[#1D1D1F] shadow-md hover:opacity-90 transition-opacity"
-                    >
-                      {editingCapsule.isTodo
-                        ? <CheckSquare size={22} className="text-[#007AFF]" strokeWidth={2} />
-                        : <Square size={22} className="text-white" strokeWidth={2} />}
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Share note"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const shareText = plainTextFromContent(editingCapsule.content);
-                        if (typeof navigator !== 'undefined' && navigator.share) {
-                          try {
-                            await navigator.share({ title: 'Lumi Note Share', text: shareText });
-                          } catch (err) {
-                            console.log('Share failed or aborted', err);
-                          }
-                        } else {
-                          try {
-                            await navigator.clipboard.writeText(shareText);
-                            showToast('Note content copied to clipboard!', 'success');
-                          } catch (err) {
-                            console.error('Copy to clipboard failed: ', err);
-                          }
-                        }
-                      }}
-                      className="w-11 h-11 flex items-center justify-center rounded-full bg-[#1D1D1F] shadow-md hover:opacity-90 transition-opacity"
-                    >
-                      <Share2 size={20} className="text-white" strokeWidth={2} />
-                    </button>
                     <button 
                       type="button"
                       onClick={closeEditingModal}
@@ -2981,92 +2922,17 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="max-w-2xl mx-auto w-full space-y-4 mb-4">
-                    <div className="relative">
-                      <div className="text-[11px] font-black uppercase tracking-widest text-[#AEAEB2] mb-1.5">
-                        Category <span className="font-mono font-bold text-[#636366] normal-case tracking-normal">(one value)</span>
-                      </div>
-                      <input
-                        type="text"
-                        value={editDetailCategory}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setEditDetailCategory(v);
-                          editDetailCategoryRef.current = v;
-                        }}
-                        onBlur={() => {
-                          const t = editDetailCategoryRef.current.trim();
-                          const prev = (editingCapsule.category || '').trim();
-                          if (prev === t) return;
-                          patchCapsule(editingCapsule.id, { category: t || undefined });
-                        }}
-                        className="w-full bg-[#F2F2F7] border border-transparent focus:border-[#007AFF]/30 rounded-2xl px-4 py-3 text-sm font-semibold text-[#1D1D1F] focus:ring-2 focus:ring-[#007AFF]/15 outline-none"
-                        placeholder="e.g. Work"
-                        list="edit-detail-categories"
-                      />
-                      <datalist id="edit-detail-categories">
-                        {allCategories.map((c) => (
-                          <option key={c} value={c} />
-                        ))}
-                      </datalist>
-                    </div>
-                    <div className="relative">
-                      <div className="text-[11px] font-black uppercase tracking-widest text-[#AEAEB2] mb-1.5">
-                        Tags <span className="font-mono font-bold text-[#636366] normal-case tracking-normal">(comma separated)</span>
-                      </div>
-                      <input
-                        type="text"
-                        value={editDetailTags}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setEditDetailTags(v);
-                          editDetailTagsRef.current = v;
-                        }}
-                        onBlur={() => {
-                          const parts = editDetailTagsRef.current.split(',').map((x) => x.trim()).filter(Boolean);
-                          if (tagsSignature(editingCapsule.tags) === tagsSignature(parts)) return;
-                          patchCapsule(editingCapsule.id, { tags: parts.length ? parts : undefined });
-                        }}
-                        className="w-full bg-[#F2F2F7] border border-transparent focus:border-[#007AFF]/30 rounded-2xl px-4 py-3 text-sm font-semibold text-[#1D1D1F] focus:ring-2 focus:ring-[#007AFF]/15 outline-none"
-                        placeholder="idea, follow-up, …"
-                        list="edit-detail-tags"
-                      />
-                      <datalist id="edit-detail-tags">
-                        {allTags.map((t) => (
-                          <option key={t} value={t} />
-                        ))}
-                      </datalist>
-                    </div>
-                    <div className="relative">
-                      <div className="text-[11px] font-black uppercase tracking-widest text-[#AEAEB2] mb-1.5">Color</div>
-                      <div className="flex items-center flex-wrap gap-2">
-                        {PRESET_COLORS.map((c) => (
-                          <button
-                            key={c}
-                            type="button"
-                            aria-label={`Set color ${c}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              patchCapsule(editingCapsule.id, { color: c });
-                            }}
-                            className="w-8 h-8 rounded-full shadow-sm transition-transform hover:scale-110 flex items-center justify-center"
-                            style={{
-                              backgroundColor: c,
-                              outline: (editingCapsule.color || '') === c ? '2px solid #007AFF' : '2px solid transparent',
-                              outlineOffset: '2px',
-                            }}
-                          >
-                            {(editingCapsule.color || '') === c && <Check size={14} className="text-white drop-shadow" />}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full pt-2 pb-16 md:pb-20">
                     {/* Pill Switcher outside the lined paper background */}
                     <div className="flex justify-end mb-3 shrink-0">
                       <div className="flex bg-[#F2F2F7] dark:bg-[#2C2C2E] p-0.5 rounded-xl border border-black/5 dark:border-white/5 relative z-10">
+                        <button
+                          type="button"
+                          onClick={() => setEditMode('plain')}
+                          className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${editMode === 'plain' ? 'bg-white dark:bg-[#3A3A3C] text-[#007AFF] shadow-sm' : 'text-[#8E8E93] hover:text-[#1D1D1F] dark:hover:text-white'}`}
+                        >
+                          Plain
+                        </button>
                         <button
                           type="button"
                           onClick={() => setEditMode('rich')}
@@ -3217,108 +3083,21 @@ export default function App() {
                 </button>
 
                 {filter !== 'archived' && filter !== 'trash' ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const sel = allCapsules.filter((c) => selectedIds.has(c.id));
-                        const allPinned = sel.length > 0 && sel.every((c) => c.isPinned);
-                        void batchUpdate({ isPinned: !allPinned });
-                      }}
-                      className="flex items-center gap-2 px-3 py-2.5 text-[#007AFF] hover:bg-[#F2F2F7] transition-colors w-full text-left"
-                    >
-                      <Pin size={16} className="shrink-0" />
-                      <span className="text-xs font-medium truncate">
-                        {(() => {
-                          const sel = allCapsules.filter((c) => selectedIds.has(c.id));
-                          return sel.length > 0 && sel.every((c) => c.isPinned)
-                            ? 'Unpin'
-                            : 'Pin to top';
-                        })()}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const sel = allCapsules.filter((c) => selectedIds.has(c.id));
-                        const allStarred = sel.length > 0 && sel.every((c) => c.isStarred);
-                        void batchUpdate({ isStarred: !allStarred });
-                      }}
-                      className="flex items-center gap-2 px-3 py-2.5 text-[#007AFF] hover:bg-[#F2F2F7] transition-colors w-full text-left"
-                    >
-                      <Star
-                        size={16}
-                        className="shrink-0 text-[#FFCC00]"
-                        fill={(() => {
-                          const sel = allCapsules.filter((c) => selectedIds.has(c.id));
-                          return sel.length > 0 && sel.every((c) => c.isStarred) ? '#FFCC00' : 'none';
-                        })()}
-                      />
-                      <span className="text-xs font-medium truncate">
-                        {(() => {
-                          const sel = allCapsules.filter((c) => selectedIds.has(c.id));
-                          return sel.length > 0 && sel.every((c) => c.isStarred)
-                            ? 'Unstar'
-                            : 'Star';
-                        })()}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const sel = allCapsules.filter((c) => selectedIds.has(c.id));
-                        const allTodo = sel.length > 0 && sel.every((c) => c.isTodo);
-                        void batchUpdate(
-                          allTodo ? { isTodo: false, completed: false } : { isTodo: true },
-                        );
-                      }}
-                      className="flex items-center gap-2 px-3 py-2.5 text-[#007AFF] hover:bg-[#F2F2F7] transition-colors w-full text-left"
-                    >
-                      {(() => {
-                        const sel = allCapsules.filter((c) => selectedIds.has(c.id));
-                        const allTodo = sel.length > 0 && sel.every((c) => c.isTodo);
-                        return allTodo ? (
-                          <Square size={16} className="shrink-0 text-[#8E8E93]" />
-                        ) : (
-                          <CheckSquare size={16} className="shrink-0" />
-                        );
-                      })()}
-                      <span className="text-xs font-medium truncate">
-                        {(() => {
-                          const sel = allCapsules.filter((c) => selectedIds.has(c.id));
-                          return sel.length > 0 && sel.every((c) => c.isTodo)
-                            ? 'Remove to-do'
-                            : 'Set to-do';
-                        })()}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBatchColorOpen(true)}
-                      className="flex items-center gap-2 px-3 py-2.5 text-[#007AFF] hover:bg-[#F2F2F7] transition-colors w-full text-left"
-                    >
-                      <Palette size={16} className="shrink-0" />
-                      <span className="text-xs font-medium truncate">Change color</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const first = allCapsules.find((c) => selectedIds.has(c.id));
-                        const r = first?.reminder;
-                        setBatchRemDate(r?.date ?? Date.now() + 86400000);
-                        setBatchRemType(
-                          r?.type && r.type !== 'none' ? r.type : 'once',
-                        );
-                        setBatchReminderOpen(true);
-                      }}
-                      className="flex items-center gap-2 px-3 py-2.5 text-[#007AFF] hover:bg-[#F2F2F7] transition-colors w-full text-left"
-                    >
-                      <Calendar size={16} className="shrink-0" />
-                      <span className="text-xs font-medium truncate">Set reminder</span>
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const first = allCapsules.find((c) => selectedIds.has(c.id));
+                      setBatchCat(first?.category || '');
+                      setBatchTags((first?.tags || []).join(', '));
+                      setBatchTagCatOpen(true);
+                    }}
+                    className="flex items-center gap-2 px-3 py-2.5 text-[#007AFF] hover:bg-[#F2F2F7] transition-colors w-full text-left"
+                  >
+                    <TagLucideIcon size={16} className="shrink-0" />
+                    <span className="text-xs font-medium truncate">Category &amp; Tag</span>
+                  </button>
                 ) : null}
-                
+
                 {filter === 'archived' ? (
                   <>
                     <button onClick={() => batchUpdate({ isArchived: false })} className="flex items-center gap-2 px-3 py-2.5 text-[#4CAF50] hover:bg-[#F2F2F7] transition-colors w-full text-left"><RotateCcw size={16} className="shrink-0" /><span className="text-xs font-medium">Restore</span></button>
@@ -3357,140 +3136,56 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {batchColorOpen && selectedIds.size > 0 ? (
+        {batchTagCatOpen && selectedIds.size > 0 ? (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 pointer-events-auto">
             <button
               type="button"
               aria-label="Close"
               className="absolute inset-0 bg-black/40"
-              onClick={() => setBatchColorOpen(false)}
-            />
-            <div
-              className="relative w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl border border-[#E5E5EA]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="text-sm font-black text-[#1D1D1F] mb-3">
-                Change color ({selectedIds.size} notes)
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {PRESET_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => {
-                      void batchUpdate({ color });
-                      setBatchColorOpen(false);
-                    }}
-                    className="h-9 w-9 rounded-full border-2 border-transparent hover:scale-110 shadow-sm"
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-                <button
-                  type="button"
-                  onClick={() => {
-                    void batchUpdate({ color: null as any });
-                    setBatchColorOpen(false);
-                  }}
-                  className="h-9 w-9 rounded-full border-2 border-dashed border-[#D1D1D6] flex items-center justify-center text-[#8E8E93] bg-[#F2F2F7]"
-                  title="Reset color"
-                >
-                  <RotateCcw size={14} />
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setBatchColorOpen(false)}
-                className="mt-4 w-full py-2.5 rounded-xl bg-[#F2F2F7] text-xs font-bold text-[#1D1D1F]"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {batchReminderOpen && selectedIds.size > 0 ? (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 pointer-events-auto">
-            <button
-              type="button"
-              aria-label="Close"
-              className="absolute inset-0 bg-black/40"
-              onClick={() => setBatchReminderOpen(false)}
+              onClick={() => setBatchTagCatOpen(false)}
             />
             <div
               className="relative w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl border border-[#E5E5EA] space-y-3"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-sm font-black text-[#1D1D1F]">
-                Reminder ({selectedIds.size} notes)
+                Category &amp; Tag ({selectedIds.size} notes)
               </div>
               <div>
-                <div className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider mb-1">
-                  Time
-                </div>
+                <div className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider mb-1">Category</div>
                 <input
-                  type="datetime-local"
-                  value={
-                    batchRemDate
-                      ? new Date(
-                          batchRemDate - new Date().getTimezoneOffset() * 60000,
-                        )
-                          .toISOString()
-                          .slice(0, 16)
-                      : ''
-                  }
-                  onChange={(e) => {
-                    const d = new Date(e.target.value).getTime();
-                    if (!isNaN(d)) setBatchRemDate(d);
-                  }}
-                  className="w-full px-3 py-2 bg-[#F2F2F7] rounded-xl text-xs border-none focus:ring-2 focus:ring-[#007AFF]/30"
+                  type="text"
+                  value={batchCat}
+                  onChange={(e) => setBatchCat(e.target.value)}
+                  placeholder="e.g. Work"
+                  className="w-full px-3 py-2 bg-[#F2F2F7] rounded-xl text-xs border-none outline-none focus:ring-2 focus:ring-[#007AFF]/30"
                 />
               </div>
               <div>
-                <div className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider mb-1">
-                  Repeat
-                </div>
-                <select
-                  value={batchRemType}
-                  onChange={(e) =>
-                    setBatchRemType(e.target.value as ReminderType)
-                  }
-                  className="w-full px-3 py-2 bg-[#F2F2F7] rounded-xl text-xs border-none"
-                >
-                  <option value="once">Once</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
-                  <option value="none">No reminder</option>
-                </select>
+                <div className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider mb-1">Tags (comma separated)</div>
+                <input
+                  type="text"
+                  value={batchTags}
+                  onChange={(e) => setBatchTags(e.target.value)}
+                  placeholder="idea, follow-up"
+                  className="w-full px-3 py-2 bg-[#F2F2F7] rounded-xl text-xs border-none outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                />
               </div>
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => {
-                    void batchUpdate({ reminder: undefined });
-                    setBatchReminderOpen(false);
-                  }}
-                  className="flex-1 py-2.5 rounded-xl bg-[#F2F2F7] text-xs font-bold text-[#FF3B30]"
+                  onClick={() => setBatchTagCatOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-[#F2F2F7] text-xs font-bold text-[#1D1D1F]"
                 >
-                  Clear
+                  Cancel
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    const next: ReminderConfig | undefined =
-                      batchRemType === 'none' && !batchRemDate
-                        ? undefined
-                        : {
-                            type:
-                              batchRemType === 'none' && batchRemDate
-                                ? 'once'
-                                : batchRemType,
-                            date:
-                              batchRemDate || Date.now() + 86400000,
-                          };
-                    void batchUpdate({ reminder: next });
-                    setBatchReminderOpen(false);
+                    const cat = batchCat.trim();
+                    const tags = batchTags.split(',').map((t) => t.trim()).filter(Boolean);
+                    void batchUpdate({ category: cat || undefined, tags: tags.length ? tags : undefined });
+                    setBatchTagCatOpen(false);
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-[#007AFF] text-xs font-bold text-white"
                 >
@@ -3500,6 +3195,7 @@ export default function App() {
             </div>
           </div>
         ) : null}
+
 
         <footer 
           id="input-area" 
@@ -3916,6 +3612,8 @@ const CapsuleItem = memo(function CapsuleItem({
   const [showReminderPicker, setShowReminderPicker] = useState(false);
   const [isConfiguringCustom, setIsConfiguringCustom] = useState(false);
   const [showTagCat, setShowTagCat] = useState(false);
+  // 自定义颜色（HEX）：恢复「色板 + 自定义取色」能力。
+  const [customColor, setCustomColor] = useState(capsule.color || '#FFD60A');
   // Which menu the portal renders: 'actions' (left-click ⋮ → per-note quick
   // actions) or 'batch' (desktop right-click → multi-select / management).
   const [menuMode, setMenuMode] = useState<'actions' | 'batch'>('actions');
@@ -3939,6 +3637,15 @@ const CapsuleItem = memo(function CapsuleItem({
 
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
   const isHorizontalSwipe = useRef<boolean | null>(null);
+  // 长按进入多选：与右键等价的「批量管理」入口（移动端）。
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cardRootRef = useRef<HTMLDivElement>(null);
+  const clearLongPress = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
 
   const MENU_WIDTH = 200;
   const closeMenu = useCallback(() => {
@@ -3987,6 +3694,17 @@ const CapsuleItem = memo(function CapsuleItem({
     touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     isHorizontalSwipe.current = null;
     setIsSwiping(true);
+
+    // 长按 ~480ms 进入多选模式（移动端「批量管理」入口，等价于桌面右键）。
+    clearLongPress();
+    longPressTimer.current = setTimeout(() => {
+      onToggleSelection();
+      // 吞掉长按后紧随的 click，避免立刻又被切回（取消选中）或打开详情。
+      suppressNextClickRef.current = true;
+      setIsSwiping(false);
+      setSwipeX(0);
+      touchStartPos.current = null;
+    }, 480);
   };
 
   const handleTouchMoveSwipe = (e: React.TouchEvent) => {
@@ -4002,6 +3720,9 @@ const CapsuleItem = memo(function CapsuleItem({
       }
     }
 
+    // 一旦发生明显移动（滑动/滚动），取消长按计时，避免误触发多选。
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) clearLongPress();
+
     if (isHorizontalSwipe.current === true) {
       if (e.cancelable) e.preventDefault();
       let targetX = swipedOpen ? -180 + dx : dx;
@@ -4012,6 +3733,7 @@ const CapsuleItem = memo(function CapsuleItem({
   };
 
   const handleTouchEndSwipe = () => {
+    clearLongPress();
     setIsSwiping(false);
     if (!touchStartPos.current) return;
     touchStartPos.current = null;
@@ -4059,9 +3781,13 @@ const CapsuleItem = memo(function CapsuleItem({
       const target = e.target as Node;
       if (menuRef.current && menuRef.current.contains(target)) return;
       if (portalMenuRef.current && portalMenuRef.current.contains(target)) return;
-      // Swallow the click that dismisses an open menu so it doesn't also
-      // trigger the underlying card (which would open the detail view).
-      if (showOptions || showReminderPicker) {
+      // Swallow the dismiss click ONLY when it lands on this card, so the same
+      // click doesn't also open the detail view. If the dismiss click is
+      // outside the card, the card's onClick never fires — suppressing it then
+      // would wrongly eat the NEXT genuine click (the old "two clicks to open"
+      // bug). So we scope suppression to clicks inside this card.
+      const insideThisCard = !!(cardRootRef.current && cardRootRef.current.contains(target));
+      if ((showOptions || showReminderPicker) && insideThisCard) {
         suppressNextClickRef.current = true;
       }
       setShowOptions(false);
@@ -4173,6 +3899,7 @@ const CapsuleItem = memo(function CapsuleItem({
       )}
 
       <div
+        ref={cardRootRef}
         className={cn(
           "group w-full shrink-0 flex relative select-none border-b border-black/5",
           viewMode === 'grid'
@@ -4199,13 +3926,15 @@ const CapsuleItem = memo(function CapsuleItem({
         onTouchEnd={handleTouchEndSwipe}
         onTouchCancel={handleTouchEndSwipe}
         onContextMenu={(e) => {
-          // Always suppress the browser's native long-press / right-click menu
-          // on a note card. On desktop, open our batch/management menu at the
-          // cursor (Select / Select All / Archive / Delete / Tags & Category).
+          // Always suppress the browser's native long-press / right-click menu.
+          // Desktop right-click enters multi-select for THIS note, surfacing the
+          // single consolidated batch toolbar (Select All / Archive / Delete /
+          // Category & Tag / Share) — same entry point as mobile long-press.
           e.preventDefault();
-          if (window.innerWidth > 768 && !isSelectionMode) {
+          if (!isSelectionMode) {
             e.stopPropagation();
-            openMenuAt(e.clientX, e.clientY, 'batch');
+            onToggleSelection();
+            suppressNextClickRef.current = true;
           }
         }}
         onClick={(e) => {
@@ -4459,64 +4188,46 @@ const CapsuleItem = memo(function CapsuleItem({
                       {(capsule.color || '') === c && <Check size={12} className="text-white drop-shadow" />}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    aria-label="Reset color"
+                    onClick={(e) => { e.stopPropagation(); void onUpdate({ color: null as unknown as string }); closeMenu(); }}
+                    className="w-7 h-7 rounded-full border-2 border-dashed border-[#D1D1D6] bg-[#F2F2F7] text-[#8E8E93] flex items-center justify-center shadow-sm hover:scale-110 transition-transform"
+                    title="Reset color"
+                  >
+                    <RotateCcw size={12} />
+                  </button>
                 </div>
-              </div>
-            ) : menuMode === 'batch' ? (
-              /* 批量 / 管理菜单（桌面右键，后续手机端长按复用）：
-                 多选 / 全选 / 归档 / 删除 / 标签与分类 / 分享。
-                 部分项与单条菜单重合，是为了支持批量操作。 */
-              <div className="p-1.5 space-y-0.5">
-                <button
-                  onClick={(e) => { e.stopPropagation(); onToggleSelection(); closeMenu(); }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
-                >
-                  <ListChecks size={16} className="text-[#8E8E93]" />
-                  Select
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onSelectAll?.(); closeMenu(); }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
-                >
-                  <CheckSquare size={16} className="text-[#8E8E93]" />
-                  Select All
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); void onUpdate({ isArchived: true }); closeMenu(); }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
-                >
-                  <Archive size={16} className="text-[#8E8E93]" />
-                  Archive
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); void onUpdate({ isDeleted: true }); closeMenu(); }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#FFF5F5] text-[#FF3B30] font-medium rounded-lg transition-colors"
-                >
-                  <Trash2 size={16} />
-                  Delete
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowTagCat(true); }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
-                >
-                  <Folder size={16} className="text-[#8E8E93]" />
-                  Category &amp; Tag
-                </button>
-                <button
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    const shareText = plainTextFromContent(capsule.content);
-                    if (typeof navigator !== 'undefined' && navigator.share) {
-                      try { await navigator.share({ title: 'Lumi Note Share', text: shareText }); } catch (err) { console.log('Share failed or aborted', err); }
-                    } else {
-                      try { await navigator.clipboard.writeText(shareText); showToast('Note content copied to clipboard!', 'success'); } catch (err) { console.error('Copy to clipboard failed: ', err); }
-                    }
-                    closeMenu();
-                  }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
-                >
-                  <Share2 size={16} className="text-[#8E8E93]" />
-                  Share
-                </button>
+                {/* 自定义取色：原生取色器 + HEX 手动输入 */}
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="color"
+                    value={/^#[0-9a-fA-F]{6}$/.test(customColor) ? customColor : '#FFD60A'}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setCustomColor(e.target.value)}
+                    className="w-8 h-8 p-0 border border-[#E5E5EA] rounded-md bg-transparent cursor-pointer shrink-0"
+                  />
+                  <input
+                    type="text"
+                    value={customColor}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      let v = e.target.value.trim();
+                      if (v && !v.startsWith('#')) v = `#${v}`;
+                      setCustomColor(v);
+                    }}
+                    placeholder="#RRGGBB"
+                    className="flex-1 min-w-0 px-2 py-1.5 bg-[#F2F2F7] rounded-md text-xs border-none outline-none focus:ring-2 focus:ring-[#007AFF]"
+                  />
+                  <button
+                    type="button"
+                    disabled={!/^#[0-9a-fA-F]{6}$/.test(customColor)}
+                    onClick={(e) => { e.stopPropagation(); void onUpdate({ color: customColor }); closeMenu(); }}
+                    className="px-3 py-1.5 rounded-md text-xs font-bold text-white bg-[#007AFF] disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  >
+                    Apply
+                  </button>
+                </div>
               </div>
             ) : !showReminderPicker ? (
               /* 单条快捷操作菜单（左键 ⋮）：
