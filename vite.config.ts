@@ -26,6 +26,12 @@ export default defineConfig(({mode}) => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+      // Ensure a single React instance so `react-dom`'s `createPortal`
+      // (used for un-clipped floating menus) shares the app's hook dispatcher.
+      dedupe: ['react', 'react-dom'],
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'react-dom/client'],
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
