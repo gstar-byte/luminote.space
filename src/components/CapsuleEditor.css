@@ -189,15 +189,43 @@
   color: #007AFF;
 }
 
-/* ── Bottom inline toolbar ─────────────────────────────────────────────────── */
+/* ── Inline visual toolbar (top) ───────────────────────────────────────────── */
 .capsule-editor-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 2px;
-  padding: 4px 8px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 5px 8px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   background: #F9F9FB;
-  border-radius: 0 0 12px 12px;
+  border-radius: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.capsule-toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background: rgba(0, 0, 0, 0.1);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* Markdown live-format hint */
+.capsule-markdown-hint {
+  font-size: 11px;
+  color: #8E8E93;
+  font-weight: 600;
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+.capsule-markdown-hint code {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
 }
 
 /* ── Slash command panel ───────────────────────────────────────────────────── */

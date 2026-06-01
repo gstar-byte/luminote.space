@@ -358,7 +358,15 @@ const plainTextFromContent = (content: any): string => {
   if (typeof content === 'string') {
     let trimmed = content.trim();
     if (!trimmed.startsWith('{')) {
-      // Strip common markdown syntax for card display
+      // Strip HTML tags (纯文本模式以 HTML 源码持久化) then markdown syntax for card display
+      trimmed = trimmed
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/(p|div|h[1-6]|li|blockquote)>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>');
       trimmed = trimmed
         .replace(/^#{1,6}\s+/gm, '')          // headings
         .replace(/\*\*(.+?)\*\*/g, '$1')      // bold
@@ -3637,8 +3645,9 @@ const CapsuleItem = memo(function CapsuleItem({
 
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
   const isHorizontalSwipe = useRef<boolean | null>(null);
-  // 长按进入多选：与右键等价的「批量管理」入口（移动端）。
+  // 长按进入多选：与右键等价的「批量管理」入口（移动端触屏 + 桌面按住左键）。
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mouseDownPos = useRef<{ x: number; y: number } | null>(null);
   const cardRootRef = useRef<HTMLDivElement>(null);
   const clearLongPress = useCallback(() => {
     if (longPressTimer.current) {
@@ -3758,6 +3767,36 @@ const CapsuleItem = memo(function CapsuleItem({
       }
     }
     isHorizontalSwipe.current = null;
+  };
+
+  // 桌面端：按住左键 ~480ms 进入多选（与右键等价）。移动超过阈值或提前松开则取消。
+  const handleMouseDownCard = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;                 // 仅左键
+    if (isSelectionMode) return;
+    if (showOptions || showColorPicker || showReminderPicker) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, input, textarea, label, [data-no-longpress]')) return;
+    mouseDownPos.current = { x: e.clientX, y: e.clientY };
+    clearLongPress();
+    longPressTimer.current = setTimeout(() => {
+      onToggleSelection();
+      suppressNextClickRef.current = true;
+      mouseDownPos.current = null;
+    }, 480);
+  };
+  const handleMouseMoveCard = (e: React.MouseEvent) => {
+    if (!mouseDownPos.current) return;
+    if (
+      Math.abs(e.clientX - mouseDownPos.current.x) > 6 ||
+      Math.abs(e.clientY - mouseDownPos.current.y) > 6
+    ) {
+      clearLongPress();
+      mouseDownPos.current = null;
+    }
+  };
+  const handleMouseUpLeaveCard = () => {
+    clearLongPress();
+    mouseDownPos.current = null;
   };
 
   useEffect(() => {
@@ -3925,6 +3964,10 @@ const CapsuleItem = memo(function CapsuleItem({
         onTouchMove={handleTouchMoveSwipe}
         onTouchEnd={handleTouchEndSwipe}
         onTouchCancel={handleTouchEndSwipe}
+        onMouseDown={handleMouseDownCard}
+        onMouseMove={handleMouseMoveCard}
+        onMouseUp={handleMouseUpLeaveCard}
+        onMouseLeave={handleMouseUpLeaveCard}
         onContextMenu={(e) => {
           // Always suppress the browser's native long-press / right-click menu.
           // Desktop right-click enters multi-select for THIS note, surfacing the
@@ -4198,36 +4241,26 @@ const CapsuleItem = memo(function CapsuleItem({
                     <RotateCcw size={12} />
                   </button>
                 </div>
-                {/* 自定义取色：原生取色器 + HEX 手动输入 */}
-                <div className="flex items-center gap-2 pt-1">
+                {/* 自定义取色：原生取色器，选完即时生效（无需 Apply） */}
+                <label
+                  className="flex items-center gap-2 pt-1 cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span
+                    className="w-7 h-7 rounded-full shadow-sm shrink-0 border border-black/10 grid place-items-center"
+                    style={{ background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)' }}
+                  >
+                    <Palette size={13} className="text-white drop-shadow" />
+                  </span>
+                  <span className="text-xs font-medium text-[#1D1D1F]">Custom color</span>
                   <input
                     type="color"
                     value={/^#[0-9a-fA-F]{6}$/.test(customColor) ? customColor : '#FFD60A'}
                     onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => setCustomColor(e.target.value)}
-                    className="w-8 h-8 p-0 border border-[#E5E5EA] rounded-md bg-transparent cursor-pointer shrink-0"
+                    onChange={(e) => { setCustomColor(e.target.value); void onUpdate({ color: e.target.value }); }}
+                    className="w-7 h-7 ml-auto p-0 border border-[#E5E5EA] rounded-md bg-transparent cursor-pointer shrink-0"
                   />
-                  <input
-                    type="text"
-                    value={customColor}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => {
-                      let v = e.target.value.trim();
-                      if (v && !v.startsWith('#')) v = `#${v}`;
-                      setCustomColor(v);
-                    }}
-                    placeholder="#RRGGBB"
-                    className="flex-1 min-w-0 px-2 py-1.5 bg-[#F2F2F7] rounded-md text-xs border-none outline-none focus:ring-2 focus:ring-[#007AFF]"
-                  />
-                  <button
-                    type="button"
-                    disabled={!/^#[0-9a-fA-F]{6}$/.test(customColor)}
-                    onClick={(e) => { e.stopPropagation(); void onUpdate({ color: customColor }); closeMenu(); }}
-                    className="px-3 py-1.5 rounded-md text-xs font-bold text-white bg-[#007AFF] disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                  >
-                    Apply
-                  </button>
-                </div>
+                </label>
               </div>
             ) : !showReminderPicker ? (
               /* 单条快捷操作菜单（左键 ⋮）：
