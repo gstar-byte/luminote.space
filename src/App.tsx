@@ -348,7 +348,7 @@ function CrownJewel({ className, size = 32 }: { className?: string; size?: numbe
 }
 
 /** Open width when sidebar is expanded (mobile narrower). */
-const SIDEBAR_W = { mobile: 210, desktop: 240 } as const;
+const SIDEBAR_W = { mobile: 140, desktop: 240 } as const;
 
 /**
  * Helper to extract plain text from Tiptap JSON or plain string
@@ -1123,8 +1123,20 @@ export default function App() {
       }, 800); // Give enough time for DOM to update after seeding
     };
 
-    // Only trigger tour if no tutorial seen AND no real data exists yet
-    if (!hasSeenTutorial && !tourActive.current && allCapsules.length === 0 && !dataLoading) {
+    // Auto-repair onboarding status for old users who already have notes
+    if (user && allCapsules.length > 0 && !hasSeenTutorial) {
+      safeLocalStorageSet(ONBOARDING_STORAGE_KEY, 'true');
+      const updatedUser = { ...user, onboarded: true };
+      setUser(updatedUser);
+      localStorage.setItem('luminote_auth_user', JSON.stringify(updatedUser));
+      updateDoc(doc(getDb(), 'users', user.uid), { onboarded: true }).catch((e) => {
+        // Silently degrade
+        console.error('Firestore updateDoc onboarded auto-repair error (silenced):', e);
+      });
+    }
+
+    // Only trigger tour if fully loaded, user is logged in, has not seen tutorial, and has 0 notes
+    if (!authLoading && !dataLoading && user && !hasSeenTutorial && !tourActive.current && allCapsules.length === 0) {
        setTimeout(() => {
          if ((window as any).startTour && !tourActive.current) {
            (window as any).startTour();
@@ -2228,7 +2240,11 @@ export default function App() {
             <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center drop-shadow-md">
               <AppLogo className="w-full h-full" />
             </div>
-            {isSidebarOpen && <span className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#1D1D1F] to-[#434343] whitespace-nowrap">Lumi Note</span>}
+            {isSidebarOpen && !isMobile && (
+              <span className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#1D1D1F] to-[#434343] whitespace-nowrap">
+                Lumi Note
+              </span>
+            )}
           </div>
           {isSidebarOpen && (
             <button 
@@ -3996,12 +4012,12 @@ const CapsuleItem = memo(function CapsuleItem({
       >
         {(capsule.isPinned || capsule.isStarred || (capsule.reminder && capsule.reminder.type !== 'none' && capsule.reminder.date)) && (
           <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
-            {/* 置顶 / 星标：桌面端默认隐藏，悬浮卡片时淡入；移动端常显 */}
+            {/* 置顶 / 星标：常显，无悬浮动效 */}
             {capsule.isPinned && (
-              <Pin size={13} className="text-white/80 fill-white/80 rotate-45 shrink-0 transition-opacity md:opacity-0 md:group-hover:opacity-100" />
+              <Pin size={13} className="text-white/80 fill-white/80 rotate-45 shrink-0 transition-opacity" />
             )}
             {capsule.isStarred && (
-              <Star size={13} className="text-[#FFCC00] fill-[#FFCC00] shrink-0 transition-opacity md:opacity-0 md:group-hover:opacity-100" />
+              <Star size={13} className="text-[#FFCC00] fill-[#FFCC00] shrink-0 transition-opacity" />
             )}
             {/* 提醒铃铛：始终显示，是极简态下唯一可见的元数据标记 */}
             {capsule.reminder && capsule.reminder.type !== 'none' && capsule.reminder.date && (
@@ -4049,12 +4065,7 @@ const CapsuleItem = memo(function CapsuleItem({
           </div>
           
           <div className={cn(
-            "flex flex-col gap-2 shrink-0 w-full transition-all duration-300",
-            // 桌面端 (md) 下默认收起且透明度为 0，仅在 hover 时优雅展开
-            "md:max-h-0 md:opacity-0 md:overflow-hidden md:pointer-events-none md:mt-0",
-            "md:group-hover:max-h-32 md:group-hover:opacity-100 md:group-hover:mt-4 md:group-hover:pointer-events-auto",
-            // 移动端/触摸屏下默认直接展开显示，确保操作与阅读体验
-            "max-h-32 opacity-100 mt-3 pointer-events-auto",
+            "flex flex-col gap-2 shrink-0 w-full mt-3 opacity-100 pointer-events-auto",
             viewMode === 'grid' ? "items-center" : ""
           )}>
             <div
