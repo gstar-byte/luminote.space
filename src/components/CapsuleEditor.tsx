@@ -45,13 +45,31 @@ const CustomImage = ImageExtension.extend({
         renderHTML: attributes => {
           return {
             width: attributes.width,
-            style: `width: ${attributes.width}; max-width: 100%; height: auto; display: block; margin: 8px auto; border-radius: 10px; cursor: pointer; transition: all 0.2s;`,
           }
         },
         parseHTML: element => element.getAttribute('width') || '100%',
       },
     }
   },
+  renderHTML({ HTMLAttributes }) {
+    const styleAttr = HTMLAttributes.style || '';
+    let marginStyle = 'margin: 8px auto;'; // center by default
+    if (styleAttr.includes('text-align: left')) {
+      marginStyle = 'margin: 8px auto 8px 0;';
+    } else if (styleAttr.includes('text-align: right')) {
+      marginStyle = 'margin: 8px 0 8px auto;';
+    } else if (styleAttr.includes('text-align: center')) {
+      marginStyle = 'margin: 8px auto;';
+    }
+
+    return [
+      'img',
+      {
+        ...HTMLAttributes,
+        style: `width: ${HTMLAttributes.width || '100%'}; max-width: 100%; height: auto; display: block; ${marginStyle} border-radius: 10px; cursor: pointer; transition: all 0.2s;`,
+      }
+    ];
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -200,34 +218,48 @@ function markdownToHtml(md: string): string {
   html = html.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2">$1</a>');
 
   // Lists
-  html = html.replace(/^\s*[-\*\+] (.*$)/gim, '<li>$1</li>');
-  html = html.replace(/^\s*\d+\. (.*$)/gim, '<li>$1</li>');
+  html = html.replace(/^\s*[-\*\+] (.*$)/gim, '<li data-type="unordered">$1</li>');
+  html = html.replace(/^\s*\d+\. (.*$)/gim, '<li data-type="ordered">$1</li>');
 
   const lines = html.split('\n');
-  let inList = false;
+  let inList: 'unordered' | 'ordered' | null = null;
   const outputLines: string[] = [];
 
   lines.forEach(line => {
     const trimmed = line.trim();
     if (!trimmed) {
       if (inList) {
-        outputLines.push('</ul>');
-        inList = false;
+        outputLines.push(inList === 'ordered' ? '</ol>' : '</ul>');
+        inList = null;
       }
       return;
     }
     
-    const isLi = /^<li>.*<\/li>$/.test(trimmed);
-    if (isLi) {
-      if (!inList) {
-        inList = true;
+    const isUnordered = /^<li data-type="unordered">.*<\/li>$/.test(trimmed);
+    const isOrdered = /^<li data-type="ordered">.*<\/li>$/.test(trimmed);
+    
+    if (isUnordered) {
+      if (inList !== 'unordered') {
+        if (inList) {
+          outputLines.push(inList === 'ordered' ? '</ol>' : '</ul>');
+        }
+        inList = 'unordered';
         outputLines.push('<ul>');
       }
-      outputLines.push(trimmed);
+      outputLines.push(trimmed.replace(' data-type="unordered"', ''));
+    } else if (isOrdered) {
+      if (inList !== 'ordered') {
+        if (inList) {
+          outputLines.push(inList === 'ordered' ? '</ol>' : '</ul>');
+        }
+        inList = 'ordered';
+        outputLines.push('<ol>');
+      }
+      outputLines.push(trimmed.replace(' data-type="ordered"', ''));
     } else {
       if (inList) {
-        outputLines.push('</ul>');
-        inList = false;
+        outputLines.push(inList === 'ordered' ? '</ol>' : '</ul>');
+        inList = null;
       }
       if (!trimmed.startsWith('<h') && !trimmed.startsWith('<pre') && !trimmed.startsWith('<block') && !trimmed.startsWith('<ul') && !trimmed.startsWith('<ol')) {
         outputLines.push(`<p>${trimmed}</p>`);
@@ -237,7 +269,7 @@ function markdownToHtml(md: string): string {
     }
   });
   if (inList) {
-    outputLines.push('</ul>');
+    outputLines.push(inList === 'ordered' ? '</ol>' : '</ul>');
   }
 
   return outputLines.join('\n');
@@ -335,7 +367,7 @@ export function CapsuleEditor({
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
       Underline,
       TextStyle,
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      TextAlign.configure({ types: ['heading', 'paragraph', 'image'] }),
       Placeholder.configure({ placeholder }),
       Link.configure({ openOnClick: false }),
       CustomImage.configure({ inline: false }),
@@ -558,26 +590,7 @@ export function CapsuleEditor({
             </div>
           )}
 
-          {editMode === 'markdown' && !readOnly && (
-            <div className="capsule-markdown-hint">Type Markdown (e.g. <code>**bold**</code>, <code># Heading</code>) — formats live as you type.</div>
-          )}
 
-          {/* Bubble Menu — appears when text is selected */}
-          {!readOnly && (
-            <BubbleMenu
-              editor={editor}
-              options={{ placement: 'top' }}
-              className="capsule-bubble-menu"
-            >
-              <ToolBtn active={editor.isActive('bold')} title="Bold (⌘B)" onClick={() => editor.chain().focus().toggleBold().run()}><Bold size={14} /></ToolBtn>
-              <ToolBtn active={editor.isActive('italic')} title="Italic (⌘I)" onClick={() => editor.chain().focus().toggleItalic().run()}><Italic size={14} /></ToolBtn>
-              <ToolBtn active={editor.isActive('underline')} title="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()}><UnderlineIcon size={14} /></ToolBtn>
-              <ToolBtn active={editor.isActive('strike')} title="Strikethrough" onClick={() => editor.chain().focus().toggleStrike().run()}><Strikethrough size={14} /></ToolBtn>
-              <div className="capsule-bubble-divider" />
-              <ToolBtn active={editor.isActive('link')} title="Link" onClick={setLink}><LinkIcon size={14} /></ToolBtn>
-              <ToolBtn active={false} title="Insert image" onClick={() => imageInputRef.current?.click()}><ImageIcon size={14} /></ToolBtn>
-            </BubbleMenu>
-          )}
 
           {/* Image Bubble Menu — 选中图片时弹出锤子便签样式快捷工具条 */}
           {!readOnly && (

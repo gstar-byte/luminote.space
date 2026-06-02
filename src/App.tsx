@@ -2921,10 +2921,9 @@ export default function App() {
           </div>
         </div>
 
-        {/* Capsule Detail Modal */}
         <AnimatePresence>
           {editingCapsule && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3278,7 +3277,7 @@ export default function App() {
 
         <footer 
           id="input-area" 
-          className={`shrink-0 transition-all duration-500 ease-in-out relative z-40 bg-white/90 dark:bg-[#1C1C1E]/90 backdrop-blur-xl border-t border-[#E5E5EA] dark:border-white/10 flex flex-col items-center justify-center ${
+          className={`shrink-0 transition-all duration-500 ease-in-out relative z-[80] bg-white/90 dark:bg-[#1C1C1E]/90 backdrop-blur-xl border-t border-[#E5E5EA] dark:border-white/10 flex flex-col items-center justify-center ${
             isCaptureCollapsed 
               ? 'h-0 min-h-0 py-0 opacity-0 pointer-events-none translate-y-full overflow-hidden' 
               : 'min-h-[96px] px-4 md:px-8 pt-3 pb-[calc(32px+env(safe-area-inset-bottom))] md:pb-4 md:pt-3 opacity-100 translate-y-0'
@@ -3401,7 +3400,8 @@ export default function App() {
               exit={{ opacity: 0, y: 50, scale: 0.8 }}
               transition={{ type: 'spring', damping: 25, stiffness: 350 }}
               onClick={() => setIsCaptureCollapsed(false)}
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-[#007AFF] to-[#00C6FF] text-white font-bold text-xs shadow-2xl border border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="fixed bottom-6 -translate-x-1/2 z-[80] flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-[#007AFF] to-[#00C6FF] text-white font-bold text-xs shadow-2xl border border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              style={isSidebarOpen && !isMobile ? { left: 'calc(50% + 120px)' } : { left: '50%' }}
             >
               <Zap size={14} className="animate-pulse" />
               <span>Quick Capture</span>

@@ -76,16 +76,23 @@
 }
 
 /* Lists */
-.capsule-editor-content .ProseMirror ul,
+.capsule-editor-content .ProseMirror ul {
+  list-style-type: disc !important;
+  padding-left: 20px !important;
+  margin: 4px 0 !important;
+}
 .capsule-editor-content .ProseMirror ol {
-  padding-left: 20px;
-  margin: 4px 0;
+  list-style-type: decimal !important;
+  padding-left: 20px !important;
+  margin: 4px 0 !important;
 }
 .capsule-editor-content .ProseMirror li {
-  margin: 2px 0;
+  display: list-item !important;
+  margin: 2px 0 !important;
 }
 .capsule-editor-content .ProseMirror li p {
-  margin: 0;
+  margin: 0 !important;
+  display: inline !important;
 }
 
 /* Inline marks */
