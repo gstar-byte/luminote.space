@@ -14,6 +14,17 @@ export async function categorizeThought(text: string): Promise<{
   isStarred?: boolean;
   isPinned?: boolean;
 }> {
+  // 1. Fast-path: check if local NLP can resolve a definitive reminder with zero ambiguity
+  try {
+    const localResult = await categorizeThoughtLocal(text);
+    if (localResult.reminder && !localResult.isAmbiguous) {
+      console.log("[NLP Router] Fast-path hit: Local NLP resolved definitive reminder.", localResult);
+      return localResult;
+    }
+  } catch (e) {
+    console.error("[NLP Router] Local NLP fast-path error:", e);
+  }
+
   if (NLP_PROVIDER === 'deepseek') {
     try {
       console.log("[NLP Router] Trying DeepSeek...");
