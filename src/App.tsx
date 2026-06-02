@@ -1461,7 +1461,7 @@ export default function App() {
         reminder: reminder || null,
         color: randomColor,
         isAmbiguous: shouldShowPill,
-        clarificationPrompt: shouldShowPill ? '要为该便签快速设置提醒、星标、置顶或仅作为记事？' : null
+        clarificationPrompt: shouldShowPill ? 'Quickly set a reminder, star, pin, or keep as note?' : null
       };
       if (category) newCapsuleData.category = category;
       if (tags && tags.length > 0) newCapsuleData.tags = tags;
@@ -1489,7 +1489,7 @@ export default function App() {
           reminder: (newCapsuleData.reminder || null) as any,
           color: randomColor,
           isAmbiguous: true,
-          clarificationPrompt: '要为该便签快速设置提醒、星标、置顶或仅作为记事？',
+          clarificationPrompt: 'Quickly set a reminder, star, pin, or keep as note?',
           category: (newCapsuleData.category || undefined) as string,
           tags: (newCapsuleData.tags || undefined) as string[],
           isStarred: (newCapsuleData.isStarred || undefined) as boolean,
@@ -2187,7 +2187,7 @@ export default function App() {
         {authProcessing && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#F8F9FA]/40 dark:bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
             <div className="bg-white dark:bg-[#1C1C1E] p-8 rounded-3xl shadow-2xl border border-black/5 dark:border-white/10 flex flex-col items-center max-w-sm mx-4 text-center gap-5 animate-in zoom-in-95 duration-200">
-              <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center bg-[#007AFF]/10 rounded-full p-2.5">
+              <div className="flex-shrink-0 w-18 h-18 flex items-center justify-center">
                 <AppLogo className="w-full h-full" />
               </div>
               <div className="space-y-1.5">
@@ -3020,7 +3020,7 @@ export default function App() {
             </AnimatePresence>
             
             {filteredCapsules.length === 0 && (
-              dataLoading ? (
+              !isSyncFinished ? (
                 <div className="col-span-full h-64 flex flex-col items-center justify-center text-[#8E8E93] gap-4">
                   <div className="w-10 h-10 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
                   <p className="text-sm font-semibold text-[#8E8E93] animate-pulse">Syncing your notes...</p>
@@ -4336,9 +4336,12 @@ const CapsuleItem = memo(function CapsuleItem({
             {capsule.isStarred && (
               <Star size={13} className="text-[#FFCC00] fill-[#FFCC00] shrink-0 transition-opacity" />
             )}
-            {/* 提醒铃铛：始终显示，是极简态下唯一可见的元数据标记 */}
             {capsule.reminder && capsule.reminder.type !== 'none' && capsule.reminder.date && (
-              <Bell size={13} className={cn("shrink-0", capsule.reminder.date <= Date.now() ? "text-red-200 animate-pulse" : "text-white/80")} />
+              <Bell 
+                size={13} 
+                className={cn("shrink-0", capsule.reminder.date <= Date.now() ? "text-red-200 animate-pulse" : "text-white/80")} 
+                title={`Reminder: ${new Date(capsule.reminder.date).toLocaleString('en-US')} (${capsule.reminder.type.charAt(0).toUpperCase() + capsule.reminder.type.slice(1)})`}
+              />
             )}
           </div>
         )}
