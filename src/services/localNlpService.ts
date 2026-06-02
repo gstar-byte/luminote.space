@@ -400,7 +400,7 @@ function parseReminder(text: string): {
   // If todo intent but no date/time/recurring → ambiguous
   if (isTodo && !reminder) {
     isAmbiguous = true;
-    clarificationPrompt = `要为"${refinedContent}"设置提醒时间，还是仅作为待办事项？`;
+    clarificationPrompt = `Would you like to set a reminder for "${refinedContent}", or keep it as a plain note?`;
   }
 
   return {

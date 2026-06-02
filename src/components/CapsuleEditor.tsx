@@ -655,8 +655,8 @@ export function CapsuleEditor({
               backgroundSize: '100% 2rem', 
               lineHeight: '2rem',
               backgroundAttachment: 'local',
-              paddingTop: '1.55rem',
-              backgroundPositionY: '1.25rem'
+              paddingTop: '1.5rem',
+              backgroundPositionY: '1.5rem'
             }}
           >
             {/* Tiptap body — 点击图片通过 NodeSelection 高亮选中 */}
@@ -725,8 +725,8 @@ export function CapsuleEditor({
             backgroundSize: '100% 2rem', 
             lineHeight: '2rem',
             backgroundAttachment: 'local',
-            paddingTop: '1.55rem',
-            backgroundPositionY: '1.25rem'
+            paddingTop: '1.5rem',
+            backgroundPositionY: '1.5rem'
           }}
         >
           <div className="capsule-plain-editor w-full bg-transparent border-none shadow-none overflow-hidden">

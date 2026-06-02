@@ -19,11 +19,11 @@
 
 .capsule-editor-content .ProseMirror {
   outline: none;
-  padding: 12px 14px;
+  padding: 0 14px;
   min-height: 120px;
   font-size: 15px;
   font-weight: 500;
-  line-height: 1.65;
+  line-height: 2rem;
   color: #1D1D1F;
   word-break: break-word;
 }
@@ -62,7 +62,7 @@
 
 /* Paragraph spacing */
 .capsule-editor-content .ProseMirror p {
-  margin: 0 0 4px;
+  margin: 0;
 }
 
 /* Blockquote */

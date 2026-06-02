@@ -18,6 +18,7 @@ export function AppLogo({ className = "w-36 h-36" }: { className?: string }) {
       viewBox="0 0 100 100"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      style={{ overflow: 'visible' }}
     >
       <defs>
         {/* 便签纸底色：极致经典且高端雅致的渐变淡黄色 (Classic Canary Yellow) */}

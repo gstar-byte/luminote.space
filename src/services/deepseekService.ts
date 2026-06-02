@@ -39,7 +39,7 @@ export async function categorizeThoughtDeepSeek(text: string): Promise<{
     text;
 
   const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("DeepSeek API timeout")), 4000)
+    setTimeout(() => reject(new Error("DeepSeek API timeout")), 2000)
   );
 
   const fetchPromise = fetch(API_URL, {

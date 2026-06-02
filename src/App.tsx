@@ -4337,11 +4337,15 @@ const CapsuleItem = memo(function CapsuleItem({
               <Star size={13} className="text-[#FFCC00] fill-[#FFCC00] shrink-0 transition-opacity" />
             )}
             {capsule.reminder && capsule.reminder.type !== 'none' && capsule.reminder.date && (
-              <Bell 
-                size={13} 
-                className={cn("shrink-0", capsule.reminder.date <= Date.now() ? "text-red-200 animate-pulse" : "text-white/80")} 
+              <span 
                 title={`Reminder: ${new Date(capsule.reminder.date).toLocaleString('en-US')} (${capsule.reminder.type.charAt(0).toUpperCase() + capsule.reminder.type.slice(1)})`}
-              />
+                className="inline-flex shrink-0 cursor-help"
+              >
+                <Bell 
+                  size={13} 
+                  className={cn(capsule.reminder.date <= Date.now() ? "text-red-200 animate-pulse" : "text-white/80")} 
+                />
+              </span>
             )}
           </div>
         )}
