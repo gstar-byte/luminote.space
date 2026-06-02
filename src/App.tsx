@@ -489,6 +489,18 @@ export default function App() {
       return sortOrder === 'desc' ? valB - valA : valA - valB;
     });
   }, [demoCapsules, capsules, sortBy, sortOrder]);
+
+  const hasSeededOrCreated = React.useMemo(() => {
+    if (!user) return false;
+    const seededKey = `luminote_has_notes_seeded_${user.uid}`;
+    return (
+      localStorage.getItem(seededKey) === 'true' ||
+      user.hasNotesCreatedOrSeeded === true ||
+      capsules.length > 0 ||
+      demoCapsules.length > 0
+    );
+  }, [user, capsules.length, demoCapsules.length]);
+
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -529,7 +541,10 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState(Date.now());
   const [dataLoading, setDataLoading] = useState(true);
+  const [isSyncFinished, setIsSyncFinished] = useState(false);
   const [pendingClarificationCapsuleId, setPendingClarificationCapsuleId] = useState<string | null>(null);
+  const [temporaryPendingCapsule, setTemporaryPendingCapsule] = useState<Capsule | null>(null);
+  const wasCaptureCollapsedBeforeClarification = useRef(true);
 
   // Pull-to-refresh & Toast state
   const [pullY, setPullY] = useState(0);
@@ -785,6 +800,10 @@ export default function App() {
 
       console.log('--- SEEDING DEMO DATA ---', generatedDemoCapsules);
       setDemoCapsules(generatedDemoCapsules);
+      if (user) {
+        localStorage.setItem(`luminote_has_notes_seeded_${user.uid}`, 'true');
+        updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -937,7 +956,8 @@ export default function App() {
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
               isPremium: docSnap.data().isPremium || false,
-              onboarded: docSnap.data().onboarded || false
+              onboarded: docSnap.data().onboarded || false,
+              hasNotesCreatedOrSeeded: docSnap.data().hasNotesCreatedOrSeeded || false
             };
             setUser(userData);
             localStorage.setItem('luminote_auth_user', JSON.stringify(userData));
@@ -948,7 +968,8 @@ export default function App() {
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
               isPremium: false,
-              onboarded: false
+              onboarded: false,
+              hasNotesCreatedOrSeeded: false
             };
             setUser(userData);
             localStorage.setItem('luminote_auth_user', JSON.stringify(userData));
@@ -959,6 +980,7 @@ export default function App() {
               photoURL: firebaseUser.photoURL,
               isPremium: false,
               onboarded: false,
+              hasNotesCreatedOrSeeded: false,
               updatedAt: Date.now()
             }, { merge: true }).catch((e) => {
               console.error('Firestore setDoc user error (silenced):', e);
@@ -977,6 +999,7 @@ export default function App() {
         setDemoCapsules([]);
         setAuthLoading(false);
         setDataLoading(true);
+        setIsSyncFinished(false);
       }
     });
     return () => {
@@ -991,6 +1014,13 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
 
+    // 开启 3.5秒安全同步超时降级机制。如果网络慢/波动导致 3.5秒内仍未拉取成功，
+    // 强制将 dataLoading 设为 false 以进入主界面，不至于让用户卡死在 Syncing 画面。
+    const syncTimeoutId = setTimeout(() => {
+      console.warn('[Sync Timeout] Database sync took over 3.5s. Forcing UI entry via fallback.');
+      setDataLoading(false);
+    }, 3500);
+
     // 1. Instant loading of user-specific cached notes from localStorage
     const cacheKey = `luminote_cached_notes_${user.uid}`;
     const cached = localStorage.getItem(cacheKey);
@@ -1001,6 +1031,7 @@ export default function App() {
           console.log("[OfflineCache] Loaded", parsed.length, "notes instantly from localStorage.");
           setCapsules(parsed);
           setDataLoading(false); // Cancel loading state immediately for instant feedback
+          setIsSyncFinished(true); // 本地已有卡片缓存，直接标志同步完成，规避新手引导
         }
       } catch (e) {
         console.error("[OfflineCache] Failed to parse cached notes:", e);
@@ -1018,18 +1049,41 @@ export default function App() {
         id: d.id 
       }));
       const sortedDocs = docs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      
+      const isFromCache = snapshot.metadata.fromCache;
+      
+      // 【关键修复】如果此快照来自缓存且数据为空，可能是 Firestore 首帧在网络建连前的过渡空状态。
+      // 我们在此拦截，决不能清空在 LocalStorage 已经秒开呈现出来的历史卡片，避免引发白屏与误触发新手引导。
+      if (isFromCache && sortedDocs.length === 0) {
+        console.log('[Firestore] Received empty snapshot from Cache. Keeping local cache capsules untouched.');
+        return;
+      }
+
       console.log('--- FIRESTORE DATA LOADED ---', sortedDocs.length, 'items');
       setCapsules(sortedDocs);
       
       // Update cache in background
       localStorage.setItem(cacheKey, JSON.stringify(sortedDocs));
-      setDataLoading(false);
+      if (sortedDocs.length > 0) {
+        localStorage.setItem(`luminote_has_notes_seeded_${user.uid}`, 'true');
+        updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
+      }
+
+      if (!isFromCache || sortedDocs.length > 0) {
+        clearTimeout(syncTimeoutId); // 服务器数据或非空缓存成功拉回，清除超时控制器
+        setDataLoading(false);
+        setIsSyncFinished(true); // 标记网络数据真实拉回成功
+      }
     }, (error) => {
+      clearTimeout(syncTimeoutId);
       handleFirestoreError(error, OperationType.LIST, 'capsules');
       setDataLoading(false); // 关键！配额超限报错时强制停止 Loading 转圈，让用户完美看到离线缓存的便签！
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(syncTimeoutId);
+      unsubscribe();
+    };
   }, [user]);
 
   useEffect(() => {
@@ -1056,6 +1110,14 @@ export default function App() {
     (window as any).startTour = async () => {
       if (tourActive.current) return;
       tourActive.current = true;
+      
+      safeLocalStorageSet(ONBOARDING_STORAGE_KEY, 'true');
+      const updatedUser = { ...user, onboarded: true };
+      setUser(updatedUser);
+      localStorage.setItem('luminote_auth_user', JSON.stringify(updatedUser));
+      updateDoc(doc(getDb(), 'users', user.uid), { onboarded: true }).catch((e) => {
+        console.error('Firestore updateDoc onboarded auto-save error (silenced):', e);
+      });
       
       // Force filter to 'all' to ensure elements are visible
       setFilter('all');
@@ -1128,7 +1190,7 @@ export default function App() {
     };
 
     // Auto-repair onboarding status for old users who already have notes
-    if (user && allCapsules.length > 0 && !hasSeenTutorial) {
+    if (user && (allCapsules.length > 0 || hasSeededOrCreated) && !hasSeenTutorial) {
       safeLocalStorageSet(ONBOARDING_STORAGE_KEY, 'true');
       const updatedUser = { ...user, onboarded: true };
       setUser(updatedUser);
@@ -1139,15 +1201,16 @@ export default function App() {
       });
     }
 
-    // Only trigger tour if fully loaded, user is logged in, has not seen tutorial, and has 0 notes
-    if (!authLoading && !dataLoading && user && !hasSeenTutorial && !tourActive.current && allCapsules.length === 0) {
+    // Only trigger tour if fully loaded, user is logged in, has not seen tutorial, has 0 notes, and cloud sync finished
+    // 额外增加 !hasSeededOrCreated 检查：老用户即使暂时 capsules 为空也不触发 tour
+    if (!authLoading && !dataLoading && user && !hasSeenTutorial && !hasSeededOrCreated && !tourActive.current && allCapsules.length === 0 && isSyncFinished) {
        setTimeout(() => {
          if ((window as any).startTour && !tourActive.current) {
            (window as any).startTour();
          }
        }, 1500); // 1.5s delay for stable trigger
     }
-  }, [user, authLoading, dataLoading, allCapsules.length, hasSeenTutorial]);
+  }, [user, authLoading, dataLoading, allCapsules.length, hasSeenTutorial, hasSeededOrCreated, isSyncFinished]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const recognition = useRef<any>(null);
@@ -1412,9 +1475,39 @@ export default function App() {
       
       // Manage ClarificationPill state
       if (shouldShowPill) {
+        // 创建待办属性面板临时卡片，零延迟直接在页面秒弹，不等待网络拉取周期
+        const createdCapsule: Capsule = {
+          id: docRef.id,
+          userId: user?.uid || '',
+          content: refinedContent,
+          createdAt: newCapsuleData.createdAt as number,
+          updatedAt: newCapsuleData.updatedAt as number,
+          completed: false,
+          isTodo: newCapsuleData.isTodo as boolean,
+          isArchived: false,
+          isDeleted: false,
+          reminder: (newCapsuleData.reminder || null) as any,
+          color: randomColor,
+          isAmbiguous: true,
+          clarificationPrompt: '要为该便签快速设置提醒、星标、置顶或仅作为记事？',
+          category: (newCapsuleData.category || undefined) as string,
+          tags: (newCapsuleData.tags || undefined) as string[],
+          isStarred: (newCapsuleData.isStarred || undefined) as boolean,
+          isPinned: (newCapsuleData.isPinned || undefined) as boolean
+        };
+
+        wasCaptureCollapsedBeforeClarification.current = isCaptureCollapsed;
+        setTemporaryPendingCapsule(createdCapsule);
         setPendingClarificationCapsuleId(docRef.id);
+        // ClarificationPill 已改为 portal 浮层，无需展开 footer
       } else {
+        setTemporaryPendingCapsule(null);
         setPendingClarificationCapsuleId(null);
+      }
+
+      if (user) {
+        localStorage.setItem(`luminote_has_notes_seeded_${user.uid}`, 'true');
+        updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
       }
     } catch (error) {
       console.error('[handleCreate] ERROR in try block:', error);
@@ -1432,6 +1525,11 @@ export default function App() {
           color: randomColor
         });
         console.log('[handleCreate] fallback saved (raw text)');
+        
+        if (user) {
+          localStorage.setItem(`luminote_has_notes_seeded_${user.uid}`, 'true');
+          updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
+        }
       } catch (innerError) {
         console.error('[handleCreate] fallback ERROR:', innerError);
         handleFirestoreError(innerError, OperationType.CREATE, 'capsules');
@@ -2062,8 +2160,8 @@ export default function App() {
     return (
       <div className="flex flex-col items-center justify-center h-[100dvh] bg-[#F8F9FA] dark:bg-[#1C1C1E] transition-colors duration-300">
         <div className="flex flex-col items-center gap-6 max-w-xs text-center animate-in fade-in duration-700">
-          <div className="w-20 h-20 bg-white dark:bg-[#2C2C2E] rounded-3xl shadow-xl flex items-center justify-center border border-black/5 dark:border-white/5 animate-pulse">
-            <AppLogo className="w-12 h-12" />
+          <div className="w-[168px] h-[168px] bg-white dark:bg-[#2C2C2E] rounded-[28px] shadow-xl flex items-center justify-center border border-black/5 dark:border-white/5 animate-pulse">
+            <AppLogo className="w-[108px] h-[108px]" />
           </div>
           <div className="space-y-2 mt-2">
             <h2 className="text-lg font-bold text-[#1D1D1F] dark:text-[#F2F2F7] tracking-tight">Initializing Lumi Note</h2>
@@ -2082,8 +2180,8 @@ export default function App() {
     return (
       <div className="flex flex-col items-center justify-center h-[100dvh] bg-[#F8F9FA] dark:bg-[#1C1C1E] transition-colors duration-300">
         <div className="flex flex-col items-center gap-6 max-w-xs text-center animate-in fade-in duration-700">
-          <div className="w-20 h-20 bg-white dark:bg-[#2C2C2E] rounded-3xl shadow-xl flex items-center justify-center border border-black/5 dark:border-white/5 animate-pulse">
-            <AppLogo className="w-12 h-12" />
+          <div className="w-[168px] h-[168px] bg-white dark:bg-[#2C2C2E] rounded-[28px] shadow-xl flex items-center justify-center border border-black/5 dark:border-white/5 animate-pulse">
+            <AppLogo className="w-[108px] h-[108px]" />
           </div>
           <div className="space-y-2 mt-2">
             <h2 className="text-lg font-bold text-[#1D1D1F] dark:text-[#F2F2F7] tracking-tight">Syncing Your Notes</h2>
@@ -2175,7 +2273,7 @@ export default function App() {
             animate={{ opacity: 1, scale: 1 }}
             className="relative z-10 w-full max-w-sm"
           >
-            <div className="w-24 h-24 mb-12 transform -rotate-6">
+            <div className="w-[216px] h-[216px] mb-12 transform -rotate-6">
               <AppLogo className="w-full h-full" />
             </div>
             <h2 className="text-5xl font-black tracking-tight text-[#1D1D1F] leading-tight mb-6">
@@ -2200,7 +2298,7 @@ export default function App() {
         <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12">
           <div className="w-full max-w-sm">
             <div className="md:hidden flex flex-col items-center mb-6">
-              <AppLogo className="w-24 h-24 mb-4" />
+              <AppLogo className="w-[216px] h-[216px] mb-4" />
               <h1 className="text-3xl font-extrabold tracking-tight text-center bg-clip-text text-transparent bg-gradient-to-r from-[#1D1D1F] to-[#434343]">Lumi Note</h1>
             </div>
 
@@ -2315,7 +2413,7 @@ export default function App() {
       >
         <div className="p-4 flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center drop-shadow-md">
+            <div className="flex-shrink-0 w-[81px] h-[81px] flex items-center justify-center drop-shadow-md">
               <AppLogo className="w-full h-full" />
             </div>
             {isSidebarOpen && !isMobile && (
@@ -2941,15 +3039,18 @@ export default function App() {
                 </div>
                 <p className="text-sm font-medium mb-4">No capsules found in this view.</p>
                 <div className="flex gap-3">
-                  <button 
-                    id="generate-demo-btn"
-                    onClick={seedDemoData}
-                    disabled={authProcessing}
-                    className="px-6 py-3 bg-[#007AFF] text-white rounded-2xl font-bold text-sm hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 group"
-                  >
-                    <Zap size={16} className={authProcessing ? 'animate-spin' : 'group-hover:animate-pulse'} />
-                    {authProcessing ? 'Generating...' : 'Generate Demo Data'}
-                  </button>
+                  {/* 仅在数据同步完成、确认该用户从未创建过笔记时才显示 Generate Demo */}
+                  {!hasSeededOrCreated && isSyncFinished && !dataLoading && (
+                    <button 
+                      id="generate-demo-btn"
+                      onClick={seedDemoData}
+                      disabled={authProcessing}
+                      className="px-6 py-3 bg-[#007AFF] text-white rounded-2xl font-bold text-sm hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 group"
+                    >
+                      <Zap size={16} className={authProcessing ? 'animate-spin' : 'group-hover:animate-pulse'} />
+                      {authProcessing ? 'Generating...' : 'Generate Demo Data'}
+                    </button>
+                  )}
                   {filter !== 'all' && (
                      <button 
                       onClick={() => setFilter('all')}
@@ -3338,29 +3439,7 @@ export default function App() {
             </button>
           )}
 
-          {/* Clarification Pill for ambiguous notes */}
-          <AnimatePresence>
-            {pendingClarificationCapsuleId && (() => {
-              const pendingCapsule = [...capsules, ...demoCapsules].find(c => c.id === pendingClarificationCapsuleId);
-              if (!pendingCapsule || !pendingCapsule.isAmbiguous) return null;
-              return (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="w-full max-w-3xl mb-2"
-                >
-                  <ClarificationPill
-                    capsule={pendingCapsule}
-                    onResolve={(updates) => {
-                      updateCapsule(pendingCapsule.id, updates);
-                      setPendingClarificationCapsuleId(null);
-                    }}
-                  />
-                </motion.div>
-              );
-            })()}
-          </AnimatePresence>
+          {/* Clarification Pill 已提取为 portal 浮层，不再放在 footer 内部 */}
 
           <div 
             id="quick-capture-area"
@@ -3561,6 +3640,47 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Clarification Pill — 独立 portal 浮层，不受 footer 折叠影响 */}
+        {pendingClarificationCapsuleId && createPortal(
+          <AnimatePresence>
+            {(() => {
+              const pendingCapsule = 
+                (temporaryPendingCapsule && temporaryPendingCapsule.id === pendingClarificationCapsuleId)
+                  ? temporaryPendingCapsule
+                  : [...capsules, ...demoCapsules].find(c => c.id === pendingClarificationCapsuleId);
+              
+              if (!pendingCapsule || !pendingCapsule.isAmbiguous) return null;
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 30, scale: 0.95 }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                  className="fixed z-[200] px-4"
+                  style={{
+                    bottom: isCaptureCollapsed ? '80px' : '140px',
+                    left: isSidebarOpen && !isMobile ? 'calc(50% + 120px)' : '50%',
+                    transform: 'translateX(-50%)',
+                    width: '100%',
+                    maxWidth: '600px',
+                    pointerEvents: 'auto'
+                  }}
+                >
+                  <ClarificationPill
+                    capsule={pendingCapsule}
+                    onResolve={(updates) => {
+                      updateCapsule(pendingCapsule.id, updates);
+                      setPendingClarificationCapsuleId(null);
+                      setTemporaryPendingCapsule(null);
+                    }}
+                  />
+                </motion.div>
+              );
+            })()}
+          </AnimatePresence>,
+          document.body
+        )}
       </main>
       
       <PremiumModal 

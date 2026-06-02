@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function AppLogo({ className = "w-24 h-24" }: { className?: string }) {
+export function AppLogo({ className = "w-36 h-36" }: { className?: string }) {
   const idPrefix = React.useId().replace(/:/g, '-');
   
   const paperBgId = `paper-bg-${idPrefix}`;
