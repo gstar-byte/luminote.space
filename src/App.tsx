@@ -563,6 +563,15 @@ export default function App() {
     }
   }, [capsules, user]);
 
+  const [isListening, setIsListening] = useState(false);
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showProFeaturesModal, setShowProFeaturesModal] = useState(false);
+  const [firedReminders, setFiredReminders] = useState<Capsule[]>([]);
+  const notifiedIdsRef = useRef<Set<string>>(new Set());
+  const recentColorsRef = useRef<number[]>([]); // track last used color indices
+
   // Dynamically update document title based on fired (unread) reminders count
   useEffect(() => {
     const count = firedReminders.length;
@@ -572,15 +581,6 @@ export default function App() {
       document.title = 'Lumi Note';
     }
   }, [firedReminders]);
-
-  const [isListening, setIsListening] = useState(false);
-  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showProFeaturesModal, setShowProFeaturesModal] = useState(false);
-  const [firedReminders, setFiredReminders] = useState<Capsule[]>([]);
-  const notifiedIdsRef = useRef<Set<string>>(new Set());
-  const recentColorsRef = useRef<number[]>([]); // track last used color indices
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState(Date.now());
