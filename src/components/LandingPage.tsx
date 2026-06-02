@@ -60,10 +60,10 @@ export function LandingPage({ onLogin }: LandingPageProps) {
       </Helmet>
 
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0A0A0A]/85 backdrop-blur-md border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-1.5 md:gap-2">
-            <AppLogo className="w-[90px] h-[90px] md:w-[108px] md:h-[108px] shrink-0" />
+            <AppLogo className="w-[63px] h-[63px] md:w-[76px] md:h-[76px] shrink-0" />
             <span className="font-bold text-lg tracking-tight">Lumi Note</span>
           </div>
           <div className="flex items-center gap-2 md:gap-4">

@@ -2175,25 +2175,6 @@ export default function App() {
     );
   }
 
-  // 登录成功后，从云端拉取/同步历史便签时的友好加载提示，防止白屏等待
-  if (user && dataLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[100dvh] bg-[#F8F9FA] dark:bg-[#1C1C1E] transition-colors duration-300">
-        <div className="flex flex-col items-center gap-6 max-w-xs text-center animate-in fade-in duration-700">
-          <div className="w-[168px] h-[168px] bg-white dark:bg-[#2C2C2E] rounded-[28px] shadow-xl flex items-center justify-center border border-black/5 dark:border-white/5 animate-pulse">
-            <AppLogo className="w-[108px] h-[108px]" />
-          </div>
-          <div className="space-y-2 mt-2">
-            <h2 className="text-lg font-bold text-[#1D1D1F] dark:text-[#F2F2F7] tracking-tight">Syncing Your Notes</h2>
-            <p className="text-xs font-semibold text-[#8E8E93] leading-relaxed px-4">
-              Retrieving your saved notebooks from cloud database. Just a moment.
-            </p>
-          </div>
-          <div className="w-5 h-5 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mt-2" />
-        </div>
-      </div>
-    );
-  }
 
   if (!user) {
     if (!showAuthScreen) {
@@ -2206,8 +2187,8 @@ export default function App() {
         {authProcessing && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#F8F9FA]/40 dark:bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
             <div className="bg-white dark:bg-[#1C1C1E] p-8 rounded-3xl shadow-2xl border border-black/5 dark:border-white/10 flex flex-col items-center max-w-sm mx-4 text-center gap-5 animate-in zoom-in-95 duration-200">
-              <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center bg-[#007AFF]/10 text-[#007AFF] rounded-full">
-                <Zap size={24} className="animate-bounce" />
+              <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center bg-[#007AFF]/10 rounded-full p-2.5">
+                <AppLogo className="w-full h-full" />
               </div>
               <div className="space-y-1.5">
                 <h3 className="text-base font-bold text-[#1D1D1F] dark:text-[#F2F2F7]">Signing You In</h3>
@@ -2298,7 +2279,7 @@ export default function App() {
         <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12">
           <div className="w-full max-w-sm">
             <div className="md:hidden flex flex-col items-center mb-6">
-              <AppLogo className="w-[216px] h-[216px] mb-4" />
+              <AppLogo className="w-[108px] h-[108px] mb-4" />
               <h1 className="text-3xl font-extrabold tracking-tight text-center bg-clip-text text-transparent bg-gradient-to-r from-[#1D1D1F] to-[#434343]">Lumi Note</h1>
             </div>
 
@@ -2413,7 +2394,7 @@ export default function App() {
       >
         <div className="p-4 flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 w-[81px] h-[81px] flex items-center justify-center drop-shadow-md">
+            <div className="flex-shrink-0 w-[56px] h-[56px] flex items-center justify-center drop-shadow-md">
               <AppLogo className="w-full h-full" />
             </div>
             {isSidebarOpen && !isMobile && (
@@ -2853,6 +2834,12 @@ export default function App() {
           </div>
 
           <div className="flex-shrink-0 flex items-center gap-2 relative">
+            {dataLoading && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#007AFF]/10 text-[#007AFF] dark:bg-[#007AFF]/20 rounded-full text-xs font-bold animate-pulse shadow-sm shrink-0">
+                <RefreshCw size={12} className="animate-spin text-[#007AFF]" />
+                <span className="hidden sm:inline text-[11px] tracking-tight">Syncing Notes</span>
+              </div>
+            )}
             {PAYWALL_ACTIVE && !hasPremiumAccess(user) && (
                <button 
                   onClick={() => setShowPremiumModal(true)} 
@@ -3033,34 +3020,41 @@ export default function App() {
             </AnimatePresence>
             
             {filteredCapsules.length === 0 && (
-              <div className="h-64 flex flex-col items-center justify-center text-[#8E8E93]">
-                <div className="w-16 h-16 bg-[#E5E5EA] rounded-full flex items-center justify-center mb-4">
-                  <Plus size={32} />
+              dataLoading ? (
+                <div className="col-span-full h-64 flex flex-col items-center justify-center text-[#8E8E93] gap-4">
+                  <div className="w-10 h-10 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+                  <p className="text-sm font-semibold text-[#8E8E93] animate-pulse">Syncing your notes...</p>
                 </div>
-                <p className="text-sm font-medium mb-4">No capsules found in this view.</p>
-                <div className="flex gap-3">
-                  {/* 仅在数据同步完成、确认该用户从未创建过笔记时才显示 Generate Demo */}
-                  {!hasSeededOrCreated && isSyncFinished && !dataLoading && (
-                    <button 
-                      id="generate-demo-btn"
-                      onClick={seedDemoData}
-                      disabled={authProcessing}
-                      className="px-6 py-3 bg-[#007AFF] text-white rounded-2xl font-bold text-sm hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 group"
-                    >
-                      <Zap size={16} className={authProcessing ? 'animate-spin' : 'group-hover:animate-pulse'} />
-                      {authProcessing ? 'Generating...' : 'Generate Demo Data'}
-                    </button>
-                  )}
-                  {filter !== 'all' && (
-                     <button 
-                      onClick={() => setFilter('all')}
-                      className="px-6 py-3 bg-[#F2F2F7] text-[#1D1D1F] rounded-2xl font-bold text-sm hover:bg-[#E5E5EA] transition-all"
-                    >
-                      Show All
-                    </button>
-                  )}
+              ) : (
+                <div className="h-64 flex flex-col items-center justify-center text-[#8E8E93] col-span-full">
+                  <div className="w-16 h-16 bg-[#E5E5EA] rounded-full flex items-center justify-center mb-4">
+                    <Plus size={32} />
+                  </div>
+                  <p className="text-sm font-medium mb-4">No capsules found in this view.</p>
+                  <div className="flex gap-3">
+                    {/* 仅在数据同步完成、确认该用户从未创建过笔记时才显示 Generate Demo */}
+                    {!hasSeededOrCreated && isSyncFinished && !dataLoading && (
+                      <button 
+                        id="generate-demo-btn"
+                        onClick={seedDemoData}
+                        disabled={authProcessing}
+                        className="px-6 py-3 bg-[#007AFF] text-white rounded-2xl font-bold text-sm hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 group"
+                      >
+                        <Zap size={16} className={authProcessing ? 'animate-spin' : 'group-hover:animate-pulse'} />
+                        {authProcessing ? 'Generating...' : 'Generate Demo Data'}
+                      </button>
+                    )}
+                    {filter !== 'all' && (
+                       <button 
+                        onClick={() => setFilter('all')}
+                        className="px-6 py-3 bg-[#F2F2F7] text-[#1D1D1F] rounded-2xl font-bold text-sm hover:bg-[#E5E5EA] transition-all"
+                      >
+                        Show All
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )
             )}
           </div>
         </div>
@@ -3641,8 +3635,8 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Clarification Pill — 独立 portal 浮层，不受 footer 折叠影响 */}
-        {pendingClarificationCapsuleId && createPortal(
+        {/* Clarification Pill — 在 main 容器内 absolute 定位，不受 footer 折叠影响，居中更美观 */}
+        {pendingClarificationCapsuleId && (
           <AnimatePresence>
             {(() => {
               const pendingCapsule = 
@@ -3657,14 +3651,9 @@ export default function App() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 30, scale: 0.95 }}
                   transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-                  className="fixed z-[200] px-4"
+                  className="absolute z-[200] left-1/2 -translate-x-1/2 w-full max-w-[580px] px-4 pointer-events-auto shadow-[0_12px_40px_rgba(0,0,0,0.15)]"
                   style={{
-                    bottom: isCaptureCollapsed ? '80px' : '140px',
-                    left: isSidebarOpen && !isMobile ? 'calc(50% + 120px)' : '50%',
-                    transform: 'translateX(-50%)',
-                    width: '100%',
-                    maxWidth: '600px',
-                    pointerEvents: 'auto'
+                    bottom: isCaptureCollapsed ? '96px' : '156px'
                   }}
                 >
                   <ClarificationPill
@@ -3678,8 +3667,7 @@ export default function App() {
                 </motion.div>
               );
             })()}
-          </AnimatePresence>,
-          document.body
+          </AnimatePresence>
         )}
       </main>
       
