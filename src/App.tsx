@@ -88,6 +88,7 @@ import {
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { setDoc, getDocs, writeBatch, doc, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
+import { showSystemNotification } from './lib/notifications';
 import { cn } from './lib/utils';
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
@@ -2150,9 +2151,7 @@ export default function App() {
         if (notifiedIdsRef.current.has(cap.id)) return;
 
         // Trigger notifications
-        if (window.Notification && Notification.permission === 'granted') {
-          new Notification('Lumi Note Reminder', { body: plainTextFromContent(cap.content) });
-        }
+        showSystemNotification('Lumi Note Reminder', { body: plainTextFromContent(cap.content) });
 
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
           navigator.vibrate([150, 80, 150]);
