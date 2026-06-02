@@ -2213,9 +2213,9 @@ export default function App() {
 
   /** Category, tag, or Starred narrowing (top pill shows N/A in some cases). */
   const isSidebarListScopeActive = categoryFilter !== 'all' || tagFilter !== null || filter === 'starred';
-  /** Any active list filter: type, category, tag, or active search (red dot on sidebar controls). */
+  /** Any active list filter: type, category, or tag (red dot on sidebar controls). */
   const isSidebarScopeFilterActive =
-    categoryFilter !== 'all' || tagFilter !== null || filter !== 'all' || searchQuery.trim() !== '';
+    categoryFilter !== 'all' || tagFilter !== null || filter !== 'all';
   /** Top pill shows N/A when sidebar drives scope; Archived/Trash stay explicit. */
   const topFilterTriggerLabel =
     isSidebarListScopeActive && filter !== 'archived' && filter !== 'trash'
@@ -2891,7 +2891,12 @@ export default function App() {
               </button>
             )}
             <div className="flex-1 relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8E8E93]" size={18} />
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center shrink-0">
+                <Search className="text-[#8E8E93]" size={18} />
+                {searchQuery.trim() !== '' && (
+                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#FF3B30] ring-1 ring-white pointer-events-none animate-pulse" />
+                )}
+              </div>
               <input 
                 id="search-input"
                 type="text" 

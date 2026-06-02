@@ -648,13 +648,7 @@ export function CapsuleEditor({
           )}
 
           {/* 纸张容器 */}
-          <div 
-            className="w-full flex-1 min-h-[220px] rounded-xl paper-preview p-4 relative"
-            style={{ 
-              lineHeight: '2rem',
-              paddingTop: '1rem'
-            }}
-          >
+          <div className="w-full flex-1 min-h-[220px] paper-preview relative">
             {/* Tiptap body — 点击图片通过 NodeSelection 高亮选中 */}
             <EditorContent
               editor={editor}
@@ -714,13 +708,7 @@ export function CapsuleEditor({
         </>
       ) : (
         /* 纯文本模式：展示底层源码（HTML 标记），同样包裹在信纸背景中 */
-        <div 
-          className="w-full flex-1 min-h-[220px] rounded-xl paper-preview p-4 relative"
-          style={{ 
-            lineHeight: '2rem',
-            paddingTop: '1rem'
-          }}
-        >
+        <div className="w-full flex-1 min-h-[220px] paper-preview relative">
           <div className="capsule-plain-editor w-full bg-transparent border-none shadow-none overflow-hidden">
             <textarea
               ref={textareaRef}

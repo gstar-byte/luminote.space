@@ -34,6 +34,10 @@ export function ClarificationPill({ capsule, onResolve, onUpdate }: Clarificatio
   if (!capsule.isAmbiguous) return null;
 
   const [showCustom, setShowCustom] = useState(false);
+  const [selectedTimeType, setSelectedTimeType] = useState<string | null>(() => {
+    if (!capsule.reminder || capsule.reminder.type === 'none') return null;
+    return capsule.reminder.type;
+  });
   const [customDate, setCustomDate] = useState(() => {
     const now = new Date();
     const tomorrowNine = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 9, 0, 0, 0);
@@ -48,95 +52,76 @@ export function ClarificationPill({ capsule, onResolve, onUpdate }: Clarificatio
 
   const handleQuickSelect = (type: 'today' | 'tomorrow' | 'dayafter' | 'sat-am' | 'sat-pm' | 'sun-am' | 'sun-pm' | 'todo' | 'everyday' | 'everyweek' | 'justnote') => {
     const now = new Date();
-    const baseUpdates: Partial<Capsule> = {
-      isAmbiguous: false,
-      clarificationPrompt: null,
-    };
+    const baseUpdates: Partial<Capsule> = {};
     if (withStar) baseUpdates.isStarred = true;
     if (withPin) baseUpdates.isPinned = true;
+
+    if (type === 'justnote') {
+      onResolve({
+        ...baseUpdates,
+        isTodo: false,
+        reminder: { type: 'none' },
+        isAmbiguous: false,
+        clarificationPrompt: null
+      });
+      return;
+    }
+
+    if (type === 'todo') {
+      onResolve({
+        ...baseUpdates,
+        isTodo: true,
+        reminder: { type: 'none' },
+        isAmbiguous: false,
+        clarificationPrompt: null
+      });
+      return;
+    }
+
+    let reminderUpdate: any = null;
 
     if (type === 'today') {
       const todaySix = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 0, 0, 0);
       if (todaySix.getTime() <= now.getTime()) {
         todaySix.setHours(todaySix.getHours() + 3);
       }
-      onResolve({
-        ...baseUpdates,
-        isTodo: true,
-        reminder: { type: 'once', date: todaySix.getTime() },
-      });
+      reminderUpdate = { type: 'once', date: todaySix.getTime() };
     } else if (type === 'tomorrow') {
       const tomorrowNine = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 9, 0, 0, 0);
-      onResolve({
-        ...baseUpdates,
-        isTodo: true,
-        reminder: { type: 'once', date: tomorrowNine.getTime() },
-      });
+      reminderUpdate = { type: 'once', date: tomorrowNine.getTime() };
     } else if (type === 'dayafter') {
       const dayAfterNine = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2, 9, 0, 0, 0);
-      onResolve({
-        ...baseUpdates,
-        isTodo: true,
-        reminder: { type: 'once', date: dayAfterNine.getTime() },
-      });
+      reminderUpdate = { type: 'once', date: dayAfterNine.getTime() };
     } else if (type === 'sat-am') {
       const target = getNextDayOfWeekAndTime(6, 9);
-      onResolve({
-        ...baseUpdates,
-        isTodo: true,
-        reminder: { type: 'once', date: target.getTime() },
-      });
+      reminderUpdate = { type: 'once', date: target.getTime() };
     } else if (type === 'sat-pm') {
       const target = getNextDayOfWeekAndTime(6, 15);
-      onResolve({
-        ...baseUpdates,
-        isTodo: true,
-        reminder: { type: 'once', date: target.getTime() },
-      });
+      reminderUpdate = { type: 'once', date: target.getTime() };
     } else if (type === 'sun-am') {
       const target = getNextDayOfWeekAndTime(0, 9);
-      onResolve({
-        ...baseUpdates,
-        isTodo: true,
-        reminder: { type: 'once', date: target.getTime() },
-      });
+      reminderUpdate = { type: 'once', date: target.getTime() };
     } else if (type === 'sun-pm') {
       const target = getNextDayOfWeekAndTime(0, 15);
-      onResolve({
-        ...baseUpdates,
-        isTodo: true,
-        reminder: { type: 'once', date: target.getTime() },
-      });
-    } else if (type === 'todo') {
-      onResolve({
-        ...baseUpdates,
-        isTodo: true,
-        reminder: { type: 'none' },
-      });
+      reminderUpdate = { type: 'once', date: target.getTime() };
     } else if (type === 'everyday') {
       const dailyEight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0, 0);
       if (dailyEight.getTime() <= now.getTime()) {
         dailyEight.setDate(dailyEight.getDate() + 1);
       }
-      onResolve({
-        ...baseUpdates,
-        isTodo: true,
-        reminder: { type: 'daily', date: dailyEight.getTime() },
-      });
+      reminderUpdate = { type: 'daily', date: dailyEight.getTime() };
     } else if (type === 'everyweek') {
       const nextMon = new Date(now);
       nextMon.setDate(now.getDate() + ((1 + 7 - now.getDay()) % 7 || 7));
       nextMon.setHours(9, 0, 0, 0);
-      onResolve({
-        ...baseUpdates,
+      reminderUpdate = { type: 'weekly', date: nextMon.getTime() };
+    }
+
+    if (reminderUpdate) {
+      setSelectedTimeType(type);
+      onUpdate?.({
         isTodo: true,
-        reminder: { type: 'weekly', date: nextMon.getTime() },
-      });
-    } else if (type === 'justnote') {
-      onResolve({
-        ...baseUpdates,
-        isTodo: false,
-        reminder: { type: 'none' },
+        reminder: reminderUpdate
       });
     }
   };
@@ -195,84 +180,120 @@ export function ClarificationPill({ capsule, onResolve, onUpdate }: Clarificatio
       <div className="flex flex-wrap gap-1.5 mt-0.5">
         {/* Once Reminders */}
         <motion.button
-          whileHover={{ scale: 1.02, backgroundColor: 'rgba(0, 122, 255, 0.08)' }}
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => handleQuickSelect('today')}
-          className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#007AFF] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
+          className={`flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold rounded-xl shadow-sm border transition-colors ${
+            selectedTimeType === 'today'
+              ? 'bg-[#007AFF] text-white border-[#007AFF]'
+              : 'bg-white dark:bg-[#2C2C2E] text-[#007AFF] border-[#E5E5EA] dark:border-[#3A3A3C] hover:bg-[#007AFF]/5'
+          }`}
         >
           <span>Today 6 PM</span>
         </motion.button>
 
         <motion.button
-          whileHover={{ scale: 1.02, backgroundColor: 'rgba(0, 122, 255, 0.08)' }}
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => handleQuickSelect('tomorrow')}
-          className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#007AFF] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
+          className={`flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold rounded-xl shadow-sm border transition-colors ${
+            selectedTimeType === 'tomorrow'
+              ? 'bg-[#007AFF] text-white border-[#007AFF]'
+              : 'bg-white dark:bg-[#2C2C2E] text-[#007AFF] border-[#E5E5EA] dark:border-[#3A3A3C] hover:bg-[#007AFF]/5'
+          }`}
         >
           <span>Tomorrow 9 AM</span>
         </motion.button>
 
         <motion.button
-          whileHover={{ scale: 1.02, backgroundColor: 'rgba(0, 122, 255, 0.08)' }}
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => handleQuickSelect('dayafter')}
-          className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#007AFF] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
+          className={`flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold rounded-xl shadow-sm border transition-colors ${
+            selectedTimeType === 'dayafter'
+              ? 'bg-[#007AFF] text-white border-[#007AFF]'
+              : 'bg-white dark:bg-[#2C2C2E] text-[#007AFF] border-[#E5E5EA] dark:border-[#3A3A3C] hover:bg-[#007AFF]/5'
+          }`}
         >
           <span>Day After 9 AM</span>
         </motion.button>
 
         <motion.button
-          whileHover={{ scale: 1.02, backgroundColor: 'rgba(0, 122, 255, 0.08)' }}
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => handleQuickSelect('sat-am')}
-          className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#007AFF] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
+          className={`flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold rounded-xl shadow-sm border transition-colors ${
+            selectedTimeType === 'sat-am'
+              ? 'bg-[#007AFF] text-white border-[#007AFF]'
+              : 'bg-white dark:bg-[#2C2C2E] text-[#007AFF] border-[#E5E5EA] dark:border-[#3A3A3C] hover:bg-[#007AFF]/5'
+          }`}
         >
           <span>Sat 9 AM</span>
         </motion.button>
 
         <motion.button
-          whileHover={{ scale: 1.02, backgroundColor: 'rgba(0, 122, 255, 0.08)' }}
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => handleQuickSelect('sat-pm')}
-          className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#007AFF] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
+          className={`flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold rounded-xl shadow-sm border transition-colors ${
+            selectedTimeType === 'sat-pm'
+              ? 'bg-[#007AFF] text-white border-[#007AFF]'
+              : 'bg-white dark:bg-[#2C2C2E] text-[#007AFF] border-[#E5E5EA] dark:border-[#3A3A3C] hover:bg-[#007AFF]/5'
+          }`}
         >
           <span>Sat 3 PM</span>
         </motion.button>
 
         <motion.button
-          whileHover={{ scale: 1.02, backgroundColor: 'rgba(0, 122, 255, 0.08)' }}
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => handleQuickSelect('sun-am')}
-          className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#007AFF] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
+          className={`flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold rounded-xl shadow-sm border transition-colors ${
+            selectedTimeType === 'sun-am'
+              ? 'bg-[#007AFF] text-white border-[#007AFF]'
+              : 'bg-white dark:bg-[#2C2C2E] text-[#007AFF] border-[#E5E5EA] dark:border-[#3A3A3C] hover:bg-[#007AFF]/5'
+          }`}
         >
           <span>Sun 9 AM</span>
         </motion.button>
 
         <motion.button
-          whileHover={{ scale: 1.02, backgroundColor: 'rgba(0, 122, 255, 0.08)' }}
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => handleQuickSelect('sun-pm')}
-          className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#007AFF] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
+          className={`flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold rounded-xl shadow-sm border transition-colors ${
+            selectedTimeType === 'sun-pm'
+              ? 'bg-[#007AFF] text-white border-[#007AFF]'
+              : 'bg-white dark:bg-[#2C2C2E] text-[#007AFF] border-[#E5E5EA] dark:border-[#3A3A3C] hover:bg-[#007AFF]/5'
+          }`}
         >
           <span>Sun 3 PM</span>
         </motion.button>
 
         {/* Repeat Loops */}
         <motion.button
-          whileHover={{ scale: 1.02, backgroundColor: 'rgba(175, 82, 222, 0.08)' }}
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => handleQuickSelect('everyday')}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#AF52DE] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-xl shadow-sm border transition-colors ${
+            selectedTimeType === 'everyday'
+              ? 'bg-[#AF52DE] text-white border-[#AF52DE]'
+              : 'bg-white dark:bg-[#2C2C2E] text-[#AF52DE] border-[#E5E5EA] dark:border-[#3A3A3C] hover:bg-[#AF52DE]/5'
+          }`}
         >
           <RefreshCw size={10} />
           <span>Every Day 8 PM</span>
         </motion.button>
 
         <motion.button
-          whileHover={{ scale: 1.02, backgroundColor: 'rgba(175, 82, 222, 0.08)' }}
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => handleQuickSelect('everyweek')}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#AF52DE] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-xl shadow-sm border transition-colors ${
+            selectedTimeType === 'everyweek'
+              ? 'bg-[#AF52DE] text-white border-[#AF52DE]'
+              : 'bg-white dark:bg-[#2C2C2E] text-[#AF52DE] border-[#E5E5EA] dark:border-[#3A3A3C] hover:bg-[#AF52DE]/5'
+          }`}
         >
           <RefreshCw size={10} />
           <span>Every Mon 9 AM</span>
@@ -304,7 +325,11 @@ export function ClarificationPill({ capsule, onResolve, onUpdate }: Clarificatio
           whileHover={{ scale: 1.02, backgroundColor: 'rgba(52, 199, 89, 0.08)' }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowCustom(!showCustom)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#34C759] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-xl shadow-sm border transition-colors ${
+            selectedTimeType === 'custom'
+              ? 'bg-[#34C759] text-white border-[#34C759]'
+              : 'bg-white dark:bg-[#2C2C2E] text-[#34C759] border-[#E5E5EA] dark:border-[#3A3A3C] hover:bg-[#34C759]/5'
+          }`}
         >
           <Settings size={10} />
           <span>Custom</span>
@@ -345,6 +370,21 @@ export function ClarificationPill({ capsule, onResolve, onUpdate }: Clarificatio
         >
           <Pin size={10} />
           {withPin ? 'Pinned' : 'Pin'}
+        </motion.button>
+
+        {/* ✦ Done 确认关闭按钮 */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => {
+            onResolve({
+              isAmbiguous: false,
+              clarificationPrompt: null
+            });
+          }}
+          className="flex items-center gap-1 px-3.5 py-1.5 bg-[#007AFF] text-white text-[11px] font-black rounded-xl shadow-md border border-[#007AFF] transition-all hover:bg-[#0062D6] active:scale-95 shrink-0"
+        >
+          <span>✦ Done</span>
         </motion.button>
       </div>
 
