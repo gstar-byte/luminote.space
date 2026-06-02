@@ -429,19 +429,6 @@ export default function App() {
   const [isCaptureCollapsed, setIsCaptureCollapsed] = useState(true);
   const [quickCaptureMode, setQuickCaptureMode] = useState<'buttons' | 'text' | 'voice'>('buttons');
   const [quickText, setQuickText] = useState('');
-
-  useEffect(() => {
-    if (!isListening) {
-      setQuickCaptureMode('buttons');
-    }
-  }, [isListening]);
-
-  useEffect(() => {
-    if (isCaptureCollapsed) {
-      setQuickCaptureMode('buttons');
-      setQuickText('');
-    }
-  }, [isCaptureCollapsed]);
   const [authLoading, setAuthLoading] = useState(true);
   const [capsules, setCapsules] = useState<Capsule[]>([
     {
@@ -551,6 +538,19 @@ export default function App() {
   const [toastType, setToastType] = useState<'info' | 'success' | 'error'>('info');
   const touchStartY = useRef(0);
   const toastTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isListening) {
+      setQuickCaptureMode('buttons');
+    }
+  }, [isListening]);
+
+  useEffect(() => {
+    if (isCaptureCollapsed) {
+      setQuickCaptureMode('buttons');
+      setQuickText('');
+    }
+  }, [isCaptureCollapsed]);
 
   const showToast = useCallback((msg: string, type: 'info' | 'success' | 'error' = 'info') => {
     if (toastTimerRef.current) {
