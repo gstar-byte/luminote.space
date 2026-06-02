@@ -87,7 +87,7 @@
   background-color: #FFFBE6 !important;
   background-image: linear-gradient(to bottom, transparent 31px, #F0E6C0 31px, #F0E6C0 32px) !important;
   background-size: 100% 2rem !important;
-  background-attachment: local !important;
+  background-attachment: scroll !important;
   background-origin: content-box !important;
   padding: 1rem 1rem 1rem 1.5rem !important;
   line-height: 2rem !important;
