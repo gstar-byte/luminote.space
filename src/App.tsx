@@ -571,6 +571,7 @@ export default function App() {
   const [showProFeaturesModal, setShowProFeaturesModal] = useState(false);
   const [firedReminders, setFiredReminders] = useState<Capsule[]>([]);
   const notifiedIdsRef = useRef<Set<string>>(new Set());
+  const appStartTime = useRef(Date.now());
   const recentColorsRef = useRef<number[]>([]); // track last used color indices
 
   // Dynamically update document title based on fired (unread) reminders count
@@ -2095,23 +2096,64 @@ export default function App() {
       allCapsules.forEach(cap => {
         if (!cap.reminder?.date || cap.completed || cap.isDeleted || cap.isArchived) return;
         
-        // Prevent spamming VERY old reminders (only drop if older than 24 hours to prevent extreme backlogs)
-        const isTooOld = now - cap.reminder.date > 1000 * 60 * 60 * 24; 
-        if (isTooOld) {
-          if (cap.reminder.type === 'once') {
-            updateCapsule(cap.id, { reminder: { ...cap.reminder, type: 'none' } });
+        const reminderTime = Number(cap.reminder.date);
+        if (isNaN(reminderTime)) return;
+
+        // If it's a future reminder, ignore for now
+        if (reminderTime > now) return;
+
+        // For past reminders (reminderTime <= now):
+        // If it's a historical reminder (expired more than 60 seconds ago),
+        // we silently mark it as notified and update its status without popping any alert.
+        const isHistorical = now - reminderTime > 60000;
+        
+        if (isHistorical) {
+          if (!notifiedIdsRef.current.has(cap.id)) {
+            notifiedIdsRef.current.add(cap.id);
+            
+            // Silently update to next interval or set to none
+            let shouldUpdate = false;
+            const nextReminder = { ...cap.reminder };
+            if (cap.reminder.type === 'custom' && cap.reminder.customInterval) {
+              const mult = cap.reminder.customUnit === 'day' ? 86400000 : cap.reminder.customUnit === 'week' ? 604800000 : 2592000000;
+              nextReminder.date = now + cap.reminder.customInterval * mult;
+              shouldUpdate = true;
+            } else if (cap.reminder.type === 'daily') {
+              nextReminder.date = now + 86400000;
+              shouldUpdate = true;
+            } else if (cap.reminder.type === 'weekly') {
+              nextReminder.date = now + 604800000;
+              shouldUpdate = true;
+            } else if (cap.reminder.type === 'monthly') {
+              const nextDate = new Date(now);
+              nextDate.setMonth(nextDate.getMonth() + 1);
+              nextReminder.date = nextDate.getTime();
+              shouldUpdate = true;
+            } else if (cap.reminder.type === 'yearly') {
+              const nextDate = new Date(now);
+              nextDate.setFullYear(nextDate.getFullYear() + 1);
+              nextReminder.date = nextDate.getTime();
+              shouldUpdate = true;
+            } else if (cap.reminder.type !== 'none') {
+              nextReminder.type = 'none';
+              shouldUpdate = true;
+            }
+            
+            if (shouldUpdate) {
+              updateCapsule(cap.id, { reminder: nextReminder as any });
+            }
           }
-          notifiedIdsRef.current.add(cap.id);
           return;
         }
 
-        if (cap.reminder.date > now || notifiedIdsRef.current.has(cap.id)) return;
+        // If it's active (expired within last 60 seconds) and hasn't been fired yet:
+        if (notifiedIdsRef.current.has(cap.id)) return;
 
+        // Trigger notifications
         if (window.Notification && Notification.permission === 'granted') {
           new Notification('Lumi Note Reminder', { body: plainTextFromContent(cap.content) });
         }
 
-        // Trigger gentle tactile vibration feedback on mobile devices
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
           navigator.vibrate([150, 80, 150]);
         }
@@ -2120,11 +2162,11 @@ export default function App() {
         hasNewFired = true;
         
         setFiredReminders(prev => {
-          // Avoid duplicate UI alerts for the same item in the same cycle
           if (prev.some(p => p.id === cap.id)) return prev;
           return [...prev, cap];
         });
 
+        // Update capsule state to future date or clear once reminder
         let shouldUpdate = false;
         const nextReminder = { ...cap.reminder };
         if (cap.reminder.type === 'custom' && cap.reminder.customInterval) {
@@ -2152,7 +2194,9 @@ export default function App() {
           shouldUpdate = true;
         }
 
-        if (shouldUpdate) updateCapsule(cap.id, { reminder: nextReminder as any });
+        if (shouldUpdate) {
+          updateCapsule(cap.id, { reminder: nextReminder as any });
+        }
       });
 
       if (hasNewFired) {
@@ -2881,7 +2925,7 @@ export default function App() {
              <RefreshCw size={14} className={isSyncing ? "animate-spin text-[#007AFF]" : ""} />
              {isSidebarOpen && <span>{isSyncing ? 'Syncing…' : 'Manual Sync'}</span>}
            </button>
-           <button
+           {/* <button
              type="button"
              onClick={() => setShowSettingsModal(true)}
              aria-label="Settings"
@@ -2893,7 +2937,7 @@ export default function App() {
            >
              <Settings size={14} />
              {isSidebarOpen && <span>Settings</span>}
-           </button>
+           </button> */}
            <div className="bg-[#F2F2F7] rounded-2xl p-3 flex items-center gap-3 group">
               {user.photoURL ? (
                 <img src={user.photoURL} alt={user.displayName || ''} className="w-10 h-10 rounded-xl shadow-sm" referrerPolicy="no-referrer" />
@@ -3390,7 +3434,7 @@ export default function App() {
                      <span className="text-[10px] font-bold text-[#8E8E93]">Just now</span>
                    </div>
                    <h4 className="font-black text-lg text-[#1D1D1F] dark:text-[#F2F2F7] leading-tight mb-2">Reminder: Lumi Note</h4>
-                   <p className="text-sm font-medium text-[#48484A] dark:text-[#8E8E93] line-clamp-3 leading-relaxed mb-4">{rem.content}</p>
+                   <p className="text-sm font-medium text-[#48484A] dark:text-[#8E8E93] line-clamp-3 leading-relaxed mb-4">{plainTextFromContent(rem.content)}</p>
                    
                    <div className="flex gap-2">
                      <button 
@@ -3402,7 +3446,7 @@ export default function App() {
                      <button 
                         onClick={() => {
                            setFilter('all');
-                           setSearchQuery(rem.content);
+                           setSearchQuery(plainTextFromContent(rem.content));
                            setFiredReminders(prev => prev.filter(p => p.id !== rem.id));
                         }}
                         className="flex-1 bg-[#007AFF] text-white py-3 rounded-xl text-xs font-bold hover:bg-[#0062CC] transition-colors shadow-lg shadow-[#007AFF]/20"
