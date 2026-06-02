@@ -60,10 +60,10 @@ export function LandingPage({ onLogin }: LandingPageProps) {
       </Helmet>
 
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0A0A0A]/85 backdrop-blur-md border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-1.5 md:gap-2">
-            <AppLogo className="w-10 h-10 md:w-12 md:h-12 shrink-0" />
+            <AppLogo className="w-[54px] h-[54px] md:w-[60px] md:h-[60px] shrink-0" />
             <span className="font-bold text-lg tracking-tight">Lumi Note</span>
           </div>
           <div className="flex items-center gap-2 md:gap-4">
@@ -384,7 +384,7 @@ export function LandingPage({ onLogin }: LandingPageProps) {
       <footer className="py-12 border-t border-white/10 bg-black text-center relative z-10">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-             <AppLogo className="w-8 h-8 md:w-9 md:h-9 shrink-0" />
+             <AppLogo className="w-[72px] h-[72px] md:w-[81px] md:h-[81px] shrink-0" />
              <span className="font-bold text-white/80">Lumi Note</span>
           </div>
           <p className="text-white/40 text-sm">

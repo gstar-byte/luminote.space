@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function AppLogo({ className = "w-24 h-24" }: { className?: string }) {
+export function AppLogo({ className = "w-36 h-36" }: { className?: string }) {
   const idPrefix = React.useId().replace(/:/g, '-');
   
   const paperBgId = `paper-bg-${idPrefix}`;
@@ -18,6 +18,7 @@ export function AppLogo({ className = "w-24 h-24" }: { className?: string }) {
       viewBox="0 0 100 100"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      style={{ overflow: 'visible' }}
     >
       <defs>
         {/* 便签纸底色：极致经典且高端雅致的渐变淡黄色 (Classic Canary Yellow) */}

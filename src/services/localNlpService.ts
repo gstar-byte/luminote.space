@@ -178,6 +178,10 @@ function extractContent(text: string): string {
   // Step-by-step removal with precise patterns
   let content = text;
 
+  // 0. Relative offset duration patterns (e.g. 1分钟后, in 5 mins)
+  content = content.replace(/(过|在)?\s*(\d+|[一二两三四五六七八九十廿]+)\s*(分钟|小时|天)\s*(后|之后)?/g, '');
+  content = content.replace(/(in\s+)?\d+\s*(minutes?|mins?|hours?|hrs?|days?)\s*(later|after)?/gi, '');
+
   // 1. Reminder verbs
   content = content.replace(/提醒我?/g, '').replace(/记得/g, '').replace(/别忘了/g, '').replace(/注意/g, '');
   content = content.replace(/remind me( to)?/gi, '').replace(/remember to/gi, '').replace(/don't forget( to)?/gi, '');
@@ -249,6 +253,63 @@ function parseReminder(text: string): {
   let hasExplicitTime = false;
   let isRecurring = false;
   let recurrenceType: 'daily' | 'weekly' | 'monthly' | undefined;
+
+  // ===== Relative offset duration patterns (e.g. "1分钟后", "3小时后", "2天后") =====
+  const cnDurationMatch = text.match(/(\d+|[一二两三四五六七八九十廿]+)\s*(分钟|小时|天|号|日)\s*(后|之后)?/);
+  if (cnDurationMatch) {
+    const numStr = cnDurationMatch[1];
+    const unit = cnDurationMatch[2];
+    const after = cnDurationMatch[3];
+    const hasRelativeKeyword = after || /提醒|记得|别忘了|remind/i.test(text);
+
+    if (hasRelativeKeyword && unit !== '号' && unit !== '日') {
+      let num = parseInt(numStr);
+      if (isNaN(num)) {
+        num = parseChineseNumber(numStr) || 0;
+      }
+      
+      if (num > 0) {
+        let msToAdd = 0;
+        if (unit === '分钟') {
+          msToAdd = num * 60 * 1000;
+        } else if (unit === '小时') {
+          msToAdd = num * 60 * 60 * 1000;
+        } else if (unit === '天') {
+          msToAdd = num * 24 * 60 * 60 * 1000;
+        }
+        
+        if (msToAdd > 0) {
+          targetDate = new Date(now.getTime() + msToAdd);
+          hasExplicitDate = true;
+          hasExplicitTime = true;
+        }
+      }
+    }
+  }
+
+  if (!hasExplicitDate) {
+    const enDurationMatch = text.match(/(?:in\s+)?(\d+)\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\s*(?:later|after)?/i);
+    if (enDurationMatch) {
+      const num = parseInt(enDurationMatch[1]);
+      const unit = enDurationMatch[2].toLowerCase();
+      if (num > 0) {
+        let msToAdd = 0;
+        if (unit.startsWith('min')) {
+          msToAdd = num * 60 * 1000;
+        } else if (unit.startsWith('hour') || unit.startsWith('hr')) {
+          msToAdd = num * 60 * 60 * 1000;
+        } else if (unit.startsWith('day')) {
+          msToAdd = num * 24 * 60 * 60 * 1000;
+        }
+        
+        if (msToAdd > 0) {
+          targetDate = new Date(now.getTime() + msToAdd);
+          hasExplicitDate = true;
+          hasExplicitTime = true;
+        }
+      }
+    }
+  }
 
   // ===== Recurring patterns =====
   if (/每天|每日|天天|每晚|每早|每个早上|每个晚上/.test(text)) {
@@ -365,10 +426,12 @@ function parseReminder(text: string): {
   }
 
   // ===== Parse time =====
-  const timeResult = parseTimeFromText(text, targetDate);
-  if (timeResult.hasTime || timeResult.hasPeriod) {
-    hasExplicitTime = true;
-    targetDate = timeResult.date;
+  if (!hasExplicitTime) {
+    const timeResult = parseTimeFromText(text, targetDate);
+    if (timeResult.hasTime || timeResult.hasPeriod) {
+      hasExplicitTime = true;
+      targetDate = timeResult.date;
+    }
   }
 
   // Extract content
@@ -400,7 +463,7 @@ function parseReminder(text: string): {
   // If todo intent but no date/time/recurring → ambiguous
   if (isTodo && !reminder) {
     isAmbiguous = true;
-    clarificationPrompt = `要为"${refinedContent}"设置提醒时间，还是仅作为待办事项？`;
+    clarificationPrompt = `Would you like to set a reminder for "${refinedContent}", or keep it as a plain note?`;
   }
 
   return {

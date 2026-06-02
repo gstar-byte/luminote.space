@@ -14,6 +14,7 @@ export default defineConfig(({mode}) => {
         manifest: false,
         workbox: {
           cleanupOutdatedCaches: true,
+          importScripts: ['/notification-sw.js'],
         },
         registerType: 'autoUpdate',
         includeAssets: ['favicon-48.png', 'favicon-192.png', 'app-logo.svg'],

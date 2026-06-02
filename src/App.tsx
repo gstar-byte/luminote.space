@@ -34,6 +34,7 @@ import {
   Edit2,
   LogIn,
   LogOut,
+  Settings,
   User as UserIcon,
   Image as ImageIcon,
   Video,
@@ -47,6 +48,7 @@ import {
   RefreshCw,
   Pin,
   Star,
+  Sparkles,
   Mail, 
   Lock, 
   CheckCircle2, 
@@ -403,8 +405,41 @@ const plainTextFromContent = (content: any): string => {
     if (content.text) return content.text;
     if (content.value) return content.value;
   }
-  return '';
 };
+
+// Play a high-end, premium double-ping chime using Web Audio API
+export function playNotificationSound() {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    // Pleasant high-end double chime sound (electronic bell)
+    const playTone = (freq: number, startDelay: number, duration: number, volume: number) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + startDelay);
+      
+      gainNode.gain.setValueAtTime(0, ctx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(volume, ctx.currentTime + startDelay + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startDelay + duration);
+      
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      osc.start(ctx.currentTime + startDelay);
+      osc.stop(ctx.currentTime + startDelay + duration);
+    };
+    
+    // Play B5 tone (approx 988Hz) followed by E6 tone (approx 1319Hz)
+    playTone(987.77, 0, 0.25, 0.12);
+    playTone(1318.51, 0.08, 0.35, 0.10);
+  } catch (e) {
+    console.warn('Failed to play notification sound:', e);
+  }
+}
 
 export default function App() {
   // 【终极防刷风暴卫兵 / Anti-Storm Sandbox Sentry】
@@ -489,6 +524,18 @@ export default function App() {
       return sortOrder === 'desc' ? valB - valA : valA - valB;
     });
   }, [demoCapsules, capsules, sortBy, sortOrder]);
+
+  const hasSeededOrCreated = React.useMemo(() => {
+    if (!user) return false;
+    const seededKey = `luminote_has_notes_seeded_${user.uid}`;
+    return (
+      localStorage.getItem(seededKey) === 'true' ||
+      user.hasNotesCreatedOrSeeded === true ||
+      capsules.length > 0 ||
+      demoCapsules.length > 0
+    );
+  }, [user, capsules.length, demoCapsules.length]);
+
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -524,12 +571,26 @@ export default function App() {
   const [showProFeaturesModal, setShowProFeaturesModal] = useState(false);
   const [firedReminders, setFiredReminders] = useState<Capsule[]>([]);
   const notifiedIdsRef = useRef<Set<string>>(new Set());
+  const appStartTime = useRef(Date.now());
   const recentColorsRef = useRef<number[]>([]); // track last used color indices
+
+  // Dynamically update document title based on fired (unread) reminders count
+  useEffect(() => {
+    const count = firedReminders.length;
+    if (count > 0) {
+      document.title = `(${count}) Lumi Note`;
+    } else {
+      document.title = 'Lumi Note';
+    }
+  }, [firedReminders]);
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState(Date.now());
   const [dataLoading, setDataLoading] = useState(true);
+  const [isSyncFinished, setIsSyncFinished] = useState(false);
   const [pendingClarificationCapsuleId, setPendingClarificationCapsuleId] = useState<string | null>(null);
+  const [temporaryPendingCapsule, setTemporaryPendingCapsule] = useState<Capsule | null>(null);
+  const wasCaptureCollapsedBeforeClarification = useRef(true);
 
   // Pull-to-refresh & Toast state
   const [pullY, setPullY] = useState(0);
@@ -551,6 +612,41 @@ export default function App() {
       setQuickText('');
     }
   }, [isCaptureCollapsed]);
+
+  // 点击澄清面板外部自动消失并保存定型为普通便签
+  useEffect(() => {
+    if (!pendingClarificationCapsuleId) return;
+
+    const handleClarificationOutsideClick = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // 如果点击的是澄清面板内部，不能关闭
+      const pillEl = document.querySelector('.clarification-pill-outer');
+      if (pillEl && pillEl.contains(target)) return;
+
+      // 如果点击的是底部的输入控制台（输入框、麦克风等），不关闭，允许用户继续输入
+      if (
+        target.closest('footer') ||
+        target.closest('[id^="quick-capture"]') ||
+        target.closest('.fixed.bottom-6')
+      ) {
+        return;
+      }
+      
+      // 点击外面其他地方：将 isAmbiguous 置为 false，让面板消失定型
+      console.log('[OutsideClick] Clicking outside ClarificationPill, resolving as plain note.');
+      updateCapsule(pendingClarificationCapsuleId, { isAmbiguous: false });
+      setPendingClarificationCapsuleId(null);
+      setTemporaryPendingCapsule(null);
+    };
+
+    document.addEventListener('mousedown', handleClarificationOutsideClick);
+    document.addEventListener('touchstart', handleClarificationOutsideClick, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleClarificationOutsideClick);
+      document.removeEventListener('touchstart', handleClarificationOutsideClick);
+    };
+  }, [pendingClarificationCapsuleId]);
 
   const showToast = useCallback((msg: string, type: 'info' | 'success' | 'error' = 'info') => {
     if (toastTimerRef.current) {
@@ -785,6 +881,10 @@ export default function App() {
 
       console.log('--- SEEDING DEMO DATA ---', generatedDemoCapsules);
       setDemoCapsules(generatedDemoCapsules);
+      if (user) {
+        localStorage.setItem(`luminote_has_notes_seeded_${user.uid}`, 'true');
+        updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -937,7 +1037,8 @@ export default function App() {
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
               isPremium: docSnap.data().isPremium || false,
-              onboarded: docSnap.data().onboarded || false
+              onboarded: docSnap.data().onboarded || false,
+              hasNotesCreatedOrSeeded: docSnap.data().hasNotesCreatedOrSeeded || false
             };
             setUser(userData);
             localStorage.setItem('luminote_auth_user', JSON.stringify(userData));
@@ -948,7 +1049,8 @@ export default function App() {
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
               isPremium: false,
-              onboarded: false
+              onboarded: false,
+              hasNotesCreatedOrSeeded: false
             };
             setUser(userData);
             localStorage.setItem('luminote_auth_user', JSON.stringify(userData));
@@ -959,6 +1061,7 @@ export default function App() {
               photoURL: firebaseUser.photoURL,
               isPremium: false,
               onboarded: false,
+              hasNotesCreatedOrSeeded: false,
               updatedAt: Date.now()
             }, { merge: true }).catch((e) => {
               console.error('Firestore setDoc user error (silenced):', e);
@@ -977,6 +1080,7 @@ export default function App() {
         setDemoCapsules([]);
         setAuthLoading(false);
         setDataLoading(true);
+        setIsSyncFinished(false);
       }
     });
     return () => {
@@ -991,6 +1095,13 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
 
+    // 开启 3.5秒安全同步超时降级机制。如果网络慢/波动导致 3.5秒内仍未拉取成功，
+    // 强制将 dataLoading 设为 false 以进入主界面，不至于让用户卡死在 Syncing 画面。
+    const syncTimeoutId = setTimeout(() => {
+      console.warn('[Sync Timeout] Database sync took over 3.5s. Forcing UI entry via fallback.');
+      setDataLoading(false);
+    }, 3500);
+
     // 1. Instant loading of user-specific cached notes from localStorage
     const cacheKey = `luminote_cached_notes_${user.uid}`;
     const cached = localStorage.getItem(cacheKey);
@@ -1001,6 +1112,7 @@ export default function App() {
           console.log("[OfflineCache] Loaded", parsed.length, "notes instantly from localStorage.");
           setCapsules(parsed);
           setDataLoading(false); // Cancel loading state immediately for instant feedback
+          setIsSyncFinished(true); // 本地已有卡片缓存，直接标志同步完成，规避新手引导
         }
       } catch (e) {
         console.error("[OfflineCache] Failed to parse cached notes:", e);
@@ -1018,18 +1130,41 @@ export default function App() {
         id: d.id 
       }));
       const sortedDocs = docs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      
+      const isFromCache = snapshot.metadata.fromCache;
+      
+      // 【关键修复】如果此快照来自缓存且数据为空，可能是 Firestore 首帧在网络建连前的过渡空状态。
+      // 我们在此拦截，决不能清空在 LocalStorage 已经秒开呈现出来的历史卡片，避免引发白屏与误触发新手引导。
+      if (isFromCache && sortedDocs.length === 0) {
+        console.log('[Firestore] Received empty snapshot from Cache. Keeping local cache capsules untouched.');
+        return;
+      }
+
       console.log('--- FIRESTORE DATA LOADED ---', sortedDocs.length, 'items');
       setCapsules(sortedDocs);
       
       // Update cache in background
       localStorage.setItem(cacheKey, JSON.stringify(sortedDocs));
-      setDataLoading(false);
+      if (sortedDocs.length > 0) {
+        localStorage.setItem(`luminote_has_notes_seeded_${user.uid}`, 'true');
+        updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
+      }
+
+      if (!isFromCache || sortedDocs.length > 0) {
+        clearTimeout(syncTimeoutId); // 服务器数据或非空缓存成功拉回，清除超时控制器
+        setDataLoading(false);
+        setIsSyncFinished(true); // 标记网络数据真实拉回成功
+      }
     }, (error) => {
+      clearTimeout(syncTimeoutId);
       handleFirestoreError(error, OperationType.LIST, 'capsules');
       setDataLoading(false); // 关键！配额超限报错时强制停止 Loading 转圈，让用户完美看到离线缓存的便签！
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(syncTimeoutId);
+      unsubscribe();
+    };
   }, [user]);
 
   useEffect(() => {
@@ -1056,6 +1191,14 @@ export default function App() {
     (window as any).startTour = async () => {
       if (tourActive.current) return;
       tourActive.current = true;
+      
+      safeLocalStorageSet(ONBOARDING_STORAGE_KEY, 'true');
+      const updatedUser = { ...user, onboarded: true };
+      setUser(updatedUser);
+      localStorage.setItem('luminote_auth_user', JSON.stringify(updatedUser));
+      updateDoc(doc(getDb(), 'users', user.uid), { onboarded: true }).catch((e) => {
+        console.error('Firestore updateDoc onboarded auto-save error (silenced):', e);
+      });
       
       // Force filter to 'all' to ensure elements are visible
       setFilter('all');
@@ -1128,7 +1271,7 @@ export default function App() {
     };
 
     // Auto-repair onboarding status for old users who already have notes
-    if (user && allCapsules.length > 0 && !hasSeenTutorial) {
+    if (user && (allCapsules.length > 0 || hasSeededOrCreated) && !hasSeenTutorial) {
       safeLocalStorageSet(ONBOARDING_STORAGE_KEY, 'true');
       const updatedUser = { ...user, onboarded: true };
       setUser(updatedUser);
@@ -1139,15 +1282,16 @@ export default function App() {
       });
     }
 
-    // Only trigger tour if fully loaded, user is logged in, has not seen tutorial, and has 0 notes
-    if (!authLoading && !dataLoading && user && !hasSeenTutorial && !tourActive.current && allCapsules.length === 0) {
+    // Only trigger tour if fully loaded, user is logged in, has not seen tutorial, has 0 notes, and cloud sync finished
+    // 额外增加 !hasSeededOrCreated 检查：老用户即使暂时 capsules 为空也不触发 tour
+    if (!authLoading && !dataLoading && user && !hasSeenTutorial && !hasSeededOrCreated && !tourActive.current && allCapsules.length === 0 && isSyncFinished) {
        setTimeout(() => {
          if ((window as any).startTour && !tourActive.current) {
            (window as any).startTour();
          }
        }, 1500); // 1.5s delay for stable trigger
     }
-  }, [user, authLoading, dataLoading, allCapsules.length, hasSeenTutorial]);
+  }, [user, authLoading, dataLoading, allCapsules.length, hasSeenTutorial, hasSeededOrCreated, isSyncFinished]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const recognition = useRef<any>(null);
@@ -1398,7 +1542,7 @@ export default function App() {
         reminder: reminder || null,
         color: randomColor,
         isAmbiguous: shouldShowPill,
-        clarificationPrompt: shouldShowPill ? '要为该便签快速设置提醒、星标、置顶或仅作为记事？' : null
+        clarificationPrompt: shouldShowPill ? 'Quickly set a reminder, star, pin, or keep as note?' : null
       };
       if (category) newCapsuleData.category = category;
       if (tags && tags.length > 0) newCapsuleData.tags = tags;
@@ -1409,12 +1553,47 @@ export default function App() {
       
       const docRef = await addDoc(collection(getDb(), 'capsules'), newCapsuleData);
       console.log('[handleCreate] saved doc id:', docRef.id);
+
+      // Automatically request browser notification permission if a new reminder was created
+      if (hasReminder && window.Notification && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
       
       // Manage ClarificationPill state
       if (shouldShowPill) {
+        // 创建待办属性面板临时卡片，零延迟直接在页面秒弹，不等待网络拉取周期
+        const createdCapsule: Capsule = {
+          id: docRef.id,
+          userId: user?.uid || '',
+          content: refinedContent,
+          createdAt: newCapsuleData.createdAt as number,
+          updatedAt: newCapsuleData.updatedAt as number,
+          completed: false,
+          isTodo: newCapsuleData.isTodo as boolean,
+          isArchived: false,
+          isDeleted: false,
+          reminder: (newCapsuleData.reminder || null) as any,
+          color: randomColor,
+          isAmbiguous: true,
+          clarificationPrompt: 'Quickly set a reminder, star, pin, or keep as note?',
+          category: (newCapsuleData.category || undefined) as string,
+          tags: (newCapsuleData.tags || undefined) as string[],
+          isStarred: (newCapsuleData.isStarred || undefined) as boolean,
+          isPinned: (newCapsuleData.isPinned || undefined) as boolean
+        };
+
+        wasCaptureCollapsedBeforeClarification.current = isCaptureCollapsed;
+        setTemporaryPendingCapsule(createdCapsule);
         setPendingClarificationCapsuleId(docRef.id);
+        // ClarificationPill 已改为 portal 浮层，无需展开 footer
       } else {
+        setTemporaryPendingCapsule(null);
         setPendingClarificationCapsuleId(null);
+      }
+
+      if (user) {
+        localStorage.setItem(`luminote_has_notes_seeded_${user.uid}`, 'true');
+        updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
       }
     } catch (error) {
       console.error('[handleCreate] ERROR in try block:', error);
@@ -1432,6 +1611,11 @@ export default function App() {
           color: randomColor
         });
         console.log('[handleCreate] fallback saved (raw text)');
+        
+        if (user) {
+          localStorage.setItem(`luminote_has_notes_seeded_${user.uid}`, 'true');
+          updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
+        }
       } catch (innerError) {
         console.error('[handleCreate] fallback ERROR:', innerError);
         handleFirestoreError(innerError, OperationType.CREATE, 'capsules');
@@ -1869,43 +2053,120 @@ export default function App() {
 
   // Real Reminder Engine
   useEffect(() => {
+    const syncRemindersToSW = () => {
+      if ('serviceWorker' in navigator && Notification.permission === 'granted') {
+        const now = Date.now();
+        const futureReminders = allCapsules
+          .filter(cap => cap.reminder?.date && cap.reminder.date > now && !cap.completed && !cap.isDeleted && !cap.isArchived)
+          .map(cap => {
+            const contentText = typeof cap.content === 'string' ? cap.content : plainTextFromContent(cap.content);
+            return {
+              id: cap.id,
+              title: 'Lumi Note Reminder',
+              body: contentText,
+              date: cap.reminder.date
+            };
+          });
+
+        navigator.serviceWorker.ready.then(registration => {
+          if (registration.active) {
+            registration.active.postMessage({
+              type: 'SET_REMINDERS',
+              reminders: futureReminders
+            });
+          }
+        }).catch(err => {
+          console.warn('Failed to sync reminders to Service Worker:', err);
+        });
+      }
+    };
+
     if (hasPremiumAccess(user) && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          syncRemindersToSW();
+        }
+      });
     }
     
     const checkReminders = () => {
       const now = Date.now();
+      let hasNewFired = false;
+      
       allCapsules.forEach(cap => {
         if (!cap.reminder?.date || cap.completed || cap.isDeleted || cap.isArchived) return;
         
-        // Prevent spamming VERY old reminders (only drop if older than 24 hours to prevent extreme backlogs)
-        const isTooOld = now - cap.reminder.date > 1000 * 60 * 60 * 24; 
-        if (isTooOld) {
-          if (cap.reminder.type === 'once') {
-            updateCapsule(cap.id, { reminder: { ...cap.reminder, type: 'none' } });
+        const reminderTime = Number(cap.reminder.date);
+        if (isNaN(reminderTime)) return;
+
+        // If it's a future reminder, ignore for now
+        if (reminderTime > now) return;
+
+        // For past reminders (reminderTime <= now):
+        // If it's a historical reminder (expired more than 60 seconds ago),
+        // we silently mark it as notified and update its status without popping any alert.
+        const isHistorical = now - reminderTime > 60000;
+        
+        if (isHistorical) {
+          if (!notifiedIdsRef.current.has(cap.id)) {
+            notifiedIdsRef.current.add(cap.id);
+            
+            // Silently update to next interval or set to none
+            let shouldUpdate = false;
+            const nextReminder = { ...cap.reminder };
+            if (cap.reminder.type === 'custom' && cap.reminder.customInterval) {
+              const mult = cap.reminder.customUnit === 'day' ? 86400000 : cap.reminder.customUnit === 'week' ? 604800000 : 2592000000;
+              nextReminder.date = now + cap.reminder.customInterval * mult;
+              shouldUpdate = true;
+            } else if (cap.reminder.type === 'daily') {
+              nextReminder.date = now + 86400000;
+              shouldUpdate = true;
+            } else if (cap.reminder.type === 'weekly') {
+              nextReminder.date = now + 604800000;
+              shouldUpdate = true;
+            } else if (cap.reminder.type === 'monthly') {
+              const nextDate = new Date(now);
+              nextDate.setMonth(nextDate.getMonth() + 1);
+              nextReminder.date = nextDate.getTime();
+              shouldUpdate = true;
+            } else if (cap.reminder.type === 'yearly') {
+              const nextDate = new Date(now);
+              nextDate.setFullYear(nextDate.getFullYear() + 1);
+              nextReminder.date = nextDate.getTime();
+              shouldUpdate = true;
+            } else if (cap.reminder.type !== 'none') {
+              nextReminder.type = 'none';
+              shouldUpdate = true;
+            }
+            
+            if (shouldUpdate) {
+              updateCapsule(cap.id, { reminder: nextReminder as any });
+            }
           }
-          notifiedIdsRef.current.add(cap.id);
           return;
         }
 
-        if (cap.reminder.date > now || notifiedIdsRef.current.has(cap.id)) return;
+        // If it's active (expired within last 60 seconds) and hasn't been fired yet:
+        if (notifiedIdsRef.current.has(cap.id)) return;
 
+        // Trigger notifications
         if (window.Notification && Notification.permission === 'granted') {
           new Notification('Lumi Note Reminder', { body: plainTextFromContent(cap.content) });
         }
 
-        // Trigger gentle tactile vibration feedback on mobile devices
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
           navigator.vibrate([150, 80, 150]);
         }
 
         notifiedIdsRef.current.add(cap.id);
+        hasNewFired = true;
+        
         setFiredReminders(prev => {
-          // Avoid duplicate UI alerts for the same item in the same cycle
           if (prev.some(p => p.id === cap.id)) return prev;
           return [...prev, cap];
         });
 
+        // Update capsule state to future date or clear once reminder
         let shouldUpdate = false;
         const nextReminder = { ...cap.reminder };
         if (cap.reminder.type === 'custom' && cap.reminder.customInterval) {
@@ -1933,12 +2194,19 @@ export default function App() {
           shouldUpdate = true;
         }
 
-        if (shouldUpdate) updateCapsule(cap.id, { reminder: nextReminder as any });
+        if (shouldUpdate) {
+          updateCapsule(cap.id, { reminder: nextReminder as any });
+        }
       });
+
+      if (hasNewFired) {
+        playNotificationSound();
+      }
     };
 
     // Run instantly on initialization
     checkReminders();
+    syncRemindersToSW();
 
     const interval = setInterval(checkReminders, 8000);
     
@@ -1946,6 +2214,7 @@ export default function App() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         checkReminders();
+        syncRemindersToSW();
       }
     };
     
@@ -2062,8 +2331,8 @@ export default function App() {
     return (
       <div className="flex flex-col items-center justify-center h-[100dvh] bg-[#F8F9FA] dark:bg-[#1C1C1E] transition-colors duration-300">
         <div className="flex flex-col items-center gap-6 max-w-xs text-center animate-in fade-in duration-700">
-          <div className="w-20 h-20 bg-white dark:bg-[#2C2C2E] rounded-3xl shadow-xl flex items-center justify-center border border-black/5 dark:border-white/5 animate-pulse">
-            <AppLogo className="w-12 h-12" />
+          <div className="w-[168px] h-[168px] bg-white dark:bg-[#2C2C2E] rounded-[28px] shadow-xl flex items-center justify-center border border-black/5 dark:border-white/5 animate-pulse">
+            <AppLogo className="w-[108px] h-[108px]" />
           </div>
           <div className="space-y-2 mt-2">
             <h2 className="text-lg font-bold text-[#1D1D1F] dark:text-[#F2F2F7] tracking-tight">Initializing Lumi Note</h2>
@@ -2077,25 +2346,6 @@ export default function App() {
     );
   }
 
-  // 登录成功后，从云端拉取/同步历史便签时的友好加载提示，防止白屏等待
-  if (user && dataLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[100dvh] bg-[#F8F9FA] dark:bg-[#1C1C1E] transition-colors duration-300">
-        <div className="flex flex-col items-center gap-6 max-w-xs text-center animate-in fade-in duration-700">
-          <div className="w-20 h-20 bg-white dark:bg-[#2C2C2E] rounded-3xl shadow-xl flex items-center justify-center border border-black/5 dark:border-white/5 animate-pulse">
-            <AppLogo className="w-12 h-12" />
-          </div>
-          <div className="space-y-2 mt-2">
-            <h2 className="text-lg font-bold text-[#1D1D1F] dark:text-[#F2F2F7] tracking-tight">Syncing Your Notes</h2>
-            <p className="text-xs font-semibold text-[#8E8E93] leading-relaxed px-4">
-              Retrieving your saved notebooks from cloud database. Just a moment.
-            </p>
-          </div>
-          <div className="w-5 h-5 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mt-2" />
-        </div>
-      </div>
-    );
-  }
 
   if (!user) {
     if (!showAuthScreen) {
@@ -2108,8 +2358,8 @@ export default function App() {
         {authProcessing && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#F8F9FA]/40 dark:bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
             <div className="bg-white dark:bg-[#1C1C1E] p-8 rounded-3xl shadow-2xl border border-black/5 dark:border-white/10 flex flex-col items-center max-w-sm mx-4 text-center gap-5 animate-in zoom-in-95 duration-200">
-              <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center bg-[#007AFF]/10 text-[#007AFF] rounded-full">
-                <Zap size={24} className="animate-bounce" />
+              <div className="flex-shrink-0 w-18 h-18 flex items-center justify-center">
+                <AppLogo className="w-full h-full" />
               </div>
               <div className="space-y-1.5">
                 <h3 className="text-base font-bold text-[#1D1D1F] dark:text-[#F2F2F7]">Signing You In</h3>
@@ -2175,7 +2425,7 @@ export default function App() {
             animate={{ opacity: 1, scale: 1 }}
             className="relative z-10 w-full max-w-sm"
           >
-            <div className="w-24 h-24 mb-12 transform -rotate-6">
+            <div className="w-[216px] h-[216px] mb-12 transform -rotate-6">
               <AppLogo className="w-full h-full" />
             </div>
             <h2 className="text-5xl font-black tracking-tight text-[#1D1D1F] leading-tight mb-6">
@@ -2200,7 +2450,7 @@ export default function App() {
         <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12">
           <div className="w-full max-w-sm">
             <div className="md:hidden flex flex-col items-center mb-6">
-              <AppLogo className="w-24 h-24 mb-4" />
+              <AppLogo className="w-[108px] h-[108px] mb-4" />
               <h1 className="text-3xl font-extrabold tracking-tight text-center bg-clip-text text-transparent bg-gradient-to-r from-[#1D1D1F] to-[#434343]">Lumi Note</h1>
             </div>
 
@@ -2315,7 +2565,7 @@ export default function App() {
       >
         <div className="p-4 flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center drop-shadow-md">
+            <div className="flex-shrink-0 w-[56px] h-[56px] flex items-center justify-center drop-shadow-md">
               <AppLogo className="w-full h-full" />
             </div>
             {isSidebarOpen && !isMobile && (
@@ -2665,16 +2915,29 @@ export default function App() {
              type="button"
              onClick={() => { void handleSync(); }}
              disabled={isSyncing}
-             aria-label="Sync notes"
-             title="Sync notes"
+             aria-label="Manual sync"
+             title="Manual sync"
              className={cn(
                "w-full flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold text-[#8E8E93] hover:text-[#007AFF] hover:bg-[#007AFF]/10 transition-all disabled:opacity-60",
                isSidebarOpen ? "px-4 justify-start" : "px-0 justify-center"
              )}
            >
              <RefreshCw size={14} className={isSyncing ? "animate-spin text-[#007AFF]" : ""} />
-             {isSidebarOpen && <span>{isSyncing ? 'Syncing…' : 'Sync'}</span>}
+             {isSidebarOpen && <span>{isSyncing ? 'Syncing…' : 'Manual Sync'}</span>}
            </button>
+           {/* <button
+             type="button"
+             onClick={() => setShowSettingsModal(true)}
+             aria-label="Settings"
+             title="Settings"
+             className={cn(
+               "w-full flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold text-[#8E8E93] hover:text-[#007AFF] hover:bg-[#007AFF]/10 transition-all",
+               isSidebarOpen ? "px-4 justify-start" : "px-0 justify-center"
+             )}
+           >
+             <Settings size={14} />
+             {isSidebarOpen && <span>Settings</span>}
+           </button> */}
            <div className="bg-[#F2F2F7] rounded-2xl p-3 flex items-center gap-3 group">
               {user.photoURL ? (
                 <img src={user.photoURL} alt={user.displayName || ''} className="w-10 h-10 rounded-xl shadow-sm" referrerPolicy="no-referrer" />
@@ -2742,7 +3005,12 @@ export default function App() {
               </button>
             )}
             <div className="flex-1 relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8E8E93]" size={18} />
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center shrink-0">
+                <Search className="text-[#8E8E93]" size={18} />
+                {searchQuery.trim() !== '' && (
+                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#FF3B30] ring-1 ring-white pointer-events-none animate-pulse" />
+                )}
+              </div>
               <input 
                 id="search-input"
                 type="text" 
@@ -2755,6 +3023,12 @@ export default function App() {
           </div>
 
           <div className="flex-shrink-0 flex items-center gap-2 relative">
+            {dataLoading && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#007AFF]/10 text-[#007AFF] dark:bg-[#007AFF]/20 rounded-full text-xs font-bold animate-pulse shadow-sm shrink-0">
+                <RefreshCw size={12} className="animate-spin text-[#007AFF]" />
+                <span className="hidden sm:inline text-[11px] tracking-tight">Syncing Notes</span>
+              </div>
+            )}
             {PAYWALL_ACTIVE && !hasPremiumAccess(user) && (
                <button 
                   onClick={() => setShowPremiumModal(true)} 
@@ -2935,31 +3209,41 @@ export default function App() {
             </AnimatePresence>
             
             {filteredCapsules.length === 0 && (
-              <div className="h-64 flex flex-col items-center justify-center text-[#8E8E93]">
-                <div className="w-16 h-16 bg-[#E5E5EA] rounded-full flex items-center justify-center mb-4">
-                  <Plus size={32} />
+              !isSyncFinished ? (
+                <div className="col-span-full h-64 flex flex-col items-center justify-center text-[#8E8E93] gap-4">
+                  <div className="w-10 h-10 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+                  <p className="text-sm font-semibold text-[#8E8E93] animate-pulse">Syncing your notes...</p>
                 </div>
-                <p className="text-sm font-medium mb-4">No capsules found in this view.</p>
-                <div className="flex gap-3">
-                  <button 
-                    id="generate-demo-btn"
-                    onClick={seedDemoData}
-                    disabled={authProcessing}
-                    className="px-6 py-3 bg-[#007AFF] text-white rounded-2xl font-bold text-sm hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 group"
-                  >
-                    <Zap size={16} className={authProcessing ? 'animate-spin' : 'group-hover:animate-pulse'} />
-                    {authProcessing ? 'Generating...' : 'Generate Demo Data'}
-                  </button>
-                  {filter !== 'all' && (
-                     <button 
-                      onClick={() => setFilter('all')}
-                      className="px-6 py-3 bg-[#F2F2F7] text-[#1D1D1F] rounded-2xl font-bold text-sm hover:bg-[#E5E5EA] transition-all"
-                    >
-                      Show All
-                    </button>
-                  )}
+              ) : (
+                <div className="h-64 flex flex-col items-center justify-center text-[#8E8E93] col-span-full">
+                  <div className="w-16 h-16 bg-[#E5E5EA] rounded-full flex items-center justify-center mb-4">
+                    <Plus size={32} />
+                  </div>
+                  <p className="text-sm font-medium mb-4">No capsules found in this view.</p>
+                  <div className="flex gap-3">
+                    {/* 仅在数据同步完成、确认该用户从未创建过笔记时才显示 Generate Demo */}
+                    {!hasSeededOrCreated && isSyncFinished && !dataLoading && (
+                      <button 
+                        id="generate-demo-btn"
+                        onClick={seedDemoData}
+                        disabled={authProcessing}
+                        className="px-6 py-3 bg-[#007AFF] text-white rounded-2xl font-bold text-sm hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 group"
+                      >
+                        <Zap size={16} className={authProcessing ? 'animate-spin' : 'group-hover:animate-pulse'} />
+                        {authProcessing ? 'Generating...' : 'Generate Demo Data'}
+                      </button>
+                    )}
+                    {filter !== 'all' && (
+                       <button 
+                        onClick={() => setFilter('all')}
+                        className="px-6 py-3 bg-[#F2F2F7] text-[#1D1D1F] rounded-2xl font-bold text-sm hover:bg-[#E5E5EA] transition-all"
+                      >
+                        Show All
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )
             )}
           </div>
         </div>
@@ -3150,7 +3434,7 @@ export default function App() {
                      <span className="text-[10px] font-bold text-[#8E8E93]">Just now</span>
                    </div>
                    <h4 className="font-black text-lg text-[#1D1D1F] dark:text-[#F2F2F7] leading-tight mb-2">Reminder: Lumi Note</h4>
-                   <p className="text-sm font-medium text-[#48484A] dark:text-[#8E8E93] line-clamp-3 leading-relaxed mb-4">{rem.content}</p>
+                   <p className="text-sm font-medium text-[#48484A] dark:text-[#8E8E93] line-clamp-3 leading-relaxed mb-4">{plainTextFromContent(rem.content)}</p>
                    
                    <div className="flex gap-2">
                      <button 
@@ -3162,7 +3446,7 @@ export default function App() {
                      <button 
                         onClick={() => {
                            setFilter('all');
-                           setSearchQuery(rem.content);
+                           setSearchQuery(plainTextFromContent(rem.content));
                            setFiredReminders(prev => prev.filter(p => p.id !== rem.id));
                         }}
                         className="flex-1 bg-[#007AFF] text-white py-3 rounded-xl text-xs font-bold hover:bg-[#0062CC] transition-colors shadow-lg shadow-[#007AFF]/20"
@@ -3338,29 +3622,7 @@ export default function App() {
             </button>
           )}
 
-          {/* Clarification Pill for ambiguous notes */}
-          <AnimatePresence>
-            {pendingClarificationCapsuleId && (() => {
-              const pendingCapsule = [...capsules, ...demoCapsules].find(c => c.id === pendingClarificationCapsuleId);
-              if (!pendingCapsule || !pendingCapsule.isAmbiguous) return null;
-              return (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="w-full max-w-3xl mb-2"
-                >
-                  <ClarificationPill
-                    capsule={pendingCapsule}
-                    onResolve={(updates) => {
-                      updateCapsule(pendingCapsule.id, updates);
-                      setPendingClarificationCapsuleId(null);
-                    }}
-                  />
-                </motion.div>
-              );
-            })()}
-          </AnimatePresence>
+          {/* Clarification Pill 已提取为 portal 浮层，不再放在 footer 内部 */}
 
           <div 
             id="quick-capture-area"
@@ -3561,6 +3823,44 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Clarification Pill — 在 main 容器内 absolute 定位，不受 footer 折叠影响，居中更美观 */}
+        {pendingClarificationCapsuleId && (
+          <AnimatePresence>
+            {(() => {
+              const pendingCapsule = 
+                (temporaryPendingCapsule && temporaryPendingCapsule.id === pendingClarificationCapsuleId)
+                  ? temporaryPendingCapsule
+                  : [...capsules, ...demoCapsules].find(c => c.id === pendingClarificationCapsuleId);
+              
+              if (!pendingCapsule || !pendingCapsule.isAmbiguous) return null;
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 30, scale: 0.95 }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                  className="absolute z-[200] left-1/2 -translate-x-1/2 w-full max-w-[580px] px-4 pointer-events-auto shadow-[0_12px_40px_rgba(0,0,0,0.15)] clarification-pill-outer"
+                  style={{
+                    bottom: isCaptureCollapsed ? '96px' : '156px'
+                  }}
+                >
+                  <ClarificationPill
+                    capsule={pendingCapsule}
+                    onResolve={(updates) => {
+                      updateCapsule(pendingCapsule.id, updates);
+                      setPendingClarificationCapsuleId(null);
+                      setTemporaryPendingCapsule(null);
+                    }}
+                    onUpdate={(updates) => {
+                      updateCapsule(pendingCapsule.id, updates);
+                    }}
+                  />
+                </motion.div>
+              );
+            })()}
+          </AnimatePresence>
+        )}
       </main>
       
       <PremiumModal 
@@ -4219,6 +4519,14 @@ const CapsuleItem = memo(function CapsuleItem({
           }
         }}
       >
+        {capsule.isAmbiguous && (
+          <div className="absolute inset-0 bg-black/5 dark:bg-white/5 backdrop-blur-[3.5px] z-10 flex flex-col items-center justify-center rounded-2xl md:rounded-[24px] pointer-events-none transition-all duration-300">
+            <div className="bg-white/90 dark:bg-[#1C1C1E]/95 backdrop-blur-md px-3 py-1.5 rounded-full border border-black/5 dark:border-white/10 shadow-lg flex items-center gap-1.5 animate-pulse">
+              <Sparkles size={11} className="text-[#007AFF] fill-[#007AFF]/25" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-[#007AFF]">Intent Pending</span>
+            </div>
+          </div>
+        )}
         {(capsule.isPinned || capsule.isStarred || (capsule.reminder && capsule.reminder.type !== 'none' && capsule.reminder.date)) && (
           <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
             {/* 置顶 / 星标：常显，无悬浮动效 */}
@@ -4228,9 +4536,16 @@ const CapsuleItem = memo(function CapsuleItem({
             {capsule.isStarred && (
               <Star size={13} className="text-[#FFCC00] fill-[#FFCC00] shrink-0 transition-opacity" />
             )}
-            {/* 提醒铃铛：始终显示，是极简态下唯一可见的元数据标记 */}
             {capsule.reminder && capsule.reminder.type !== 'none' && capsule.reminder.date && (
-              <Bell size={13} className={cn("shrink-0", capsule.reminder.date <= Date.now() ? "text-red-200 animate-pulse" : "text-white/80")} />
+              <span 
+                title={`Reminder: ${new Date(capsule.reminder.date).toLocaleString('en-US')} (${capsule.reminder.type.charAt(0).toUpperCase() + capsule.reminder.type.slice(1)})`}
+                className="inline-flex shrink-0 cursor-help"
+              >
+                <Bell 
+                  size={13} 
+                  className={cn(capsule.reminder.date <= Date.now() ? "text-red-200 animate-pulse" : "text-white/80")} 
+                />
+              </span>
             )}
           </div>
         )}

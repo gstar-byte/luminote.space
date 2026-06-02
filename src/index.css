@@ -84,6 +84,20 @@
 .paper-preview {
   position: relative;
   z-index: 1;
+  background-color: #FFFBE6 !important;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent calc(2rem - 1px),
+    #F0E6C0 calc(2rem - 1px),
+    #F0E6C0 2rem
+  ) !important;
+  background-size: 100% 2rem !important;
+  background-attachment: scroll !important;
+  background-origin: content-box !important;
+  padding: 1rem 1rem 1rem 1.5rem !important;
+  line-height: 2rem !important;
+  border-radius: 12px;
 }
 
 /* Image handling inside note */

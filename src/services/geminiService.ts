@@ -28,9 +28,9 @@ export async function categorizeThought(text: string): Promise<{ category?: stri
       '\n\nInput text: ' +
       text;
     
-    // Add a 10 second timeout
+    // Add a 2 second timeout
     const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error("Gemini API timeout")), 10000)
+      setTimeout(() => reject(new Error("Gemini API timeout")), 2000)
     );
     
     const fetchPromise = ai.models.generateContent({
