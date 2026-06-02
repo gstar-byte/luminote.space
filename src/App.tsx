@@ -47,6 +47,7 @@ import {
   RefreshCw,
   Pin,
   Star,
+  Sparkles,
   Mail, 
   Lock, 
   CheckCircle2, 
@@ -2002,8 +2003,40 @@ export default function App() {
 
   // Real Reminder Engine
   useEffect(() => {
+    const syncRemindersToSW = () => {
+      if ('serviceWorker' in navigator && Notification.permission === 'granted') {
+        const now = Date.now();
+        const futureReminders = allCapsules
+          .filter(cap => cap.reminder?.date && cap.reminder.date > now && !cap.completed && !cap.isDeleted && !cap.isArchived)
+          .map(cap => {
+            const contentText = typeof cap.content === 'string' ? cap.content : plainTextFromContent(cap.content);
+            return {
+              id: cap.id,
+              title: 'Lumi Note Reminder',
+              body: contentText,
+              date: cap.reminder.date
+            };
+          });
+
+        navigator.serviceWorker.ready.then(registration => {
+          if (registration.active) {
+            registration.active.postMessage({
+              type: 'SET_REMINDERS',
+              reminders: futureReminders
+            });
+          }
+        }).catch(err => {
+          console.warn('Failed to sync reminders to Service Worker:', err);
+        });
+      }
+    };
+
     if (hasPremiumAccess(user) && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          syncRemindersToSW();
+        }
+      });
     }
     
     const checkReminders = () => {
@@ -2072,6 +2105,7 @@ export default function App() {
 
     // Run instantly on initialization
     checkReminders();
+    syncRemindersToSW();
 
     const interval = setInterval(checkReminders, 8000);
     
@@ -2079,6 +2113,7 @@ export default function App() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         checkReminders();
+        syncRemindersToSW();
       }
     };
     
