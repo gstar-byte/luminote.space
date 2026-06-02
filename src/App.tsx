@@ -404,8 +404,41 @@ const plainTextFromContent = (content: any): string => {
     if (content.text) return content.text;
     if (content.value) return content.value;
   }
-  return '';
 };
+
+// Play a high-end, premium double-ping chime using Web Audio API
+export function playNotificationSound() {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    // Pleasant high-end double chime sound (electronic bell)
+    const playTone = (freq: number, startDelay: number, duration: number, volume: number) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + startDelay);
+      
+      gainNode.gain.setValueAtTime(0, ctx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(volume, ctx.currentTime + startDelay + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startDelay + duration);
+      
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      osc.start(ctx.currentTime + startDelay);
+      osc.stop(ctx.currentTime + startDelay + duration);
+    };
+    
+    // Play B5 tone (approx 988Hz) followed by E6 tone (approx 1319Hz)
+    playTone(987.77, 0, 0.25, 0.12);
+    playTone(1318.51, 0.08, 0.35, 0.10);
+  } catch (e) {
+    console.warn('Failed to play notification sound:', e);
+  }
+}
 
 export default function App() {
   // 【终极防刷风暴卫兵 / Anti-Storm Sandbox Sentry】
@@ -529,6 +562,16 @@ export default function App() {
       }
     }
   }, [capsules, user]);
+
+  // Dynamically update document title based on fired (unread) reminders count
+  useEffect(() => {
+    const count = firedReminders.length;
+    if (count > 0) {
+      document.title = `(${count}) Lumi Note`;
+    } else {
+      document.title = 'Lumi Note';
+    }
+  }, [firedReminders]);
 
   const [isListening, setIsListening] = useState(false);
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
@@ -2041,6 +2084,8 @@ export default function App() {
     
     const checkReminders = () => {
       const now = Date.now();
+      let hasNewFired = false;
+      
       allCapsules.forEach(cap => {
         if (!cap.reminder?.date || cap.completed || cap.isDeleted || cap.isArchived) return;
         
@@ -2066,6 +2111,8 @@ export default function App() {
         }
 
         notifiedIdsRef.current.add(cap.id);
+        hasNewFired = true;
+        
         setFiredReminders(prev => {
           // Avoid duplicate UI alerts for the same item in the same cycle
           if (prev.some(p => p.id === cap.id)) return prev;
@@ -2101,6 +2148,10 @@ export default function App() {
 
         if (shouldUpdate) updateCapsule(cap.id, { reminder: nextReminder as any });
       });
+
+      if (hasNewFired) {
+        playNotificationSound();
+      }
     };
 
     // Run instantly on initialization
