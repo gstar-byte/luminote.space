@@ -1287,7 +1287,7 @@ export default function App() {
   const editingCapsuleRef = useRef<Capsule | null>(null);
   editingCapsuleRef.current = editingCapsule;
   const [isMarkdownPreview, setIsMarkdownPreview] = useState(false);
-  const [editMode, setEditMode] = useState<'plain' | 'rich' | 'markdown'>('plain');
+  const [editMode, setEditMode] = useState<'plain' | 'rich' | 'markdown'>('rich');
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isUploadingMediaRef = useRef(false);
 
@@ -2960,7 +2960,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="p-5 md:p-8 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
+                <div className="p-4 md:p-6 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
                   {editingCapsule.attachments && editingCapsule.attachments.filter(att => att.type === 'video').length > 0 && (
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       {editingCapsule.attachments.filter(att => att.type === 'video').map((att, idx) => (
@@ -2981,9 +2981,9 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full pt-2 pb-16 md:pb-20">
+                  <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full pt-1 pb-4 md:pb-6">
                     {/* Pill Switcher outside the lined paper background */}
-                    <div className="flex justify-end mb-3 shrink-0">
+                    <div className="flex justify-end mb-2 shrink-0">
                       <div className="flex bg-[#F2F2F7] dark:bg-[#2C2C2E] p-0.5 rounded-xl border border-black/5 dark:border-white/5 relative z-10">
                         <button
                           type="button"
@@ -3023,6 +3023,36 @@ export default function App() {
                         readOnly={false}
                         autoFocus={true}
                       />
+                    </div>
+
+                    {/* 分类与标签输入框：双向绑定已有的 editDetailCategory & editDetailTags */}
+                    <div className="flex flex-col sm:flex-row gap-3 mt-4 shrink-0">
+                      <div className="flex-1">
+                        <label className="block text-[10px] font-black text-[#8E8E93] uppercase tracking-widest mb-1.5 ml-1">Category</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Work, Ideas"
+                          value={editDetailCategory}
+                          onChange={(e) => {
+                            setEditDetailCategory(e.target.value);
+                            editDetailCategoryRef.current = e.target.value;
+                          }}
+                          className="w-full px-4 py-2.5 bg-[#F2F2F7] border border-transparent focus:border-[#007AFF] focus:bg-white rounded-2xl text-xs font-bold transition-all outline-none text-[#1D1D1F] dark:text-white dark:bg-[#2C2C2E] dark:focus:bg-[#1C1C1E]"
+                        />
+                      </div>
+                      <div className="flex-[2]">
+                        <label className="block text-[10px] font-black text-[#8E8E93] uppercase tracking-widest mb-1.5 ml-1">Tags (comma separated)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. design, slide, coding"
+                          value={editDetailTags}
+                          onChange={(e) => {
+                            setEditDetailTags(e.target.value);
+                            editDetailTagsRef.current = e.target.value;
+                          }}
+                          className="w-full px-4 py-2.5 bg-[#F2F2F7] border border-transparent focus:border-[#007AFF] focus:bg-white rounded-2xl text-xs font-bold transition-all outline-none text-[#1D1D1F] dark:text-white dark:bg-[#2C2C2E] dark:focus:bg-[#1C1C1E]"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -4265,16 +4295,11 @@ const CapsuleItem = memo(function CapsuleItem({
                   </button>
                 </div>
                 <label
-                  className="flex items-center gap-2.5 py-1.5 px-2 hover:bg-[#F2F2F7] rounded-xl cursor-pointer transition-colors relative"
+                  className="flex items-center gap-2.5 py-1.5 px-2 hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] rounded-xl cursor-pointer transition-colors relative"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <span
-                    className="w-7 h-7 rounded-full shadow-sm shrink-0 border border-black/5 grid place-items-center"
-                    style={{ background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)' }}
-                  >
-                    <Palette size={12} className="text-white drop-shadow" />
-                  </span>
-                  <span className="text-xs font-bold text-[#1D1D1F]">Custom color</span>
+                  <span className="text-lg select-none shrink-0 leading-none">🎨</span>
+                  <span className="text-xs font-bold text-[#1D1D1F] dark:text-[#F2F2F7]">Custom color</span>
 
                   {/* 当前自定义颜色的圆形预览块，替代原生取色器外观 */}
                   <span

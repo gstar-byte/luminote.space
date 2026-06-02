@@ -93,6 +93,156 @@ function stripHtml(html: string): string {
   return (tmp.textContent || tmp.innerText || '').trim();
 }
 
+// Convert HTML to Markdown format
+function htmlToMarkdown(html: string): string {
+  if (!html) return '';
+  if (typeof document === 'undefined') return html;
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+
+  function parseNode(node: Node): string {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.textContent || '';
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return '';
+    }
+    const el = node as HTMLElement;
+    const tagName = el.tagName.toLowerCase();
+    
+    let childrenText = '';
+    el.childNodes.forEach(child => {
+      childrenText += parseNode(child);
+    });
+
+    switch (tagName) {
+      case 'h1': return `# ${childrenText.trim()}\n\n`;
+      case 'h2': return `## ${childrenText.trim()}\n\n`;
+      case 'h3': return `### ${childrenText.trim()}\n\n`;
+      case 'p': return `${childrenText.trim()}\n\n`;
+      case 'br': return `\n`;
+      case 'strong':
+      case 'b': return `**${childrenText}**`;
+      case 'em':
+      case 'i': return `*${childrenText}*`;
+      case 'u': return `++${childrenText}++`;
+      case 's':
+      case 'del': return `~~${childrenText}~~`;
+      case 'blockquote': return `> ${childrenText.trim()}\n\n`;
+      case 'li': {
+        const parent = el.parentElement;
+        const isOrdered = parent && parent.tagName.toLowerCase() === 'ol';
+        if (isOrdered) {
+          const index = Array.from(parent.children).indexOf(el) + 1;
+          return `${index}. ${childrenText.trim()}\n`;
+        }
+        return `- ${childrenText.trim()}\n`;
+      }
+      case 'ul':
+      case 'ol': return `${childrenText}\n`;
+      case 'pre': {
+        const code = el.querySelector('code');
+        const codeText = code ? code.textContent : el.textContent;
+        return `\`\`\`\n${codeText}\n\`\`\`\n\n`;
+      }
+      case 'code': return `\`${childrenText}\``;
+      case 'a': return `[${childrenText}](${el.getAttribute('href') || ''})`;
+      case 'img': {
+        const src = el.getAttribute('src') || '';
+        const alt = el.getAttribute('alt') || 'Image';
+        return `![${alt}](${src})`;
+      }
+      default: return childrenText;
+    }
+  }
+
+  return parseNode(temp).replace(/\n{3,}/g, '\n\n').trim();
+}
+
+// Convert Markdown to HTML format
+function markdownToHtml(md: string): string {
+  if (!md) return '';
+  let html = md;
+  // Escape HTML tags to prevent broken nodes
+  html = html
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  
+  // Custom underline syntax: ++text++ -> <u>text</u>
+  html = html.replace(/\+\+([^\+]+)\+\+/g, '<u>$1</u>');
+  // Bold
+  html = html.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+  // Italic
+  html = html.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
+  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+  // Strikethrough
+  html = html.replace(/~~([^~]+)~~/g, '<s>$1</s>');
+  // Code blocks
+  html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  
+  // Headings
+  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+  
+  // Blockquotes
+  html = html.replace(/^&gt; (.*$)/gim, '<blockquote>$1</blockquote>');
+  
+  // Images
+  html = html.replace(/!\[([^\]]*)\]\s*\(([\s\S]+?)\)/g, (match, alt, src) => {
+    return `<img src="${src.trim()}" alt="${alt}" />`;
+  });
+  // Links
+  html = html.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2">$1</a>');
+
+  // Lists
+  html = html.replace(/^\s*[-\*\+] (.*$)/gim, '<li>$1</li>');
+  html = html.replace(/^\s*\d+\. (.*$)/gim, '<li>$1</li>');
+
+  const lines = html.split('\n');
+  let inList = false;
+  const outputLines: string[] = [];
+
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (inList) {
+        outputLines.push('</ul>');
+        inList = false;
+      }
+      return;
+    }
+    
+    const isLi = /^<li>.*<\/li>$/.test(trimmed);
+    if (isLi) {
+      if (!inList) {
+        inList = true;
+        outputLines.push('<ul>');
+      }
+      outputLines.push(trimmed);
+    } else {
+      if (inList) {
+        outputLines.push('</ul>');
+        inList = false;
+      }
+      if (!trimmed.startsWith('<h') && !trimmed.startsWith('<pre') && !trimmed.startsWith('<block') && !trimmed.startsWith('<ul') && !trimmed.startsWith('<ol')) {
+        outputLines.push(`<p>${trimmed}</p>`);
+      } else {
+        outputLines.push(trimmed);
+      }
+    }
+  });
+  if (inList) {
+    outputLines.push('</ul>');
+  }
+
+  return outputLines.join('\n');
+}
+
 // ---------------------------------------------------------------------------
 // Toolbar button
 // ---------------------------------------------------------------------------
@@ -144,7 +294,7 @@ export function CapsuleEditor({
   editMode: externalEditMode,
   onModeChange,
 }: CapsuleEditorProps) {
-  const [localEditMode, setLocalEditMode] = useState<'plain' | 'rich' | 'markdown'>('plain');
+  const [localEditMode, setLocalEditMode] = useState<'plain' | 'rich' | 'markdown'>('rich');
   const editMode = externalEditMode ?? localEditMode;
   const setEditMode = onModeChange ?? setLocalEditMode;
 
@@ -229,11 +379,19 @@ export function CapsuleEditor({
     const prev = prevModeRef.current;
     if (prev === editMode) return;
     if (editMode === 'plain') {
-      // 进入纯文本：把当前文档序列化为 HTML 源码展示。
-      setPlainSource(editor.getHTML());
+      // 进入纯文本：如果前一个模式是 markdown，展示 markdown 源码，否则展示 HTML 源码。
+      if (prev === 'markdown') {
+        setPlainSource(htmlToMarkdown(editor.getHTML()));
+      } else {
+        setPlainSource(editor.getHTML());
+      }
     } else if (prev === 'plain') {
-      // 离开纯文本：把源码解析回可视化文档（Tiptap 原生支持 HTML 解析）。
-      editor.commands.setContent(plainSource || '');
+      // 离开纯文本：如果新模式是 markdown，把 plainSource (此时是 markdown) 转为 HTML 后喂给 Tiptap。
+      if (editMode === 'markdown') {
+        editor.commands.setContent(markdownToHtml(plainSource || ''));
+      } else {
+        editor.commands.setContent(plainSource || '');
+      }
       const json = JSON.stringify(editor.getJSON());
       lastLoadedContentRef.current = json;
       onChange(json, editor.getText());
