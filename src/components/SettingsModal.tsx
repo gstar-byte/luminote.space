@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { PAYWALL_ACTIVE } from '../featureFlags';
+import { showSystemNotification } from '../lib/notifications';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -66,12 +67,10 @@ export function SettingsModal({
   };
 
   const sendTestNotification = () => {
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification('🔔 Lumi Note Test', {
-        body: 'System alerts are fully configured and active!',
-        icon: '/favicon-192.png'
-      });
-    }
+    showSystemNotification('🔔 Lumi Note Test', {
+      body: 'System alerts are fully configured and active!',
+      icon: '/favicon-192.png'
+    });
   };
 
   if (!isOpen) return null;
