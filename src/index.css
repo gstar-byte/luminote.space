@@ -84,6 +84,11 @@
 .paper-preview {
   position: relative;
   z-index: 1;
+  background-color: #FFFBE6 !important;
+  background-image: linear-gradient(rgba(240, 230, 192, 0) 31px, #F0E6C0 31px) !important;
+  background-size: 100% 2rem !important;
+  background-attachment: local !important;
+  background-position-y: 1rem !important;
 }
 
 /* Image handling inside note */

@@ -2213,9 +2213,9 @@ export default function App() {
 
   /** Category, tag, or Starred narrowing (top pill shows N/A in some cases). */
   const isSidebarListScopeActive = categoryFilter !== 'all' || tagFilter !== null || filter === 'starred';
-  /** Any active list filter: type, category, or tag (red dot on sidebar controls). */
+  /** Any active list filter: type, category, tag, or active search (red dot on sidebar controls). */
   const isSidebarScopeFilterActive =
-    categoryFilter !== 'all' || tagFilter !== null || filter !== 'all';
+    categoryFilter !== 'all' || tagFilter !== null || filter !== 'all' || searchQuery.trim() !== '';
   /** Top pill shows N/A when sidebar drives scope; Archived/Trash stay explicit. */
   const topFilterTriggerLabel =
     isSidebarListScopeActive && filter !== 'archived' && filter !== 'trash'

@@ -16,6 +16,20 @@ function toLocalISOString(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function getNextDayOfWeekAndTime(dayOfWeek: number, hours: number): Date {
+  const now = new Date();
+  const result = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, 0, 0, 0);
+  const currentDay = now.getDay();
+  let daysToAdd = (dayOfWeek - currentDay + 7) % 7;
+  
+  if (daysToAdd === 0 && result.getTime() <= now.getTime()) {
+    daysToAdd = 7;
+  }
+  
+  result.setDate(result.getDate() + daysToAdd);
+  return result;
+}
+
 export function ClarificationPill({ capsule, onResolve, onUpdate }: ClarificationPillProps) {
   if (!capsule.isAmbiguous) return null;
 
@@ -32,7 +46,7 @@ export function ClarificationPill({ capsule, onResolve, onUpdate }: Clarificatio
   const [withStar, setWithStar] = useState(() => !!capsule.isStarred);
   const [withPin, setWithPin] = useState(() => !!capsule.isPinned);
 
-  const handleQuickSelect = (type: 'today' | 'tomorrow' | 'dayafter' | 'todo' | 'everyday' | 'everyweek' | 'justnote') => {
+  const handleQuickSelect = (type: 'today' | 'tomorrow' | 'dayafter' | 'sat-am' | 'sat-pm' | 'sun-am' | 'sun-pm' | 'todo' | 'everyday' | 'everyweek' | 'justnote') => {
     const now = new Date();
     const baseUpdates: Partial<Capsule> = {
       isAmbiguous: false,
@@ -64,6 +78,34 @@ export function ClarificationPill({ capsule, onResolve, onUpdate }: Clarificatio
         ...baseUpdates,
         isTodo: true,
         reminder: { type: 'once', date: dayAfterNine.getTime() },
+      });
+    } else if (type === 'sat-am') {
+      const target = getNextDayOfWeekAndTime(6, 9);
+      onResolve({
+        ...baseUpdates,
+        isTodo: true,
+        reminder: { type: 'once', date: target.getTime() },
+      });
+    } else if (type === 'sat-pm') {
+      const target = getNextDayOfWeekAndTime(6, 15);
+      onResolve({
+        ...baseUpdates,
+        isTodo: true,
+        reminder: { type: 'once', date: target.getTime() },
+      });
+    } else if (type === 'sun-am') {
+      const target = getNextDayOfWeekAndTime(0, 9);
+      onResolve({
+        ...baseUpdates,
+        isTodo: true,
+        reminder: { type: 'once', date: target.getTime() },
+      });
+    } else if (type === 'sun-pm') {
+      const target = getNextDayOfWeekAndTime(0, 15);
+      onResolve({
+        ...baseUpdates,
+        isTodo: true,
+        reminder: { type: 'once', date: target.getTime() },
       });
     } else if (type === 'todo') {
       onResolve({
@@ -177,6 +219,42 @@ export function ClarificationPill({ capsule, onResolve, onUpdate }: Clarificatio
           className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#007AFF] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
         >
           <span>Day After 9 AM</span>
+        </motion.button>
+
+        <motion.button
+          whileHover={{ scale: 1.02, backgroundColor: 'rgba(0, 122, 255, 0.08)' }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => handleQuickSelect('sat-am')}
+          className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#007AFF] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
+        >
+          <span>Sat 9 AM</span>
+        </motion.button>
+
+        <motion.button
+          whileHover={{ scale: 1.02, backgroundColor: 'rgba(0, 122, 255, 0.08)' }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => handleQuickSelect('sat-pm')}
+          className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#007AFF] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
+        >
+          <span>Sat 3 PM</span>
+        </motion.button>
+
+        <motion.button
+          whileHover={{ scale: 1.02, backgroundColor: 'rgba(0, 122, 255, 0.08)' }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => handleQuickSelect('sun-am')}
+          className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#007AFF] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
+        >
+          <span>Sun 9 AM</span>
+        </motion.button>
+
+        <motion.button
+          whileHover={{ scale: 1.02, backgroundColor: 'rgba(0, 122, 255, 0.08)' }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => handleQuickSelect('sun-pm')}
+          className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-[#2C2C2E] text-[#007AFF] text-[11px] font-bold rounded-xl shadow-sm border border-[#E5E5EA] dark:border-[#3A3A3C] transition-colors"
+        >
+          <span>Sun 3 PM</span>
         </motion.button>
 
         {/* Repeat Loops */}

@@ -649,14 +649,10 @@ export function CapsuleEditor({
 
           {/* 纸张容器 */}
           <div 
-            className="w-full flex-1 min-h-[220px] rounded-xl bg-[#FFFBE6] paper-preview p-4 relative"
+            className="w-full flex-1 min-h-[220px] rounded-xl paper-preview p-4 relative"
             style={{ 
-              backgroundImage: 'linear-gradient(to bottom, transparent, transparent 31px, #F0E6C0 31px, #F0E6C0 32px)', 
-              backgroundSize: '100% 2rem', 
               lineHeight: '2rem',
-              backgroundAttachment: 'local',
-              paddingTop: '1rem',
-              backgroundPositionY: '1rem'
+              paddingTop: '1rem'
             }}
           >
             {/* Tiptap body — 点击图片通过 NodeSelection 高亮选中 */}
@@ -719,14 +715,10 @@ export function CapsuleEditor({
       ) : (
         /* 纯文本模式：展示底层源码（HTML 标记），同样包裹在信纸背景中 */
         <div 
-          className="w-full flex-1 min-h-[220px] rounded-xl bg-[#FFFBE6] paper-preview p-4 relative"
+          className="w-full flex-1 min-h-[220px] rounded-xl paper-preview p-4 relative"
           style={{ 
-            backgroundImage: 'linear-gradient(to bottom, transparent, transparent 31px, #F0E6C0 31px, #F0E6C0 32px)', 
-            backgroundSize: '100% 2rem', 
             lineHeight: '2rem',
-            backgroundAttachment: 'local',
-            paddingTop: '1rem',
-            backgroundPositionY: '1rem'
+            paddingTop: '1rem'
           }}
         >
           <div className="capsule-plain-editor w-full bg-transparent border-none shadow-none overflow-hidden">
