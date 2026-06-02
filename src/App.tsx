@@ -2037,10 +2037,18 @@ export default function App() {
   // 等待 Firebase Auth 初始化完成，避免 localStorage 缓存导致的闪烁跳转
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center h-[100dvh] bg-[#F8F9FA]">
-        <div className="flex flex-col items-center gap-4">
-          <AppLogo className="w-16 h-16 animate-pulse" />
-          <div className="w-6 h-6 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+      <div className="flex flex-col items-center justify-center h-[100dvh] bg-[#F8F9FA] dark:bg-[#1C1C1E] transition-colors duration-300">
+        <div className="flex flex-col items-center gap-6 max-w-xs text-center animate-in fade-in duration-700">
+          <div className="w-20 h-20 bg-white dark:bg-[#2C2C2E] rounded-3xl shadow-xl flex items-center justify-center border border-black/5 dark:border-white/5 animate-pulse">
+            <AppLogo className="w-12 h-12" />
+          </div>
+          <div className="space-y-2 mt-2">
+            <h2 className="text-lg font-bold text-[#1D1D1F] dark:text-[#F2F2F7] tracking-tight">Initializing Lumi Note</h2>
+            <p className="text-xs font-semibold text-[#8E8E93] leading-relaxed px-4">
+              Connecting to secure sync services. This may take a moment depending on your network.
+            </p>
+          </div>
+          <div className="w-5 h-5 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mt-2" />
         </div>
       </div>
     );
@@ -4256,24 +4264,30 @@ const CapsuleItem = memo(function CapsuleItem({
                     <RotateCcw size={12} />
                   </button>
                 </div>
-                {/* 自定义取色：原生取色器，选完即时生效（无需 Apply） */}
                 <label
-                  className="flex items-center gap-2 pt-1 cursor-pointer"
+                  className="flex items-center gap-2.5 py-1.5 px-2 hover:bg-[#F2F2F7] rounded-xl cursor-pointer transition-colors relative"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <span
-                    className="w-7 h-7 rounded-full shadow-sm shrink-0 border border-black/10 grid place-items-center"
+                    className="w-7 h-7 rounded-full shadow-sm shrink-0 border border-black/5 grid place-items-center"
                     style={{ background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)' }}
                   >
-                    <Palette size={13} className="text-white drop-shadow" />
+                    <Palette size={12} className="text-white drop-shadow" />
                   </span>
-                  <span className="text-xs font-medium text-[#1D1D1F]">Custom color</span>
+                  <span className="text-xs font-bold text-[#1D1D1F]">Custom color</span>
+
+                  {/* 当前自定义颜色的圆形预览块，替代原生取色器外观 */}
+                  <span
+                    className="w-5 h-5 rounded-full border border-black/10 shadow-sm ml-auto shrink-0 transition-transform hover:scale-105"
+                    style={{ backgroundColor: capsule.color || '#FFD60A' }}
+                  />
+
+                  {/* 隐藏的真实 input：点击 label 时浏览器会自动调用其 click 动作 */}
                   <input
                     type="color"
                     value={/^#[0-9a-fA-F]{6}$/.test(customColor) ? customColor : '#FFD60A'}
-                    onClick={(e) => e.stopPropagation()}
                     onChange={(e) => { setCustomColor(e.target.value); void onUpdate({ color: e.target.value }); }}
-                    className="w-7 h-7 ml-auto p-0 border border-[#E5E5EA] rounded-md bg-transparent cursor-pointer shrink-0"
+                    className="absolute opacity-0 pointer-events-none w-0 h-0"
                   />
                 </label>
               </div>
