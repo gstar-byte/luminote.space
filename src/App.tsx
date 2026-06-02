@@ -1411,7 +1411,7 @@ export default function App() {
       console.log('[handleCreate] saved doc id:', docRef.id);
       
       // Manage ClarificationPill state
-      if (isAmbiguous) {
+      if (shouldShowPill) {
         setPendingClarificationCapsuleId(docRef.id);
       } else {
         setPendingClarificationCapsuleId(null);
@@ -2069,6 +2069,26 @@ export default function App() {
             <h2 className="text-lg font-bold text-[#1D1D1F] dark:text-[#F2F2F7] tracking-tight">Initializing Lumi Note</h2>
             <p className="text-xs font-semibold text-[#8E8E93] leading-relaxed px-4">
               Connecting to secure sync services. This may take a moment depending on your network.
+            </p>
+          </div>
+          <div className="w-5 h-5 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mt-2" />
+        </div>
+      </div>
+    );
+  }
+
+  // 登录成功后，从云端拉取/同步历史便签时的友好加载提示，防止白屏等待
+  if (user && dataLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[100dvh] bg-[#F8F9FA] dark:bg-[#1C1C1E] transition-colors duration-300">
+        <div className="flex flex-col items-center gap-6 max-w-xs text-center animate-in fade-in duration-700">
+          <div className="w-20 h-20 bg-white dark:bg-[#2C2C2E] rounded-3xl shadow-xl flex items-center justify-center border border-black/5 dark:border-white/5 animate-pulse">
+            <AppLogo className="w-12 h-12" />
+          </div>
+          <div className="space-y-2 mt-2">
+            <h2 className="text-lg font-bold text-[#1D1D1F] dark:text-[#F2F2F7] tracking-tight">Syncing Your Notes</h2>
+            <p className="text-xs font-semibold text-[#8E8E93] leading-relaxed px-4">
+              Retrieving your saved notebooks from cloud database. Just a moment.
             </p>
           </div>
           <div className="w-5 h-5 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mt-2" />
