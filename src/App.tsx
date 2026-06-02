@@ -34,6 +34,7 @@ import {
   Edit2,
   LogIn,
   LogOut,
+  Settings,
   User as UserIcon,
   Image as ImageIcon,
   Video,
@@ -2879,6 +2880,19 @@ export default function App() {
            >
              <RefreshCw size={14} className={isSyncing ? "animate-spin text-[#007AFF]" : ""} />
              {isSidebarOpen && <span>{isSyncing ? 'Syncing…' : 'Manual Sync'}</span>}
+           </button>
+           <button
+             type="button"
+             onClick={() => setShowSettingsModal(true)}
+             aria-label="Settings"
+             title="Settings"
+             className={cn(
+               "w-full flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold text-[#8E8E93] hover:text-[#007AFF] hover:bg-[#007AFF]/10 transition-all",
+               isSidebarOpen ? "px-4 justify-start" : "px-0 justify-center"
+             )}
+           >
+             <Settings size={14} />
+             {isSidebarOpen && <span>Settings</span>}
            </button>
            <div className="bg-[#F2F2F7] rounded-2xl p-3 flex items-center gap-3 group">
               {user.photoURL ? (
