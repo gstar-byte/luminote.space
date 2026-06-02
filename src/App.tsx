@@ -567,6 +567,41 @@ export default function App() {
     }
   }, [isCaptureCollapsed]);
 
+  // 点击澄清面板外部自动消失并保存定型为普通便签
+  useEffect(() => {
+    if (!pendingClarificationCapsuleId) return;
+
+    const handleClarificationOutsideClick = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // 如果点击的是澄清面板内部，不能关闭
+      const pillEl = document.querySelector('.clarification-pill-outer');
+      if (pillEl && pillEl.contains(target)) return;
+
+      // 如果点击的是底部的输入控制台（输入框、麦克风等），不关闭，允许用户继续输入
+      if (
+        target.closest('footer') ||
+        target.closest('[id^="quick-capture"]') ||
+        target.closest('.fixed.bottom-6')
+      ) {
+        return;
+      }
+      
+      // 点击外面其他地方：将 isAmbiguous 置为 false，让面板消失定型
+      console.log('[OutsideClick] Clicking outside ClarificationPill, resolving as plain note.');
+      updateCapsule(pendingClarificationCapsuleId, { isAmbiguous: false });
+      setPendingClarificationCapsuleId(null);
+      setTemporaryPendingCapsule(null);
+    };
+
+    document.addEventListener('mousedown', handleClarificationOutsideClick);
+    document.addEventListener('touchstart', handleClarificationOutsideClick, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleClarificationOutsideClick);
+      document.removeEventListener('touchstart', handleClarificationOutsideClick);
+    };
+  }, [pendingClarificationCapsuleId]);
+
   const showToast = useCallback((msg: string, type: 'info' | 'success' | 'error' = 'info') => {
     if (toastTimerRef.current) {
       clearTimeout(toastTimerRef.current);
@@ -3651,7 +3686,7 @@ export default function App() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 30, scale: 0.95 }}
                   transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-                  className="absolute z-[200] left-1/2 -translate-x-1/2 w-full max-w-[580px] px-4 pointer-events-auto shadow-[0_12px_40px_rgba(0,0,0,0.15)]"
+                  className="absolute z-[200] left-1/2 -translate-x-1/2 w-full max-w-[580px] px-4 pointer-events-auto shadow-[0_12px_40px_rgba(0,0,0,0.15)] clarification-pill-outer"
                   style={{
                     bottom: isCaptureCollapsed ? '96px' : '156px'
                   }}
@@ -3662,6 +3697,9 @@ export default function App() {
                       updateCapsule(pendingCapsule.id, updates);
                       setPendingClarificationCapsuleId(null);
                       setTemporaryPendingCapsule(null);
+                    }}
+                    onUpdate={(updates) => {
+                      updateCapsule(pendingCapsule.id, updates);
                     }}
                   />
                 </motion.div>
@@ -4327,6 +4365,14 @@ const CapsuleItem = memo(function CapsuleItem({
           }
         }}
       >
+        {capsule.isAmbiguous && (
+          <div className="absolute inset-0 bg-black/5 dark:bg-white/5 backdrop-blur-[3.5px] z-10 flex flex-col items-center justify-center rounded-2xl md:rounded-[24px] pointer-events-none transition-all duration-300">
+            <div className="bg-white/90 dark:bg-[#1C1C1E]/95 backdrop-blur-md px-3 py-1.5 rounded-full border border-black/5 dark:border-white/10 shadow-lg flex items-center gap-1.5 animate-pulse">
+              <Sparkles size={11} className="text-[#007AFF] fill-[#007AFF]/25" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-[#007AFF]">Intent Pending</span>
+            </div>
+          </div>
+        )}
         {(capsule.isPinned || capsule.isStarred || (capsule.reminder && capsule.reminder.type !== 'none' && capsule.reminder.date)) && (
           <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
             {/* 置顶 / 星标：常显，无悬浮动效 */}

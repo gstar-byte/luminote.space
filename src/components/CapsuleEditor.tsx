@@ -651,12 +651,12 @@ export function CapsuleEditor({
           <div 
             className="w-full flex-1 min-h-[220px] rounded-xl bg-[#FFFBE6] paper-preview p-4 relative"
             style={{ 
-              backgroundImage: 'repeating-linear-gradient(to bottom, #FFFBE6, #FFFBE6 calc(2rem - 1px), #F0E6C0 calc(2rem - 1px), #F0E6C0 2rem)', 
+              backgroundImage: 'linear-gradient(to bottom, transparent, transparent 31px, #F0E6C0 31px, #F0E6C0 32px)', 
               backgroundSize: '100% 2rem', 
               lineHeight: '2rem',
               backgroundAttachment: 'local',
-              paddingTop: '1.5rem',
-              backgroundPositionY: '1.5rem'
+              paddingTop: '1rem',
+              backgroundPositionY: '1rem'
             }}
           >
             {/* Tiptap body — 点击图片通过 NodeSelection 高亮选中 */}
@@ -721,12 +721,12 @@ export function CapsuleEditor({
         <div 
           className="w-full flex-1 min-h-[220px] rounded-xl bg-[#FFFBE6] paper-preview p-4 relative"
           style={{ 
-            backgroundImage: 'repeating-linear-gradient(to bottom, #FFFBE6, #FFFBE6 calc(2rem - 1px), #F0E6C0 calc(2rem - 1px), #F0E6C0 2rem)', 
+            backgroundImage: 'linear-gradient(to bottom, transparent, transparent 31px, #F0E6C0 31px, #F0E6C0 32px)', 
             backgroundSize: '100% 2rem', 
             lineHeight: '2rem',
             backgroundAttachment: 'local',
-            paddingTop: '1.5rem',
-            backgroundPositionY: '1.5rem'
+            paddingTop: '1rem',
+            backgroundPositionY: '1rem'
           }}
         >
           <div className="capsule-plain-editor w-full bg-transparent border-none shadow-none overflow-hidden">

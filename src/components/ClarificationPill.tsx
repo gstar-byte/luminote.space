@@ -6,6 +6,7 @@ import { Capsule } from '../types';
 interface ClarificationPillProps {
   capsule: Capsule;
   onResolve: (updates: Partial<Capsule>) => void;
+  onUpdate?: (updates: Partial<Capsule>) => void;
 }
 
 type RepeatType = 'none' | 'once' | 'daily' | 'weekly' | 'monthly';
@@ -15,7 +16,7 @@ function toLocalISOString(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function ClarificationPill({ capsule, onResolve }: ClarificationPillProps) {
+export function ClarificationPill({ capsule, onResolve, onUpdate }: ClarificationPillProps) {
   if (!capsule.isAmbiguous) return null;
 
   const [showCustom, setShowCustom] = useState(false);
@@ -28,8 +29,8 @@ export function ClarificationPill({ capsule, onResolve }: ClarificationPillProps
   const [customStarred, setCustomStarred] = useState(false);
   const [customPinned, setCustomPinned] = useState(false);
 
-  const [withStar, setWithStar] = useState(false);
-  const [withPin, setWithPin] = useState(false);
+  const [withStar, setWithStar] = useState(() => !!capsule.isStarred);
+  const [withPin, setWithPin] = useState(() => !!capsule.isPinned);
 
   const handleQuickSelect = (type: 'today' | 'tomorrow' | 'dayafter' | 'todo' | 'everyday' | 'everyweek' | 'justnote') => {
     const now = new Date();
@@ -235,7 +236,11 @@ export function ClarificationPill({ capsule, onResolve }: ClarificationPillProps
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => setWithStar(!withStar)}
+          onClick={() => {
+            const nextVal = !withStar;
+            setWithStar(nextVal);
+            onUpdate?.({ isStarred: nextVal });
+          }}
           className={`flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold rounded-xl shadow-sm border transition-colors ${
             withStar
               ? 'bg-[#FFCC00]/10 text-[#FF9500] border-[#FFCC00]/30'
@@ -249,7 +254,11 @@ export function ClarificationPill({ capsule, onResolve }: ClarificationPillProps
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => setWithPin(!withPin)}
+          onClick={() => {
+            const nextVal = !withPin;
+            setWithPin(nextVal);
+            onUpdate?.({ isPinned: nextVal });
+          }}
           className={`flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold rounded-xl shadow-sm border transition-colors ${
             withPin
               ? 'bg-[#007AFF]/10 text-[#007AFF] border-[#007AFF]/30'
