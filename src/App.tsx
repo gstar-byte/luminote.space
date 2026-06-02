@@ -11,6 +11,8 @@ import {
   X, 
   Clock,
   Zap,
+  Type,
+  Keyboard,
   Lightbulb,
   FileText,
   AlertCircle,
@@ -425,6 +427,21 @@ export default function App() {
     return safeLocalStorageGet(ONBOARDING_STORAGE_KEY) === 'true' || user.onboarded === true;
   }, [user]);
   const [isCaptureCollapsed, setIsCaptureCollapsed] = useState(true);
+  const [quickCaptureMode, setQuickCaptureMode] = useState<'buttons' | 'text' | 'voice'>('buttons');
+  const [quickText, setQuickText] = useState('');
+
+  useEffect(() => {
+    if (!isListening) {
+      setQuickCaptureMode('buttons');
+    }
+  }, [isListening]);
+
+  useEffect(() => {
+    if (isCaptureCollapsed) {
+      setQuickCaptureMode('buttons');
+      setQuickText('');
+    }
+  }, [isCaptureCollapsed]);
   const [authLoading, setAuthLoading] = useState(true);
   const [capsules, setCapsules] = useState<Capsule[]>([
     {
@@ -1344,7 +1361,7 @@ export default function App() {
       // Use NLP router (DeepSeek -> Local fallback)
       const parsed = await categorizeThought(text);
       console.log('[handleCreate] parsed result:', JSON.stringify(parsed));
-      const { category, tags, refinedContent, isTodo, reminder, isAmbiguous, clarificationPrompt, isStarred, isPinned } = parsed;
+      const { category, tags, refinedContent, isTodo, reminder, isStarred, isPinned } = parsed;
       
       // Select a color ensuring differentiation within last 8 notes
       const recent = recentColorsRef.current;
@@ -1357,6 +1374,12 @@ export default function App() {
       if (recent.length > 7) recent.shift(); // keep last 7
       const randomColor = PRESET_COLORS[colorIndex];
       
+      const hasReminder = Boolean(reminder && typeof reminder === 'object' && reminder.type && reminder.type !== 'none');
+      const hasStar = Boolean(isStarred);
+      const hasPin = Boolean(isPinned);
+      const hasClearIntent = (isTodo && hasReminder) || hasStar || hasPin;
+      const shouldShowPill = !hasClearIntent;
+
       const newCapsuleData: Record<string, unknown> = {
         userId: user?.uid,
         content: refinedContent,
@@ -1374,8 +1397,8 @@ export default function App() {
         isDeleted: false,
         reminder: reminder || null,
         color: randomColor,
-        isAmbiguous: isAmbiguous || false,
-        clarificationPrompt: clarificationPrompt || null
+        isAmbiguous: shouldShowPill,
+        clarificationPrompt: shouldShowPill ? '要为该便签快速设置提醒、星标、置顶或仅作为记事？' : null
       };
       if (category) newCapsuleData.category = category;
       if (tags && tags.length > 0) newCapsuleData.tags = tags;
@@ -3394,18 +3417,128 @@ export default function App() {
         {/* Floating Quick Capture Trigger */}
         <AnimatePresence>
           {isCaptureCollapsed && (
-            <motion.button
+            <motion.div
               initial={{ opacity: 0, y: 50, scale: 0.8 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 50, scale: 0.8 }}
               transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              onClick={() => setIsCaptureCollapsed(false)}
-              className="fixed bottom-6 -translate-x-1/2 z-[80] flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-[#007AFF] to-[#00C6FF] text-white font-bold text-xs shadow-2xl border border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              style={isSidebarOpen && !isMobile ? { left: 'calc(50% + 120px)' } : { left: '50%' }}
+              className="fixed bottom-6 -translate-x-1/2 z-[80] flex items-center shadow-2xl border border-white/20 select-none"
+              style={{
+                left: isSidebarOpen && !isMobile ? 'calc(50% + 120px)' : '50%',
+                borderRadius: '9999px',
+                padding: '2px',
+                background: quickCaptureMode === 'voice' ? '#EF4444' : 'linear-gradient(135deg, #007AFF 0%, #00C6FF 100%)'
+              }}
             >
-              <Zap size={14} className="animate-pulse" />
-              <span>Quick Capture</span>
-            </motion.button>
+              {quickCaptureMode === 'buttons' && (
+                <div className="flex items-center gap-1 px-1 py-1 text-white font-bold text-xs">
+                  <button
+                    type="button"
+                    title="Quick text capture"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setQuickCaptureMode('text');
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-full hover:bg-white/10 active:scale-95 transition-all cursor-pointer text-white font-black tracking-tight"
+                  >
+                    <Keyboard size={14} />
+                    <span>Text</span>
+                  </button>
+                  
+                  <div className="w-[1px] h-4 bg-white/20 animate-pulse" />
+                  
+                  <button
+                    type="button"
+                    title="Quick voice capture"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!hasPremiumAccess(user)) {
+                        alert("Unlimited Voice Transcription requires Lumi Note Pro.");
+                        setShowPremiumModal(true);
+                        return;
+                      }
+                      setQuickCaptureMode('voice');
+                      startListening();
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-full hover:bg-white/10 active:scale-95 transition-all cursor-pointer text-white font-black tracking-tight"
+                  >
+                    <Mic size={14} />
+                    <span>Voice</span>
+                  </button>
+                </div>
+              )}
+
+              {quickCaptureMode === 'text' && (
+                <div className="flex items-center gap-2 pl-4 pr-2 py-1 text-white text-xs">
+                  <Keyboard size={14} className="text-white/75 shrink-0" />
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Quick note..."
+                    value={quickText}
+                    onChange={(e) => setQuickText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        if (quickText.trim()) {
+                          handleCreateCapsule(quickText);
+                          setQuickText('');
+                          setQuickCaptureMode('buttons');
+                        }
+                      } else if (e.key === 'Escape') {
+                        setQuickCaptureMode('buttons');
+                      }
+                    }}
+                    className="bg-transparent border-none text-white text-xs placeholder-white/50 focus:ring-0 outline-none w-36 md:w-52 py-1 px-0 shrink"
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (quickText.trim()) {
+                        handleCreateCapsule(quickText);
+                        setQuickText('');
+                        setQuickCaptureMode('buttons');
+                      }
+                    }}
+                    className="p-1.5 rounded-full bg-white/20 text-white hover:bg-white/30 active:scale-90 transition-all cursor-pointer"
+                  >
+                    <Check size={12} strokeWidth={3} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setQuickCaptureMode('buttons');
+                    }}
+                    className="p-1.5 rounded-full bg-white/10 text-white/80 hover:bg-white/20 active:scale-90 transition-all cursor-pointer"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+
+              {quickCaptureMode === 'voice' && (
+                <div className="flex items-center gap-3 pl-4 pr-2 py-1.5 text-white text-xs">
+                  <div className="flex gap-1 items-center shrink-0">
+                    <motion.div animate={{ height: [4, 12, 4] }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-[2.5px] bg-white rounded-full" />
+                    <motion.div animate={{ height: [6, 18, 6] }} transition={{ repeat: Infinity, duration: 0.5, delay: 0.1 }} className="w-[2.5px] bg-white rounded-full" />
+                    <motion.div animate={{ height: [4, 12, 4] }} transition={{ repeat: Infinity, duration: 0.5, delay: 0.2 }} className="w-[2.5px] bg-white rounded-full" />
+                  </div>
+                  <span className="font-black tracking-tight shrink-0 mr-1">Listening...</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      stopListening();
+                      setQuickCaptureMode('buttons');
+                    }}
+                    className="p-1.5 rounded-full bg-white/25 text-white hover:bg-white/35 active:scale-90 transition-all cursor-pointer"
+                  >
+                    <Check size={12} strokeWidth={3} />
+                  </button>
+                </div>
+              )}
+            </motion.div>
           )}
         </AnimatePresence>
       </main>
