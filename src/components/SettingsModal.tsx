@@ -53,6 +53,27 @@ export function SettingsModal({
   const [isConfirmingDowngrade, setIsConfirmingDowngrade] = useState(false);
   const isPro = !!user?.isPremium;
 
+  const [permission, setPermission] = useState<NotificationPermission>(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
+  );
+
+  const requestPermission = () => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      Notification.requestPermission().then((res) => {
+        setPermission(res);
+      });
+    }
+  };
+
+  const sendTestNotification = () => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      new Notification('🔔 Lumi Note Test', {
+        body: 'System alerts are fully configured and active!',
+        icon: '/favicon-192.png'
+      });
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -187,6 +208,51 @@ export function SettingsModal({
                   ) : null}
                 </div>
               </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-4">
+              <span className="text-sm font-bold text-[#8E8E93] uppercase tracking-wider block mb-2">
+                System Notifications
+              </span>
+              {permission === 'granted' ? (
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#34C759] animate-pulse" />
+                    <span className="text-sm font-bold text-[#1D1D1F]">Desktop alerts active</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={sendTestNotification}
+                    className="px-3 py-1.5 bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#007AFF] text-xs font-black rounded-lg transition-colors"
+                  >
+                    Send Test
+                  </button>
+                </div>
+              ) : permission === 'denied' ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#FF3B30]" />
+                    <span className="text-sm font-bold text-[#FF3B30]">Blocked by browser</span>
+                  </div>
+                  <p className="text-xs text-[#8E8E93] leading-relaxed">
+                    Please click the lock icon (🔒) or settings icon in your browser's address bar to re-allow notifications.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#AEAEB2]" />
+                    <span className="text-sm font-bold text-[#8E8E93]">Permission not requested</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={requestPermission}
+                    className="px-3 py-1.5 bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-black rounded-lg shadow-sm transition-colors"
+                  >
+                    Enable Alerts
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="bg-white rounded-2xl overflow-hidden">

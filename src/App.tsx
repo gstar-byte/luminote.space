@@ -1551,6 +1551,11 @@ export default function App() {
       
       const docRef = await addDoc(collection(getDb(), 'capsules'), newCapsuleData);
       console.log('[handleCreate] saved doc id:', docRef.id);
+
+      // Automatically request browser notification permission if a new reminder was created
+      if (hasReminder && window.Notification && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
       
       // Manage ClarificationPill state
       if (shouldShowPill) {
@@ -2865,15 +2870,15 @@ export default function App() {
              type="button"
              onClick={() => { void handleSync(); }}
              disabled={isSyncing}
-             aria-label="Sync notes"
-             title="Sync notes"
+             aria-label="Manual sync"
+             title="Manual sync"
              className={cn(
                "w-full flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold text-[#8E8E93] hover:text-[#007AFF] hover:bg-[#007AFF]/10 transition-all disabled:opacity-60",
                isSidebarOpen ? "px-4 justify-start" : "px-0 justify-center"
              )}
            >
              <RefreshCw size={14} className={isSyncing ? "animate-spin text-[#007AFF]" : ""} />
-             {isSidebarOpen && <span>{isSyncing ? 'Syncing…' : 'Sync'}</span>}
+             {isSidebarOpen && <span>{isSyncing ? 'Syncing…' : 'Manual Sync'}</span>}
            </button>
            <div className="bg-[#F2F2F7] rounded-2xl p-3 flex items-center gap-3 group">
               {user.photoURL ? (
