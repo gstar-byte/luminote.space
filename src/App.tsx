@@ -52,6 +52,7 @@ import {
   Mail, 
   Lock, 
   CheckCircle2, 
+  CloudOff,
   ArrowRight, 
   UserPlus, 
   Apple, 
@@ -174,6 +175,10 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     path
   };
   console.error('Firestore Error (Gracefully handled): ', JSON.stringify(errInfo));
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('luminote-db-error', { detail: errorMsg }));
+  }
 }
 
 function hasActiveReminder(c: Capsule): boolean {
@@ -589,6 +594,7 @@ export default function App() {
   const [lastSyncTime, setLastSyncTime] = useState(Date.now());
   const [dataLoading, setDataLoading] = useState(true);
   const [isSyncFinished, setIsSyncFinished] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [pendingClarificationCapsuleId, setPendingClarificationCapsuleId] = useState<string | null>(null);
   const [temporaryPendingCapsule, setTemporaryPendingCapsule] = useState<Capsule | null>(null);
   const wasCaptureCollapsedBeforeClarification = useRef(true);
@@ -660,6 +666,15 @@ export default function App() {
       toastTimerRef.current = null;
     }, 2500);
   }, []);
+
+  useEffect(() => {
+    const handleDbError = (e: Event) => {
+      const msg = (e as CustomEvent).detail;
+      showToast(`DB Error: ${msg}`, 'error');
+    };
+    window.addEventListener('luminote-db-error', handleDbError);
+    return () => window.removeEventListener('luminote-db-error', handleDbError);
+  }, [showToast]);
 
   const handleSync = useCallback(async () => {
     if (isSyncing) return;
@@ -1142,6 +1157,7 @@ export default function App() {
       }
 
       console.log('--- FIRESTORE DATA LOADED ---', sortedDocs.length, 'items');
+      setSyncError(null);
       setCapsules(sortedDocs);
       
       // Update cache in background
@@ -1152,12 +1168,13 @@ export default function App() {
       }
 
       if (!isFromCache || sortedDocs.length > 0) {
-        clearTimeout(syncTimeoutId); // 服务器数据或非空缓存成功拉回，清除超时控制器
+        clearTimeout(syncTimeoutId); // 服务器 data 成功拉回，清除超时控制器
         setDataLoading(false);
         setIsSyncFinished(true); // 标记网络数据真实拉回成功
       }
     }, (error) => {
       clearTimeout(syncTimeoutId);
+      setSyncError(error instanceof Error ? error.message : String(error));
       handleFirestoreError(error, OperationType.LIST, 'capsules');
       setDataLoading(false); // 关键！配额超限报错时强制停止 Loading 转圈，让用户完美看到离线缓存的便签！
     });
@@ -1449,7 +1466,7 @@ export default function App() {
   const editingCapsuleRef = useRef<Capsule | null>(null);
   editingCapsuleRef.current = editingCapsule;
   const [isMarkdownPreview, setIsMarkdownPreview] = useState(false);
-  const [editMode, setEditMode] = useState<'plain' | 'rich' | 'markdown'>('rich');
+  const [editMode, setEditMode] = useState<'plain' | 'markdown'>('markdown');
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isUploadingMediaRef = useRef(false);
 
@@ -2330,8 +2347,8 @@ export default function App() {
     return (
       <div className="flex flex-col items-center justify-center h-[100dvh] bg-[#F8F9FA] dark:bg-[#1C1C1E] transition-colors duration-300">
         <div className="flex flex-col items-center gap-6 max-w-xs text-center animate-in fade-in duration-700">
-          <div className="w-[168px] h-[168px] bg-white dark:bg-[#2C2C2E] rounded-[28px] shadow-xl flex items-center justify-center border border-black/5 dark:border-white/5 animate-pulse">
-            <AppLogo className="w-[108px] h-[108px]" />
+          <div className="w-[216px] h-[216px] flex items-center justify-center animate-pulse">
+            <AppLogo className="w-full h-full" />
           </div>
           <div className="space-y-2 mt-2">
             <h2 className="text-lg font-bold text-[#1D1D1F] dark:text-[#F2F2F7] tracking-tight">Initializing Lumi Note</h2>
@@ -2357,8 +2374,8 @@ export default function App() {
         {authProcessing && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#F8F9FA]/40 dark:bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
             <div className="bg-white dark:bg-[#1C1C1E] p-8 rounded-3xl shadow-2xl border border-black/5 dark:border-white/10 flex flex-col items-center max-w-sm mx-4 text-center gap-5 animate-in zoom-in-95 duration-200">
-              <div className="flex-shrink-0 w-18 h-18 flex items-center justify-center">
-                <AppLogo className="w-full h-full" />
+              <div className="flex-shrink-0 w-36 h-36 flex items-center justify-center">
+                <AppLogo className="w-full h-full animate-pulse" />
               </div>
               <div className="space-y-1.5">
                 <h3 className="text-base font-bold text-[#1D1D1F] dark:text-[#F2F2F7]">Signing You In</h3>
@@ -2449,7 +2466,7 @@ export default function App() {
         <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12">
           <div className="w-full max-w-sm">
             <div className="md:hidden flex flex-col items-center mb-6">
-              <AppLogo className="w-[108px] h-[108px] mb-4" />
+              <AppLogo className="w-[216px] h-[216px] mb-4" />
               <h1 className="text-3xl font-extrabold tracking-tight text-center bg-clip-text text-transparent bg-gradient-to-r from-[#1D1D1F] to-[#434343]">Lumi Note</h1>
             </div>
 
@@ -2937,7 +2954,10 @@ export default function App() {
              <Settings size={14} />
              {isSidebarOpen && <span>Settings</span>}
            </button> */}
-           <div className="bg-[#F2F2F7] rounded-2xl p-3 flex items-center gap-3 group">
+           <div 
+              className="bg-[#F2F2F7] rounded-2xl p-3 flex items-center gap-3 group"
+              title={`UID: ${user.uid}\nEmail: ${user.email || 'None'}`}
+           >
               {user.photoURL ? (
                 <img src={user.photoURL} alt={user.displayName || ''} className="w-10 h-10 rounded-xl shadow-sm" referrerPolicy="no-referrer" />
               ) : (
@@ -3004,12 +3024,27 @@ export default function App() {
               </button>
             )}
             <div className="flex-1 relative">
-              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (searchQuery.trim() !== '') {
+                    setSearchQuery('');
+                  }
+                }}
+                className={cn(
+                  "absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center shrink-0 z-10 select-none",
+                  searchQuery.trim() !== '' 
+                    ? "cursor-pointer active:scale-90" 
+                    : "pointer-events-none"
+                )}
+                title={searchQuery.trim() !== '' ? "Click to clear search" : undefined}
+              >
                 <Search className="text-[#8E8E93]" size={18} />
                 {searchQuery.trim() !== '' && (
-                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#FF3B30] ring-1 ring-white pointer-events-none animate-pulse" />
+                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#FF3B30] ring-1 ring-white animate-pulse" />
                 )}
-              </div>
+              </button>
               <input 
                 id="search-input"
                 type="text" 
@@ -3208,10 +3243,20 @@ export default function App() {
             </AnimatePresence>
             
             {filteredCapsules.length === 0 && (
-              !isSyncFinished ? (
+              (!isSyncFinished && !syncError) ? (
                 <div className="col-span-full h-64 flex flex-col items-center justify-center text-[#8E8E93] gap-4">
                   <div className="w-10 h-10 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
                   <p className="text-sm font-semibold text-[#8E8E93] animate-pulse">Syncing your notes...</p>
+                </div>
+              ) : syncError ? (
+                <div className="col-span-full h-64 flex flex-col items-center justify-center text-[#8E8E93] gap-4 px-6 text-center max-w-md mx-auto">
+                  <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-1">
+                    <CloudOff size={24} />
+                  </div>
+                  <h3 className="text-sm font-bold text-[#1D1D1F] dark:text-[#F5F5F7]">Sync Paused (Offline Mode)</h3>
+                  <p className="text-xs text-[#8E8E93] leading-relaxed">
+                    Cloud sync is paused due to Firebase quota limits. You can still view, edit and create notes locally. They will sync automatically once limits reset.
+                  </p>
                 </div>
               ) : (
                 <div className="h-64 flex flex-col items-center justify-center text-[#8E8E93] col-span-full">
@@ -3262,10 +3307,10 @@ export default function App() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98, y: 20 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="relative w-full max-w-4xl bg-white rounded-3xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden flex flex-col h-[90vh] md:h-[85vh]"
+                className="relative w-full max-w-3xl bg-white rounded-3xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden flex flex-col h-[90vh] md:h-[85vh]"
               >
                 <div 
-                  className="h-20 w-full flex items-center justify-between px-5 md:px-8 gap-3"
+                  className="h-14 w-full flex items-center justify-between px-5 md:px-6 gap-3"
                   style={{ backgroundColor: 'white', borderBottom: '1px solid #F2F2F7' }}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -3278,14 +3323,14 @@ export default function App() {
                     <button 
                       type="button"
                       onClick={closeEditingModal}
-                      className="w-11 h-11 flex items-center justify-center bg-[#F2F2F7] hover:bg-[#E5E5EA] rounded-full transition-colors"
+                      className="w-8 h-8 flex items-center justify-center bg-[#F2F2F7] hover:bg-[#E5E5EA] rounded-full transition-colors"
                     >
-                      <X size={20} className="text-[#8E8E93]" />
+                      <X size={16} className="text-[#8E8E93]" />
                     </button>
                   </div>
                 </div>
 
-                <div className="p-4 md:p-6 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
+                <div className="px-4 py-2 md:px-5 md:py-2 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
                   {editingCapsule.attachments && editingCapsule.attachments.filter(att => att.type === 'video').length > 0 && (
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       {editingCapsule.attachments.filter(att => att.type === 'video').map((att, idx) => (
@@ -3306,9 +3351,9 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full pt-1 pb-4 md:pb-6">
+                  <div className="flex-1 flex flex-col w-full pt-0 pb-2 md:pb-3">
                     {/* Pill Switcher outside the lined paper background */}
-                    <div className="flex justify-end mb-2 shrink-0">
+                    <div className="flex justify-end mb-1.5 shrink-0">
                       <div className="flex bg-[#F2F2F7] dark:bg-[#2C2C2E] p-0.5 rounded-xl border border-black/5 dark:border-white/5 relative z-10">
                         <button
                           type="button"
@@ -3316,13 +3361,6 @@ export default function App() {
                           className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${editMode === 'plain' ? 'bg-white dark:bg-[#3A3A3C] text-[#007AFF] shadow-sm' : 'text-[#8E8E93] hover:text-[#1D1D1F] dark:hover:text-white'}`}
                         >
                           Plain
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditMode('rich')}
-                          className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${editMode === 'rich' ? 'bg-white dark:bg-[#3A3A3C] text-[#007AFF] shadow-sm' : 'text-[#8E8E93] hover:text-[#1D1D1F] dark:hover:text-white'}`}
-                        >
-                          Rich Text
                         </button>
                         <button
                           type="button"
@@ -3351,9 +3389,9 @@ export default function App() {
                     </div>
 
                     {/* 分类与标签输入框：双向绑定已有的 editDetailCategory & editDetailTags */}
-                    <div className="flex flex-col sm:flex-row gap-3 mt-4 shrink-0">
+                    <div className="flex flex-col sm:flex-row gap-3 mt-2.5 shrink-0">
                       <div className="flex-1">
-                        <label className="block text-[10px] font-black text-[#8E8E93] uppercase tracking-widest mb-1.5 ml-1">Category</label>
+                        <label className="block text-[10px] font-black text-[#8E8E93] uppercase tracking-widest mb-1 ml-1">Category</label>
                         <input
                           type="text"
                           placeholder="e.g. Work, Ideas"
@@ -3362,11 +3400,11 @@ export default function App() {
                             setEditDetailCategory(e.target.value);
                             editDetailCategoryRef.current = e.target.value;
                           }}
-                          className="w-full px-4 py-2.5 bg-[#F2F2F7] border border-transparent focus:border-[#007AFF] focus:bg-white rounded-2xl text-xs font-bold transition-all outline-none text-[#1D1D1F] dark:text-white dark:bg-[#2C2C2E] dark:focus:bg-[#1C1C1E]"
+                          className="w-full px-3.5 py-2 bg-[#F2F2F7] border border-transparent focus:border-[#007AFF] focus:bg-white rounded-2xl text-xs font-bold transition-all outline-none text-[#1D1D1F] dark:text-white dark:bg-[#2C2C2E] dark:focus:bg-[#1C1C1E]"
                         />
                       </div>
                       <div className="flex-[2]">
-                        <label className="block text-[10px] font-black text-[#8E8E93] uppercase tracking-widest mb-1.5 ml-1">Tags (comma separated)</label>
+                        <label className="block text-[10px] font-black text-[#8E8E93] uppercase tracking-widest mb-1 ml-1">Tags (comma separated)</label>
                         <input
                           type="text"
                           placeholder="e.g. design, slide, coding"
@@ -3375,14 +3413,14 @@ export default function App() {
                             setEditDetailTags(e.target.value);
                             editDetailTagsRef.current = e.target.value;
                           }}
-                          className="w-full px-4 py-2.5 bg-[#F2F2F7] border border-transparent focus:border-[#007AFF] focus:bg-white rounded-2xl text-xs font-bold transition-all outline-none text-[#1D1D1F] dark:text-white dark:bg-[#2C2C2E] dark:focus:bg-[#1C1C1E]"
+                          className="w-full px-3.5 py-2 bg-[#F2F2F7] border border-transparent focus:border-[#007AFF] focus:bg-white rounded-2xl text-xs font-bold transition-all outline-none text-[#1D1D1F] dark:text-white dark:bg-[#2C2C2E] dark:focus:bg-[#1C1C1E]"
                         />
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                <div className="p-3 md:p-5 bg-[#F8F9FA] border-t border-[#E5E5EA] flex justify-between items-center gap-3">
+                <div className="p-2.5 md:p-3.5 bg-[#F8F9FA] border-t border-[#E5E5EA] flex justify-between items-center gap-3">
                   <div className="flex flex-col min-w-0 gap-1.5">
                     <div className="flex items-center gap-1.5">
                       <Clock size={10} className="text-[#C7C7CC] shrink-0" />
@@ -3402,7 +3440,7 @@ export default function App() {
                   <button 
                     type="button"
                     onClick={closeEditingModal}
-                    className="px-6 py-2.5 shrink-0 bg-[#1D1D1F] text-white rounded-xl text-sm font-bold shadow-md hover:bg-black hover:scale-[1.02] transition-all"
+                    className="px-5 py-2 shrink-0 bg-[#1D1D1F] text-white rounded-xl text-sm font-bold shadow-md hover:bg-black hover:scale-[1.02] transition-all"
                   >
                     Done
                   </button>
@@ -3726,7 +3764,9 @@ export default function App() {
                     <span>Text</span>
                   </button>
                   
-                  <div className="w-[1px] h-4 bg-white/20 animate-pulse" />
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-white shrink-0 mx-1 shadow-sm border border-white/10">
+                    <Plus size={12} className="stroke-[3]" />
+                  </div>
                   
                   <button
                     type="button"
