@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Firebase Admin Credentials
+*-firebase-adminsdk-*.json
+serviceAccountKey.json

@@ -2257,6 +2257,51 @@ export default function App() {
     };
   }, [allCapsules, updateCapsule, user]);
 
+  // FCM Web Push Token Registration
+  useEffect(() => {
+    if (!user || Notification.permission !== 'granted') return;
+
+    const setupWebPush = async () => {
+      try {
+        const { getMessaging, getToken, onMessage } = await import('firebase/messaging');
+        const messaging = getMessaging();
+        
+        // 申请 Token
+        const token = await getToken(messaging, {
+          vapidKey: 'BDlxFuR4ld3myeiKHhc9njffQK-OUX-01klkDwsJwhnuuKyXwGdGS4e8dcEUbNiNDfsGTHHIWjaa3gtRxsaPcnU'
+        });
+
+        if (token) {
+          console.log('[FCM] Successfully fetched registration token:', token);
+          
+          // 将 Token 用 arrayUnion 安全地合并记录至用户的 Firestore 个人账号里
+          const { arrayUnion } = await import('firebase/firestore');
+          const userDocRef = doc(getDb(), 'users', user.uid);
+          await updateDoc(userDocRef, {
+            fcmTokens: arrayUnion(token)
+          });
+          console.log('[FCM] Token successfully uploaded to Firestore.');
+        } else {
+          console.warn('[FCM] No registration token available.');
+        }
+
+        // 监听前台到达的消息
+        onMessage(messaging, (payload) => {
+          console.log('[FCM Foreground] Message received: ', payload);
+          showToast(`Reminder: ${payload.notification?.body || ''}`, 'info');
+          playNotificationSound();
+        });
+
+      } catch (err) {
+        console.warn('[FCM] Failed to initialize Cloud Messaging or fetch token:', err);
+      }
+    };
+
+    // 延时 2 秒进行 FCM 握手，规避首屏数据加载竞争
+    const timer = setTimeout(setupWebPush, 2000);
+    return () => clearTimeout(timer);
+  }, [user, showToast]);
+
   const sortedCapsules = allCapsules;
   
   const filteredCapsules = sortedCapsules.filter(c => {
