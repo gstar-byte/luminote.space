@@ -52,6 +52,7 @@ import {
   Mail, 
   Lock, 
   CheckCircle2, 
+  CloudOff,
   ArrowRight, 
   UserPlus, 
   Apple, 
@@ -592,6 +593,7 @@ export default function App() {
   const [lastSyncTime, setLastSyncTime] = useState(Date.now());
   const [dataLoading, setDataLoading] = useState(true);
   const [isSyncFinished, setIsSyncFinished] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [pendingClarificationCapsuleId, setPendingClarificationCapsuleId] = useState<string | null>(null);
   const [temporaryPendingCapsule, setTemporaryPendingCapsule] = useState<Capsule | null>(null);
   const wasCaptureCollapsedBeforeClarification = useRef(true);
@@ -1154,6 +1156,7 @@ export default function App() {
       }
 
       console.log('--- FIRESTORE DATA LOADED ---', sortedDocs.length, 'items');
+      setSyncError(null);
       setCapsules(sortedDocs);
       
       // Update cache in background
@@ -1164,12 +1167,13 @@ export default function App() {
       }
 
       if (!isFromCache || sortedDocs.length > 0) {
-        clearTimeout(syncTimeoutId); // 服务器数据或非空缓存成功拉回，清除超时控制器
+        clearTimeout(syncTimeoutId); // 服务器 data 成功拉回，清除超时控制器
         setDataLoading(false);
         setIsSyncFinished(true); // 标记网络数据真实拉回成功
       }
     }, (error) => {
       clearTimeout(syncTimeoutId);
+      setSyncError(error instanceof Error ? error.message : String(error));
       handleFirestoreError(error, OperationType.LIST, 'capsules');
       setDataLoading(false); // 关键！配额超限报错时强制停止 Loading 转圈，让用户完美看到离线缓存的便签！
     });
@@ -3240,10 +3244,20 @@ export default function App() {
             </AnimatePresence>
             
             {filteredCapsules.length === 0 && (
-              !isSyncFinished ? (
+              (!isSyncFinished && !syncError) ? (
                 <div className="col-span-full h-64 flex flex-col items-center justify-center text-[#8E8E93] gap-4">
                   <div className="w-10 h-10 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
                   <p className="text-sm font-semibold text-[#8E8E93] animate-pulse">Syncing your notes...</p>
+                </div>
+              ) : syncError ? (
+                <div className="col-span-full h-64 flex flex-col items-center justify-center text-[#8E8E93] gap-4 px-6 text-center max-w-md mx-auto">
+                  <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-1">
+                    <CloudOff size={24} />
+                  </div>
+                  <h3 className="text-sm font-bold text-[#1D1D1F] dark:text-[#F5F5F7]">Sync Paused (Offline Mode)</h3>
+                  <p className="text-xs text-[#8E8E93] leading-relaxed">
+                    Cloud sync is paused due to Firebase quota limits. You can still view, edit and create notes locally. They will sync automatically once limits reset.
+                  </p>
                 </div>
               ) : (
                 <div className="h-64 flex flex-col items-center justify-center text-[#8E8E93] col-span-full">
