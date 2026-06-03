@@ -1448,7 +1448,7 @@ export default function App() {
   const editingCapsuleRef = useRef<Capsule | null>(null);
   editingCapsuleRef.current = editingCapsule;
   const [isMarkdownPreview, setIsMarkdownPreview] = useState(false);
-  const [editMode, setEditMode] = useState<'plain' | 'rich' | 'markdown'>('rich');
+  const [editMode, setEditMode] = useState<'plain' | 'markdown'>('markdown');
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isUploadingMediaRef = useRef(false);
 
@@ -3301,7 +3301,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="p-3 md:p-4 pb-2 md:pb-2 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
+                <div className="px-4 py-2 md:px-5 md:py-2 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
                   {editingCapsule.attachments && editingCapsule.attachments.filter(att => att.type === 'video').length > 0 && (
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       {editingCapsule.attachments.filter(att => att.type === 'video').map((att, idx) => (
@@ -3322,7 +3322,7 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full pt-0 pb-2 md:pb-3">
+                  <div className="flex-1 flex flex-col w-full pt-0 pb-2 md:pb-3">
                     {/* Pill Switcher outside the lined paper background */}
                     <div className="flex justify-end mb-1.5 shrink-0">
                       <div className="flex bg-[#F2F2F7] dark:bg-[#2C2C2E] p-0.5 rounded-xl border border-black/5 dark:border-white/5 relative z-10">
@@ -3332,13 +3332,6 @@ export default function App() {
                           className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${editMode === 'plain' ? 'bg-white dark:bg-[#3A3A3C] text-[#007AFF] shadow-sm' : 'text-[#8E8E93] hover:text-[#1D1D1F] dark:hover:text-white'}`}
                         >
                           Plain
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditMode('rich')}
-                          className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${editMode === 'rich' ? 'bg-white dark:bg-[#3A3A3C] text-[#007AFF] shadow-sm' : 'text-[#8E8E93] hover:text-[#1D1D1F] dark:hover:text-white'}`}
-                        >
-                          Rich Text
                         </button>
                         <button
                           type="button"

@@ -203,6 +203,9 @@ function markdownToHtml(md: string): string {
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
   
   // Headings
+  html = html.replace(/^###### (.*$)/gim, '<h3>$1</h3>');
+  html = html.replace(/^##### (.*$)/gim, '<h3>$1</h3>');
+  html = html.replace(/^#### (.*$)/gim, '<h3>$1</h3>');
   html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
   html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
   html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
@@ -326,7 +329,7 @@ export function CapsuleEditor({
   editMode: externalEditMode,
   onModeChange,
 }: CapsuleEditorProps) {
-  const [localEditMode, setLocalEditMode] = useState<'plain' | 'rich' | 'markdown'>('rich');
+  const [localEditMode, setLocalEditMode] = useState<'plain' | 'rich' | 'markdown'>('markdown');
   const editMode = externalEditMode ?? localEditMode;
   const setEditMode = onModeChange ?? setLocalEditMode;
 
@@ -516,7 +519,7 @@ export function CapsuleEditor({
         <>
           {/* 常驻可视化工具栏：移到外面，使用干净的扁平化底色 */}
           {!readOnly && (
-            <div className="capsule-editor-toolbar mb-3">
+            <div className="capsule-editor-toolbar mb-1.5">
               <ToolBtn active={editor.isActive('bold')} title="Bold" onClick={() => editor.chain().focus().toggleBold().run()}><Bold size={15} /></ToolBtn>
               <ToolBtn active={editor.isActive('italic')} title="Italic" onClick={() => editor.chain().focus().toggleItalic().run()}><Italic size={15} /></ToolBtn>
               <ToolBtn active={editor.isActive('underline')} title="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()}><UnderlineIcon size={15} /></ToolBtn>
@@ -536,7 +539,7 @@ export function CapsuleEditor({
                   <span>
                     {editor.isActive('heading', { level: 1 }) ? 'H1' :
                      editor.isActive('heading', { level: 2 }) ? 'H2' :
-                     editor.isActive('heading', { level: 3 }) ? 'H3' : 'Text'}
+                     editor.isActive('heading', { level: 3 }) ? 'H3' : 'Heading'}
                   </span>
                   <ChevronDown size={12} className={cn("transition-transform", headingMenuOpen && "rotate-180")} />
                 </button>
