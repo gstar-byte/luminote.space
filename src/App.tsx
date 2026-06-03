@@ -2951,7 +2951,10 @@ export default function App() {
              <Settings size={14} />
              {isSidebarOpen && <span>Settings</span>}
            </button> */}
-           <div className="bg-[#F2F2F7] rounded-2xl p-3 flex items-center gap-3 group">
+           <div 
+              className="bg-[#F2F2F7] rounded-2xl p-3 flex items-center gap-3 group"
+              title={`UID: ${user.uid}\nEmail: ${user.email || 'None'}`}
+           >
               {user.photoURL ? (
                 <img src={user.photoURL} alt={user.displayName || ''} className="w-10 h-10 rounded-xl shadow-sm" referrerPolicy="no-referrer" />
               ) : (
