@@ -173,6 +173,10 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     path
   };
   console.error('Firestore Error (Gracefully handled): ', JSON.stringify(errInfo));
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('luminote-db-error', { detail: errorMsg }));
+  }
 }
 
 function hasActiveReminder(c: Capsule): boolean {
@@ -659,6 +663,15 @@ export default function App() {
       toastTimerRef.current = null;
     }, 2500);
   }, []);
+
+  useEffect(() => {
+    const handleDbError = (e: Event) => {
+      const msg = (e as CustomEvent).detail;
+      showToast(`DB Error: ${msg}`, 'error');
+    };
+    window.addEventListener('luminote-db-error', handleDbError);
+    return () => window.removeEventListener('luminote-db-error', handleDbError);
+  }, [showToast]);
 
   const handleSync = useCallback(async () => {
     if (isSyncing) return;
