@@ -2943,7 +2943,22 @@ export default function App() {
            {/* 手动同步：PC 没有下拉刷新手势，这里提供桌面端的同步入口 */}
            <button
              type="button"
-             onClick={() => { void handleSync(); }}
+             onClick={async () => {
+               if ('Notification' in window) {
+                 if (Notification.permission === 'default') {
+                   const permission = await Notification.requestPermission();
+                   if (permission === 'granted') {
+                     showToast('Notification access granted!', 'success');
+                     new Notification('Lumi Note', { body: 'Native notifications are now enabled!' });
+                   }
+                 } else if (Notification.permission === 'granted') {
+                   new Notification('Lumi Note (Manual Sync)', { body: 'System notifications are functioning normally!' });
+                 } else if (Notification.permission === 'denied') {
+                   showToast('Notifications blocked! Please unlock in your browser url bar.', 'error');
+                 }
+               }
+               void handleSync();
+             }}
              disabled={isSyncing}
              aria-label="Manual sync"
              title="Manual sync"
