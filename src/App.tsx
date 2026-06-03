@@ -1577,29 +1577,34 @@ export default function App() {
         Notification.requestPermission();
       }
       
+      const createdCapsule: Capsule = {
+        id: docRef.id,
+        userId: user?.uid || '',
+        content: refinedContent,
+        createdAt: newCapsuleData.createdAt as number,
+        updatedAt: newCapsuleData.updatedAt as number,
+        completed: false,
+        isTodo: newCapsuleData.isTodo as boolean,
+        isArchived: false,
+        isDeleted: false,
+        reminder: (newCapsuleData.reminder || null) as any,
+        color: randomColor,
+        isAmbiguous: shouldShowPill,
+        clarificationPrompt: shouldShowPill ? 'Quickly set a reminder, star, pin, or keep as note?' : null,
+        category: (newCapsuleData.category || undefined) as string,
+        tags: (newCapsuleData.tags || undefined) as string[],
+        isStarred: (newCapsuleData.isStarred || undefined) as boolean,
+        isPinned: (newCapsuleData.isPinned || undefined) as boolean
+      };
+
+      // Optimistic local state update (Instant Response)
+      setCapsules(prev => {
+        if (prev.some(c => c.id === docRef.id)) return prev;
+        return [createdCapsule, ...prev];
+      });
+      
       // Manage ClarificationPill state
       if (shouldShowPill) {
-        // 创建待办属性面板临时卡片，零延迟直接在页面秒弹，不等待网络拉取周期
-        const createdCapsule: Capsule = {
-          id: docRef.id,
-          userId: user?.uid || '',
-          content: refinedContent,
-          createdAt: newCapsuleData.createdAt as number,
-          updatedAt: newCapsuleData.updatedAt as number,
-          completed: false,
-          isTodo: newCapsuleData.isTodo as boolean,
-          isArchived: false,
-          isDeleted: false,
-          reminder: (newCapsuleData.reminder || null) as any,
-          color: randomColor,
-          isAmbiguous: true,
-          clarificationPrompt: 'Quickly set a reminder, star, pin, or keep as note?',
-          category: (newCapsuleData.category || undefined) as string,
-          tags: (newCapsuleData.tags || undefined) as string[],
-          isStarred: (newCapsuleData.isStarred || undefined) as boolean,
-          isPinned: (newCapsuleData.isPinned || undefined) as boolean
-        };
-
         wasCaptureCollapsedBeforeClarification.current = isCaptureCollapsed;
         setTemporaryPendingCapsule(createdCapsule);
         setPendingClarificationCapsuleId(docRef.id);
@@ -1616,19 +1621,26 @@ export default function App() {
     } catch (error) {
       console.error('[handleCreate] ERROR in try block:', error);
       const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
+      const fallbackDoc = {
+        userId: user?.uid,
+        content: text,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        completed: false,
+        isTodo: false,
+        isArchived: false,
+        isDeleted: false,
+        color: randomColor
+      };
       try {
-        await addDoc(collection(getDb(), 'capsules'), {
-          userId: user?.uid,
-          content: text,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          completed: false,
-          isTodo: false,
-          isArchived: false,
-          isDeleted: false,
-          color: randomColor
-        });
+        const docRef = await addDoc(collection(getDb(), 'capsules'), fallbackDoc);
         console.log('[handleCreate] fallback saved (raw text)');
+        
+        // Optimistic local state update for fallback flow
+        setCapsules(prev => {
+          if (prev.some(c => c.id === docRef.id)) return prev;
+          return [{ id: docRef.id, ...fallbackDoc } as Capsule, ...prev];
+        });
         
         if (user) {
           localStorage.setItem(`luminote_has_notes_seeded_${user.uid}`, 'true');
@@ -1973,6 +1985,7 @@ export default function App() {
       setDemoCapsules(prev => prev.filter(c => c.id !== id));
       return;
     }
+    setCapsules(prev => prev.filter(c => c.id !== id));
     try {
       const docRef = doc(getDb(), 'capsules', id);
       await deleteDoc(docRef);
@@ -2929,7 +2942,22 @@ export default function App() {
            {/* 手动同步：PC 没有下拉刷新手势，这里提供桌面端的同步入口 */}
            <button
              type="button"
-             onClick={() => { void handleSync(); }}
+             onClick={async () => {
+               if ('Notification' in window) {
+                 if (Notification.permission === 'default') {
+                   const permission = await Notification.requestPermission();
+                   if (permission === 'granted') {
+                     showToast('Notification access granted!', 'success');
+                     new Notification('Lumi Note', { body: 'Native notifications are now enabled!' });
+                   }
+                 } else if (Notification.permission === 'granted') {
+                   new Notification('Lumi Note (Manual Sync)', { body: 'System notifications are functioning normally!' });
+                 } else if (Notification.permission === 'denied') {
+                   showToast('Notifications blocked! Please unlock in your browser url bar.', 'error');
+                 }
+               }
+               void handleSync();
+             }}
              disabled={isSyncing}
              aria-label="Manual sync"
              title="Manual sync"
