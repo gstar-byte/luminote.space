@@ -1,4 +1,6 @@
 {
+  "buildCommand": "npm install && npm run build",
+  "outputDirectory": "dist",
   "cleanUrls": true,
   "framework": "vite",
   "rewrites": [
@@ -11,7 +13,7 @@
       "destination": "https://ai-studio-applet-webapp-e17fe.firebaseapp.com/__/auth/:path*"
     },
     {
-      "source": "/((?!.*\\.).*)",
+      "source": "/((?!api/|__/auth/|.*\\.).*)",
       "destination": "/index.html"
     }
   ],
