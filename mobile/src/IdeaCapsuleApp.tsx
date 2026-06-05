@@ -77,7 +77,6 @@ import { AppLogo } from './components/AppLogo';
 import { LandingScreen } from './components/LandingScreen';
 import { PremiumModalMobile } from './components/PremiumModalMobile';
 import { SettingsModalMobile } from './components/SettingsModalMobile';
-import { EdgeMiniPanel } from './components/EdgeMiniPanel';
 import { QuickCaptureModal } from './components/QuickCaptureModal';
 import * as Linking from 'expo-linking';
 import {
@@ -1844,24 +1843,12 @@ export default function IdeaCapsuleApp() {
         ]}
         edges={['top']}
       >
-        {/* First Row: Brand Logo & Preferences Cog */}
+        {/* First Row: Brand Logo */}
         <View style={s.brandHeaderRow}>
           <View style={s.brandLeft}>
             <AppLogo width={28} height={28} />
             <Text style={s.brandTitle}>Lumi Note</Text>
           </View>
-          <TouchableOpacity
-            style={s.headerIconHit}
-            onPress={() => {
-              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setShowSettings(true);
-            }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityRole="button"
-            accessibilityLabel="Preferences"
-          >
-            <SettingsIcon size={22} color="#1D1D1F" />
-          </TouchableOpacity>
         </View>
 
         {/* Second Row: Actions & Search */}
@@ -2040,8 +2027,7 @@ export default function IdeaCapsuleApp() {
                         onPress={() => setEditingCapsule(item)}
                         onLongPress={() => {
                           void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                          setIsMultiSelectMode(true);
-                          setSelectedIds([item.id]);
+                          openMenu(item);
                         }}
                         onMenu={() => openMenu(item)}
                         onToggleTodo={() => {
@@ -2067,8 +2053,7 @@ export default function IdeaCapsuleApp() {
                       }
                       onLongPress={() => {
                         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        setIsMultiSelectMode(true);
-                        setSelectedIds([item.id]);
+                        openMenu(item);
                       }}
                       onMenu={() => openMenu(item)}
                       onToggleTodo={() => {
@@ -2648,6 +2633,29 @@ export default function IdeaCapsuleApp() {
 
                       {/* GROUP 2: Actions (single note only) */}
                       <View style={{ paddingVertical: 4 }}>
+                        {/* Pin / Unpin */}
+                        <TouchableOpacity
+                          style={s.mItem}
+                          onPress={() => {
+                            if (!activeMenuCapsule) return;
+                            const merged = flushMenuTag() ?? activeMenuCapsule;
+                            void updateCapsule(merged.id, { isPinned: !merged.isPinned });
+                            setMenuTagInput('');
+                            setActiveMenuCapsule(null);
+                          }}
+                        >
+                          <Pin
+                            size={18}
+                            color="#007AFF"
+                            fill={activeMenuCapsule.isPinned ? '#007AFF' : 'transparent'}
+                            style={{ transform: [{ rotate: '45deg' }] }}
+                          />
+                          <Text style={[s.mItemTxt, activeMenuCapsule.isPinned && { color: '#007AFF' }]}>
+                            {activeMenuCapsule.isPinned ? 'Unpin Note' : 'Pin Note'}
+                          </Text>
+                        </TouchableOpacity>
+
+                        {/* Star / Unstar */}
                         <TouchableOpacity
                           style={s.mItem}
                           onPress={() => {
@@ -2663,10 +2671,12 @@ export default function IdeaCapsuleApp() {
                             color="#007AFF"
                             fill={activeMenuCapsule.isStarred ? '#FFB800' : 'transparent'}
                           />
-                          <Text style={[s.mItemTxt, { color: '#007AFF' }]}>
-                            {activeMenuCapsule.isStarred ? 'Unstar' : 'Star'}
+                          <Text style={[s.mItemTxt, activeMenuCapsule.isStarred && { color: '#007AFF' }]}>
+                            {activeMenuCapsule.isStarred ? 'Unstar Note' : 'Star Note'}
                           </Text>
                         </TouchableOpacity>
+
+                        {/* Change Color */}
                         <TouchableOpacity
                           style={s.mItem}
                           onPress={() => {
@@ -2680,6 +2690,8 @@ export default function IdeaCapsuleApp() {
                           <Palette size={18} color="#8E8E93" />
                           <Text style={s.mItemTxt}>Change Color</Text>
                         </TouchableOpacity>
+
+                        {/* Set Reminder */}
                         <TouchableOpacity
                           style={s.mItem}
                           onPress={() => {
@@ -2693,6 +2705,8 @@ export default function IdeaCapsuleApp() {
                           <Calendar size={18} color="#8E8E93" />
                           <Text style={s.mItemTxt}>Set Reminder</Text>
                         </TouchableOpacity>
+
+                        {/* Cancel To-do / Set To-do */}
                         <TouchableOpacity
                           style={s.mItem}
                           onPress={() => {
@@ -2713,6 +2727,75 @@ export default function IdeaCapsuleApp() {
                           <Text style={[s.mItemTxt, !activeMenuCapsule.isTodo && { color: '#007AFF' }]}>
                             {activeMenuCapsule.isTodo ? 'Cancel To-do' : 'Set To-do'}
                           </Text>
+                        </TouchableOpacity>
+
+                        {/* Archive / Unarchive */}
+                        <TouchableOpacity
+                          style={s.mItem}
+                          onPress={() => {
+                            if (!activeMenuCapsule) return;
+                            const merged = flushMenuTag() ?? activeMenuCapsule;
+                            void updateCapsule(merged.id, { isArchived: !merged.isArchived });
+                            setMenuTagInput('');
+                            setActiveMenuCapsule(null);
+                          }}
+                        >
+                          <Archive size={18} color="#8E8E93" />
+                          <Text style={s.mItemTxt}>
+                            {activeMenuCapsule.isArchived ? 'Unarchive Note' : 'Archive Note'}
+                          </Text>
+                        </TouchableOpacity>
+
+                        {/* Share */}
+                        <TouchableOpacity
+                          style={s.mItem}
+                          onPress={async () => {
+                            if (!activeMenuCapsule) return;
+                            const shareText = plainTextFromContent(activeMenuCapsule.content);
+                            try {
+                              await Share.share({
+                                message: shareText,
+                              });
+                            } catch (err) {
+                              console.warn('Share error:', err);
+                            }
+                            setMenuTagInput('');
+                            setActiveMenuCapsule(null);
+                          }}
+                        >
+                          <ShareIcon size={18} color="#8E8E93" />
+                          <Text style={s.mItemTxt}>Share Note</Text>
+                        </TouchableOpacity>
+
+                        {/* Move to Trash */}
+                        <TouchableOpacity
+                          style={s.mItem}
+                          onPress={() => {
+                            if (!activeMenuCapsule) return;
+                            const merged = flushMenuTag() ?? activeMenuCapsule;
+                            void updateCapsule(merged.id, { isDeleted: true });
+                            setMenuTagInput('');
+                            setActiveMenuCapsule(null);
+                          }}
+                        >
+                          <Trash2 size={18} color="#FF3B30" />
+                          <Text style={[s.mItemTxt, { color: '#FF3B30' }]}>Move to Trash</Text>
+                        </TouchableOpacity>
+
+                        {/* Select Note (for batch editing) */}
+                        <TouchableOpacity
+                          style={s.mItem}
+                          onPress={() => {
+                            if (!activeMenuCapsule) return;
+                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            setIsMultiSelectMode(true);
+                            setSelectedIds([activeMenuCapsule.id]);
+                            setMenuTagInput('');
+                            setActiveMenuCapsule(null);
+                          }}
+                        >
+                          <Check size={18} color="#8E8E93" />
+                          <Text style={s.mItemTxt}>Select Note</Text>
                         </TouchableOpacity>
                       </View>
                     </>
@@ -3324,18 +3407,6 @@ export default function IdeaCapsuleApp() {
             </View>
           </View>
         </Modal>
-        {settings.edgePanelEnabled && (
-          <EdgeMiniPanel
-            capsules={capsules}
-            onCreateCapsule={handleCreateCapsule}
-            onToggleTodo={(id, completed) => updateCapsule(id, { completed })}
-            onSelectCapsule={(capsule) => setEditingCapsule(capsule)}
-            isProcessing={isProcessing}
-            isVoiceRecording={isVoiceRecording}
-            startVoice={startVoice}
-            limit={settings.quickCaptureLimit}
-          />
-        )}
         <QuickCaptureModal
           visible={showQuickCapture}
           onClose={() => setShowQuickCapture(false)}

@@ -163,47 +163,30 @@ export function SettingsModalMobile({
             {/* Section: Floating Panels */}
             <Text style={styles.sectionLbl}>FLOATING PANELS</Text>
             <View style={styles.sectionCard}>
-              {/* Edge Mini Panel */}
+              {/* Display Note Count Limit */}
               <View style={styles.row}>
                 <View style={styles.rowMeta}>
-                  <Text style={styles.rowTitle}>Edge Swipe Panel</Text>
-                  <Text style={styles.rowSub}>Show a floating handle on screen edge to pull side note widget</Text>
+                  <Text style={styles.rowTitle}>Quick Capture Limit</Text>
+                  <Text style={styles.rowSub}>Max notes to show in Quick Dialog</Text>
                 </View>
-                <Switch
-                  value={settings.edgePanelEnabled}
-                  onValueChange={(val) => handleToggle('edgePanelEnabled', val)}
-                  trackColor={{ false: '#E5E5EA', true: '#34C759' }}
-                  thumbColor="#FFF"
-                  ios_backgroundColor="#E5E5EA"
-                />
-              </View>
-
-              {/* Display Note Count Limit */}
-              <View style={styles.rowDivider}>
-                <View style={styles.row}>
-                  <View style={styles.rowMeta}>
-                    <Text style={styles.rowTitle}>Quick Capture Limit</Text>
-                    <Text style={styles.rowSub}>Max notes to show in Edge Drawer & Quick Dialog</Text>
-                  </View>
-                  <View style={styles.segmentContainer}>
-                    {[3, 5, 8].map((num) => (
-                      <TouchableOpacity
-                        key={num}
-                        style={[
-                          styles.segmentBtn,
-                          settings.quickCaptureLimit === num && styles.segmentBtnActive,
-                        ]}
-                        onPress={() => handleSegmentChange('quickCaptureLimit', num)}
-                      >
-                        <Text style={[
-                          styles.segmentBtnTxt,
-                          settings.quickCaptureLimit === num && styles.segmentBtnTxtActive
-                        ]}>
-                          {num}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                <View style={styles.segmentContainer}>
+                  {[3, 5, 8].map((num) => (
+                    <TouchableOpacity
+                      key={num}
+                      style={[
+                        styles.segmentBtn,
+                        settings.quickCaptureLimit === num && styles.segmentBtnActive,
+                      ]}
+                      onPress={() => handleSegmentChange('quickCaptureLimit', num)}
+                    >
+                      <Text style={[
+                        styles.segmentBtnTxt,
+                        settings.quickCaptureLimit === num && styles.segmentBtnTxtActive
+                      ]}>
+                        {num}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
             </View>
