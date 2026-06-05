@@ -201,7 +201,14 @@ export const onAuthStateChanged = (ignoredAuth: any, callback: any) => {
 
   ensureFirebaseReady().then(() => {
     if (isCancelled) return;
-    unsub = firebaseAuthModule.onAuthStateChanged(getAuth(), callback);
+    const realAuth = getAuth();
+    unsub = firebaseAuthModule.onAuthStateChanged(realAuth, callback);
+    // 修复竞态条件：如果在注册监听器之前用户已经通过 popup 登录成功，
+    // onAuthStateChanged 的初始回调可能不会触发（或触发时为 null 后又立刻变为 user）。
+    // 这里做一次显式检查：如果 currentUser 已经存在，立即手动回调一次确保 UI 响应。
+    if (realAuth.currentUser) {
+      callback(realAuth.currentUser);
+    }
   });
 
   return () => {
