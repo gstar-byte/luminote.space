@@ -77,7 +77,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (fcmTokens.length > 0) {
         const title = 'Lumi Note Reminder';
-        const body = typeof cap.content === 'string' ? cap.content : 'You have an active reminder.';
+        // Extract readable text: prefer subject, then extract from Tiptap JSON content, fallback to default
+        let body = 'You have an active reminder.';
+        if (cap.subject && typeof cap.subject === 'string' && cap.subject.trim()) {
+          body = cap.subject.trim();
+        } else if (typeof cap.content === 'string' && cap.content.trim()) {
+          const trimmed = cap.content.trim();
+          if (trimmed.startsWith('{')) {
+            // Tiptap JSON — extract text nodes recursively
+            try {
+              const parsed = JSON.parse(trimmed);
+              const extractText = (node: any): string => {
+                if (!node) return '';
+                if (node.type === 'text') return node.text || '';
+                if (Array.isArray(node.content)) return node.content.map(extractText).filter(Boolean).join(' ');
+                if (Array.isArray(node)) return node.map(extractText).filter(Boolean).join(' ');
+                return '';
+              };
+              const extracted = extractText(parsed).trim();
+              if (extracted) body = extracted;
+            } catch { /* use default */ }
+          } else {
+            // Plain text or HTML — strip tags
+            body = trimmed.replace(/<[^>]+>/g, '').trim() || body;
+          }
+        } else if (typeof cap.content === 'object' && cap.content !== null) {
+          // Tiptap JSON object stored directly (not as string)
+          const extractText = (node: any): string => {
+            if (!node) return '';
+            if (node.type === 'text') return node.text || '';
+            if (Array.isArray(node.content)) return node.content.map(extractText).filter(Boolean).join(' ');
+            if (Array.isArray(node)) return node.map(extractText).filter(Boolean).join(' ');
+            return '';
+          };
+          const extracted = extractText(cap.content).trim();
+          if (extracted) body = extracted;
+        }
         
         // Clean tokens from duplicates
         const uniqueTokens = Array.from(new Set(fcmTokens)).filter(t => !!t);
