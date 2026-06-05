@@ -66,7 +66,10 @@ import {
   Quote,
   List,
   ListOrdered,
-  ListChecks
+  ListChecks,
+  Undo,
+  Inbox,
+  Check
 } from 'lucide-react';
 import { Capsule, FilterType, ReminderConfig, ReminderType, UserProfile } from './types';
 import { PRESET_COLORS } from './constants';
@@ -4303,7 +4306,6 @@ const CapsuleItem = memo(function CapsuleItem({
   const [tempReminderDate, setTempReminderDate] = useState<number | null>(capsule.reminder?.date || null);
   const [tempReminderType, setTempReminderType] = useState<ReminderType>(capsule.reminder?.type || 'none');
 
-  const [swipedOpen, setSwipedOpen] = useState(false);
   const [isSwiping, setIsSwiping] = useState(false);
   const [swipeX, setSwipeX] = useState(0);
 
@@ -4406,9 +4408,13 @@ const CapsuleItem = memo(function CapsuleItem({
 
     if (isHorizontalSwipe.current === true) {
       if (e.cancelable) e.preventDefault();
-      let targetX = swipedOpen ? -180 + dx : dx;
-      if (targetX > 0) targetX = 0;
-      if (targetX < -220) targetX = -220;
+      let targetX = dx;
+      // 阻尼反馈：滑动超过一定距离后增加物理拉伸感阻尼，提升高级触感
+      if (targetX > 160) {
+        targetX = 160 + (targetX - 160) * 0.15;
+      } else if (targetX < -160) {
+        targetX = -160 + (targetX + 160) * 0.15;
+      }
       setSwipeX(targetX);
     }
   };
@@ -4420,24 +4426,24 @@ const CapsuleItem = memo(function CapsuleItem({
     touchStartPos.current = null;
 
     if (isHorizontalSwipe.current === true) {
-      if (swipedOpen) {
-        if (swipeX > -120) {
-          setSwipedOpen(false);
-          setSwipeX(0);
-        } else {
-          setSwipedOpen(true);
-          setSwipeX(-180);
+      // 触发阈值设定为 100px
+      if (swipeX > 100) {
+        // 右滑：完成/激活待办（如果原本不是 Todo，也转化为 Todo）
+        const nextCompletedStatus = !capsule.completed;
+        void onUpdate({ completed: nextCompletedStatus, isTodo: true });
+        if (showToast) {
+          showToast(nextCompletedStatus ? 'Task completed!' : 'Task active!', 'success');
         }
-      } else {
-        if (swipeX < -50) {
-          setSwipedOpen(true);
-          setSwipeX(-180);
-        } else {
-          setSwipedOpen(false);
-          setSwipeX(0);
+      } else if (swipeX < -100) {
+        // 左滑：归档/撤销归档
+        const nextArchivedStatus = !capsule.isArchived;
+        void onUpdate({ isArchived: nextArchivedStatus });
+        if (showToast) {
+          showToast(nextArchivedStatus ? 'Note archived!' : 'Note unarchived!', 'success');
         }
       }
     }
+    setSwipeX(0);
     isHorizontalSwipe.current = null;
   };
 
@@ -4567,49 +4573,42 @@ const CapsuleItem = memo(function CapsuleItem({
       id={`capsule-item-${index}`}
       className="relative overflow-hidden w-full rounded-2xl md:rounded-[24px]"
     >
-      {window.innerWidth <= 768 && (isSwiping || swipedOpen) && (
-        <div className="absolute right-0 top-0 bottom-0 w-[180px] flex shrink-0 z-0">
-          <button 
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectAll?.();
-              setSwipedOpen(false);
-              setSwipeX(0);
-            }}
-            className="flex-1 bg-[#FF9500] text-white flex flex-col items-center justify-center gap-1 active:opacity-75 transition-opacity"
+      {window.innerWidth <= 768 && isSwiping && Math.abs(swipeX) > 10 && (
+        <div 
+          className="absolute inset-0 flex items-center justify-between px-6 z-0 rounded-2xl md:rounded-[24px]"
+          style={{
+            backgroundColor: swipeX > 0 
+              ? '#30D158' 
+              : (swipeX < 0 ? '#007AFF' : 'transparent'),
+          }}
+        >
+          {/* 左侧提示（右滑触发完成待办） */}
+          <div 
+            className={cn(
+              "flex items-center gap-2 text-white transition-all duration-150",
+              swipeX > 30 ? "opacity-100 translate-x-0 scale-100" : "opacity-0 -translate-x-4 scale-90",
+              swipeX > 100 ? "scale-110 font-black text-white" : ""
+            )}
           >
-            <CheckSquare size={15} />
-            <span className="text-[9px] font-black tracking-wider uppercase">All</span>
-          </button>
-          
-          <button 
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSelection();
-              setSwipedOpen(false);
-              setSwipeX(0);
-            }}
-            className="flex-1 bg-[#007AFF] text-white flex flex-col items-center justify-center gap-1 active:opacity-75 transition-opacity"
-          >
-            <ListChecks size={15} />
-            <span className="text-[9px] font-black tracking-wider uppercase">Select</span>
-          </button>
+            {capsule.completed ? <Undo size={18} className="shrink-0" /> : <Check size={18} className="shrink-0" />}
+            <span className="text-[10px] font-black uppercase tracking-wider">
+              {capsule.completed ? 'Activate' : 'Complete'}
+            </span>
+          </div>
 
-          <button 
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onUpdate({ isDeleted: true });
-              setSwipedOpen(false);
-              setSwipeX(0);
-            }}
-            className="flex-1 bg-[#FF3B30] text-white flex flex-col items-center justify-center gap-1 active:opacity-75 transition-opacity"
+          {/* 右侧提示（左滑触发归档） */}
+          <div 
+            className={cn(
+              "flex items-center gap-2 text-white transition-all duration-150",
+              swipeX < -30 ? "opacity-100 translate-x-0 scale-100" : "opacity-0 translate-x-4 scale-90",
+              swipeX < -100 ? "scale-110 font-black text-white" : ""
+            )}
           >
-            <Trash2 size={15} />
-            <span className="text-[9px] font-black tracking-wider uppercase">Delete</span>
-          </button>
+            <span className="text-[10px] font-black uppercase tracking-wider">
+              {capsule.isArchived ? 'Unarchive' : 'Archive'}
+            </span>
+            {capsule.isArchived ? <Inbox size={18} className="shrink-0" /> : <Archive size={18} className="shrink-0" />}
+          </div>
         </div>
       )}
 
@@ -4627,11 +4626,11 @@ const CapsuleItem = memo(function CapsuleItem({
             ? "opacity-60"
             : "",
           (showOptions || showColorPicker || showReminderPicker) ? "z-[70]" : "z-10",
-          "transition-transform duration-200 ease-out"
+          isSwiping ? "transition-none" : "transition-transform duration-200 ease-out"
         )}
         style={{ 
           backgroundColor: capsuleColor,
-          transform: window.innerWidth <= 768 ? `translateX(${isSwiping ? swipeX : (swipedOpen ? -180 : 0)}px)` : 'none',
+          transform: window.innerWidth <= 768 ? `translateX(${swipeX}px)` : 'none',
           // Suppress the iOS long-press "callout" (copy / share / look up) so it
           // never overlaps our swipe gesture or options menu on touch devices.
           WebkitTouchCallout: 'none',
