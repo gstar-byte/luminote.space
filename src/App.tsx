@@ -2153,7 +2153,7 @@ export default function App() {
       }
     };
 
-    if (hasPremiumAccess(user) && 'Notification' in window && Notification.permission === 'default') {
+    if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().then(permission => {
         if (permission === 'granted') {
           syncRemindersToSW();
