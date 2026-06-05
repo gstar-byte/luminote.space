@@ -47,24 +47,48 @@ export async function ensureFirebaseReady() {
   }
 }
 
-// 导出获取实例的 async 函数
-export async function getDb() {
-  await ensureFirebaseReady();
+// 导出获取实例的同步函数，以保持与 App.tsx 原生同步调用的绝对兼容性
+export function getDb() {
+  if (!dbInstance) {
+    if (!firebaseFirestoreModule) {
+      // 尚未加载就绪时的回退代理（防止抛出 undefined 崩溃）
+      return null as any;
+    }
+    dbInstance = firebaseFirestoreModule.getFirestore(app, firebaseConfig.firestoreDatabaseId);
+  }
   return dbInstance;
 }
 
-export async function getAuth() {
-  await ensureFirebaseReady();
+export function getAuth() {
+  if (!authInstance) {
+    if (!firebaseAuthModule) {
+      // 尚未加载就绪时的回退代理（防止抛出 undefined.currentUser 崩溃）
+      return {
+        currentUser: null,
+      } as any;
+    }
+    authInstance = firebaseAuthModule.getAuth(app);
+  }
   return authInstance;
 }
 
-export async function getGoogleProvider() {
-  await ensureFirebaseReady();
+export function getGoogleProvider() {
+  if (!googleProviderInstance) {
+    if (!firebaseAuthModule) {
+      return null as any;
+    }
+    googleProviderInstance = new firebaseAuthModule.GoogleAuthProvider();
+  }
   return googleProviderInstance;
 }
 
-export async function getAppleProvider() {
-  await ensureFirebaseReady();
+export function getAppleProvider() {
+  if (!appleProviderInstance) {
+    if (!firebaseAuthModule) {
+      return null as any;
+    }
+    appleProviderInstance = new firebaseAuthModule.OAuthProvider('apple.com');
+  }
   return appleProviderInstance;
 }
 
@@ -74,13 +98,6 @@ function getFirestoreModule() {
     throw new Error('Firestore is not loaded yet. Make sure you await ensureFirebaseReady() first.');
   }
   return firebaseFirestoreModule;
-}
-
-function getAuthModule() {
-  if (!firebaseAuthModule) {
-    throw new Error('Auth is not loaded yet. Make sure you await ensureFirebaseReady() first.');
-  }
-  return firebaseAuthModule;
 }
 
 // 同步辅助函数：这些在已登录的组件渲染中是同步调用的。
@@ -138,52 +155,53 @@ export const onSnapshot = (reference: any, callback: any, onError?: any) => {
 // Auth 相关异步操作
 export const signInWithPopup = async (...args: any[]) => {
   await ensureFirebaseReady();
-  return firebaseAuthModule.signInWithPopup(...args);
+  // 无论外界传进来的是什么，都使用真正实例化后的 getAuth()
+  return firebaseAuthModule.signInWithPopup(getAuth(), getGoogleProvider());
 };
 
 export const signInWithRedirect = async (...args: any[]) => {
   await ensureFirebaseReady();
-  return firebaseAuthModule.signInWithRedirect(...args);
+  return firebaseAuthModule.signInWithRedirect(getAuth(), getGoogleProvider());
 };
 
 export const getRedirectResult = async (...args: any[]) => {
   await ensureFirebaseReady();
-  return firebaseAuthModule.getRedirectResult(...args);
+  return firebaseAuthModule.getRedirectResult(getAuth());
 };
 
 export const signOut = async (...args: any[]) => {
   await ensureFirebaseReady();
-  return firebaseAuthModule.signOut(...args);
+  return firebaseAuthModule.signOut(getAuth());
 };
 
-export const createUserWithEmailAndPassword = async (...args: any[]) => {
+export const createUserWithEmailAndPassword = async (ignoredAuth: any, ...args: any[]) => {
   await ensureFirebaseReady();
-  return firebaseAuthModule.createUserWithEmailAndPassword(...args);
+  return firebaseAuthModule.createUserWithEmailAndPassword(getAuth(), ...args);
 };
 
-export const signInWithEmailAndPassword = async (...args: any[]) => {
+export const signInWithEmailAndPassword = async (ignoredAuth: any, ...args: any[]) => {
   await ensureFirebaseReady();
-  return firebaseAuthModule.signInWithEmailAndPassword(...args);
+  return firebaseAuthModule.signInWithEmailAndPassword(getAuth(), ...args);
 };
 
-export const sendPasswordResetEmail = async (...args: any[]) => {
+export const sendPasswordResetEmail = async (ignoredAuth: any, ...args: any[]) => {
   await ensureFirebaseReady();
-  return firebaseAuthModule.sendPasswordResetEmail(...args);
+  return firebaseAuthModule.sendPasswordResetEmail(getAuth(), ...args);
 };
 
-export const updateProfile = async (...args: any[]) => {
+export const updateProfile = async (ignoredAuth: any, ...args: any[]) => {
   await ensureFirebaseReady();
-  return firebaseAuthModule.updateProfile(...args);
+  return firebaseAuthModule.updateProfile(getAuth(), ...args);
 };
 
 // Auth 状态监听：同样需要像 onSnapshot 一样能同步返回 unsubscribe 函数
-export const onAuthStateChanged = (auth: any, callback: any) => {
+export const onAuthStateChanged = (ignoredAuth: any, callback: any) => {
   let unsub: (() => void) | null = null;
   let isCancelled = false;
 
   ensureFirebaseReady().then(() => {
     if (isCancelled) return;
-    unsub = firebaseAuthModule.onAuthStateChanged(auth, callback);
+    unsub = firebaseAuthModule.onAuthStateChanged(getAuth(), callback);
   });
 
   return () => {
