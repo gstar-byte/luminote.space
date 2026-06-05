@@ -17,12 +17,7 @@
       "destination": "/index.html"
     }
   ],
-  "crons": [
-    {
-      "path": "/api/check-reminders",
-      "schedule": "0 0 * * *"
-    }
-  ],
+
   "headers": [
     {
       "source": "/assets/(.*)",
