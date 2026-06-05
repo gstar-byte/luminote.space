@@ -117,7 +117,7 @@ function CapsuleEditorNative({
 
   return (
     <View style={styles.container}>
-      <RichText editor={editor} style={styles.editor} placeholder={placeholder} />
+      <RichText editor={editor} style={styles.editor} />
       <View style={{ position: 'absolute', top: 4, right: 8, opacity: 0.2 }}>
         <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#007AFF' }} />
       </View>

@@ -107,6 +107,11 @@ import {
   VOICE_FREE_LIMIT,
 } from './lib/voiceQuota';
 import { hasPremiumAccess, PAYWALL_ACTIVE } from './featureFlags';
+import {
+  initNotifications,
+  requestNotificationPermissions,
+  syncAllCapsuleNotifications,
+} from './lib/notificationsMobile';
 
 function CrownJewel({ size = 36 }: { size?: number }) {
   return (
@@ -344,6 +349,14 @@ export default function IdeaCapsuleApp() {
 
   const [capsules, setCapsules] = useState<Capsule[]>([]);
 
+  useEffect(() => {
+    initNotifications();
+  }, []);
+  // Automatically sync local OS notifications when capsules list updates
+  useEffect(() => {
+    void syncAllCapsuleNotifications(capsules);
+  }, [capsules]);
+
   const handleShareMultiple = async () => {
     if (selectedIds.length === 0) return;
     const selectedCaps = capsules.filter(c => selectedIds.includes(c.id));
@@ -565,7 +578,15 @@ export default function IdeaCapsuleApp() {
     try {
       const batch = writeBatch(db);
       const now = Date.now();
-      for (const seed of AUTO_DEMO_CAPSULES) {
+      
+      // If user has interacted and modified the demo capsules in guest mode, 
+      // migrate those modified versions so their modifications (e.g. reminders, stars, colors) are preserved!
+      const currentDemos = capsules.filter(c => c.id.startsWith('demo-'));
+      const itemsToImport = currentDemos.length > 0
+        ? currentDemos.map(({ id, ...rest }) => rest)
+        : AUTO_DEMO_CAPSULES;
+
+      for (const seed of itemsToImport) {
         const ref = doc(collection(db, 'capsules'));
         batch.set(ref, {
           ...seed,
@@ -907,6 +928,12 @@ export default function IdeaCapsuleApp() {
     if (!text.trim()) return;
     if (requireAuth()) return;
     if (!user) return;
+    
+    // Request notification permission immediately in the synchronous user click handler stack
+    if (Platform.OS !== 'web') {
+      void requestNotificationPermissions();
+    }
+
     setIsProcessing(true);
     setInputText('');
     try {
