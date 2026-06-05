@@ -2171,10 +2171,11 @@ export default function App() {
           .filter(cap => cap.reminder?.date && cap.reminder.date > now && !cap.completed && !cap.isDeleted && !cap.isArchived)
           .map(cap => {
             const contentText = typeof cap.content === 'string' ? cap.content : plainTextFromContent(cap.content);
+            const bodyText = cap.subject || contentText;
             return {
               id: cap.id,
               title: 'Lumi Note Reminder',
-              body: contentText,
+              body: bodyText,
               date: cap.reminder.date
             };
           });
@@ -2256,8 +2257,14 @@ export default function App() {
         // If it's active (expired within last 60 seconds) and hasn't been fired yet:
         if (notifiedIdsRef.current.has(cap.id)) return;
 
-        // Trigger notifications
-        showSystemNotification('Lumi Note Reminder', { body: plainTextFromContent(cap.content) });
+        // Trigger notifications — only show system notification if FCM push is NOT active.
+        // When FCM is active, the Cron backend already sends a push notification via FCM,
+        // so we only show an in-app toast + sound to avoid double system notifications.
+        const reminderText = cap.subject || plainTextFromContent(cap.content) || 'You have an active reminder.';
+        if (notificationPermission !== 'granted') {
+          // No FCM active, use local system notification as fallback
+          showSystemNotification('Lumi Note Reminder', { body: reminderText });
+        }
 
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
           navigator.vibrate([150, 80, 150]);
