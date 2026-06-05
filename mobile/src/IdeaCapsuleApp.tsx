@@ -358,13 +358,25 @@ export default function IdeaCapsuleApp() {
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const stored = await AsyncStorage.getItem('lumi_app_settings');
+        let stored: string | null = null;
+        if (Platform.OS === 'web') {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            stored = window.localStorage.getItem('lumi_app_settings');
+          }
+        } else {
+          stored = await AsyncStorage.getItem('lumi_app_settings');
+        }
+
         if (stored) {
-          const parsed = JSON.parse(stored);
-          setSettings({ ...DEFAULT_APP_SETTINGS, ...parsed });
+          const trimmed = stored.trim();
+          if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            const parsed = JSON.parse(trimmed) as Partial<AppSettings>;
+            setSettings({ ...DEFAULT_APP_SETTINGS, ...parsed });
+          }
         }
       } catch (e) {
-        console.error('Failed to load settings:', e);
+        // Use console.warn to avoid popping red error boxes in Expo Go
+        console.warn('Failed to load settings silently:', e);
       }
     };
     void loadSettings();
@@ -374,9 +386,16 @@ export default function IdeaCapsuleApp() {
     try {
       const updated = { ...settings, ...newSettings };
       setSettings(updated);
-      await AsyncStorage.setItem('lumi_app_settings', JSON.stringify(updated));
+      const serialized = JSON.stringify(updated);
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem('lumi_app_settings', serialized);
+        }
+      } else {
+        await AsyncStorage.setItem('lumi_app_settings', serialized);
+      }
     } catch (e) {
-      console.error('Failed to save settings:', e);
+      console.warn('Failed to save settings silently:', e);
     }
   };
 
@@ -1825,6 +1844,27 @@ export default function IdeaCapsuleApp() {
         ]}
         edges={['top']}
       >
+        {/* First Row: Brand Logo & Preferences Cog */}
+        <View style={s.brandHeaderRow}>
+          <View style={s.brandLeft}>
+            <AppLogo width={28} height={28} />
+            <Text style={s.brandTitle}>Lumi Note</Text>
+          </View>
+          <TouchableOpacity
+            style={s.headerIconHit}
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowSettings(true);
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Preferences"
+          >
+            <SettingsIcon size={22} color="#1D1D1F" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Second Row: Actions & Search */}
         <View style={s.header}>
           <View style={s.sidebarOpenBtnWrap}>
             <TouchableOpacity
@@ -1853,7 +1893,7 @@ export default function IdeaCapsuleApp() {
             <TextInput
               ref={searchInputRef}
               style={s.searchIn}
-              placeholder="Search…"
+              placeholder="Search inspiration…"
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor="#8E8E93"
@@ -1881,17 +1921,6 @@ export default function IdeaCapsuleApp() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <ArrowDownNarrowWide size={22} color="#1D1D1F" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={s.headerIconHit}
-              onPress={() => {
-                setShowSettings(true);
-              }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="button"
-              accessibilityLabel="Premium and settings"
-            >
-              <CrownJewel size={23} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1994,6 +2023,8 @@ export default function IdeaCapsuleApp() {
                   {viewMode === 'list' && !isMultiSelectMode && settings.swipeEnabled ? (
                     <Swipeable
                       ref={swipeRef}
+                      containerStyle={{ width: '100%' }}
+                      childrenContainerStyle={{ width: '100%' }}
                       renderLeftActions={renderLeftActions}
                       renderRightActions={renderRightActions}
                       onSwipeableOpen={handleSwipeOpen}
@@ -3564,6 +3595,26 @@ const s = StyleSheet.create({
       default: {},
     }),
   },
+  brandHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 4,
+    backgroundColor: '#FFF',
+  },
+  brandLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  brandTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#1D1D1F',
+    letterSpacing: -0.6,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3755,13 +3806,10 @@ const s = StyleSheet.create({
     fontWeight: '800',
   },
   cardWrapList: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'stretch',
     marginBottom: 8,
-    ...Platform.select({
-      web: { width: '100%', maxWidth: '100%', minWidth: 0 },
-      default: {},
-    }),
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -3784,6 +3832,7 @@ const s = StyleSheet.create({
   cardGridFill: { width: '100%', alignSelf: 'stretch' },
   cardList: {
     flex: 1,
+    width: '100%',
     minHeight: 62,
     borderRadius: 18,
     paddingHorizontal: 10,
