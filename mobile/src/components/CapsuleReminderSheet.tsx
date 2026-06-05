@@ -5,12 +5,14 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  Platform,
   View,
   useWindowDimensions,
 } from 'react-native';
 import { Check, X } from 'lucide-react-native';
 import type { Capsule, ReminderConfig, ReminderType } from '../types';
 import { ReminderDateField } from './ReminderDateField';
+import { requestNotificationPermissions } from '../lib/notificationsMobile';
 
 const REPEAT_OPTIONS: ReminderType[] = [
   'once',
@@ -85,6 +87,10 @@ export function CapsuleReminderSheet({ capsule, onSave, onClose }: Props) {
       onSave(undefined);
       onClose();
       return;
+    }
+
+    if (Platform.OS !== 'web') {
+      void requestNotificationPermissions();
     }
 
     const next: ReminderConfig = {
