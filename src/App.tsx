@@ -4563,8 +4563,11 @@ const CapsuleItem = memo(function CapsuleItem({
   };
 
   return (
-    <div className="relative overflow-hidden w-full rounded-2xl md:rounded-[24px]">
-      {window.innerWidth <= 768 && (
+    <div 
+      id={`capsule-item-${index}`}
+      className="relative overflow-hidden w-full rounded-2xl md:rounded-[24px]"
+    >
+      {window.innerWidth <= 768 && (isSwiping || swipedOpen) && (
         <div className="absolute right-0 top-0 bottom-0 w-[180px] flex shrink-0 z-0">
           <button 
             type="button"
@@ -4642,16 +4645,18 @@ const CapsuleItem = memo(function CapsuleItem({
         onMouseUp={handleMouseUpLeaveCard}
         onMouseLeave={handleMouseUpLeaveCard}
         onContextMenu={(e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest('button, a, input, textarea, label, [data-no-longpress]')) {
+            return;
+          }
           // Always suppress the browser's native long-press / right-click menu.
           // Desktop right-click enters multi-select for THIS note, surfacing the
           // single consolidated batch toolbar (Select All / Archive / Delete /
           // Category & Tag / Share) — same entry point as mobile long-press.
           e.preventDefault();
-          if (!isSelectionMode) {
-            e.stopPropagation();
-            onToggleSelection();
-            suppressNextClickRef.current = true;
-          }
+          e.stopPropagation();
+          onToggleSelection();
+          suppressNextClickRef.current = true;
         }}
         onClick={(e) => {
           if (suppressNextClickRef.current) {
@@ -4803,6 +4808,7 @@ const CapsuleItem = memo(function CapsuleItem({
           "opacity-100"
         )}>
           <button
+            id={`capsule-options-btn-${index}`}
             ref={triggerRef}
             type="button"
             aria-label="Note options"
