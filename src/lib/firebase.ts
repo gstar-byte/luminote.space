@@ -194,21 +194,13 @@ export const updateProfile = async (ignoredAuth: any, ...args: any[]) => {
   return firebaseAuthModule.updateProfile(getAuth(), ...args);
 };
 
-// Auth 状态监听：同样需要像 onSnapshot 一样能同步返回 unsubscribe 函数
 export const onAuthStateChanged = (ignoredAuth: any, callback: any) => {
   let unsub: (() => void) | null = null;
   let isCancelled = false;
 
   ensureFirebaseReady().then(() => {
     if (isCancelled) return;
-    const realAuth = getAuth();
-    unsub = firebaseAuthModule.onAuthStateChanged(realAuth, callback);
-    // 修复竞态条件：如果在注册监听器之前用户已经通过 popup 登录成功，
-    // onAuthStateChanged 的初始回调可能不会触发（或触发时为 null 后又立刻变为 user）。
-    // 这里做一次显式检查：如果 currentUser 已经存在，立即手动回调一次确保 UI 响应。
-    if (realAuth.currentUser) {
-      callback(realAuth.currentUser);
-    }
+    unsub = firebaseAuthModule.onAuthStateChanged(getAuth(), callback);
   });
 
   return () => {

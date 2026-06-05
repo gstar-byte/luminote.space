@@ -977,30 +977,26 @@ export default function App() {
     setAuthError(null);
     setAuthProcessing(true);
     try {
-      console.log("[GoogleSignIn] Initiating authentication with signInWithPopup...");
-      await signInWithPopup(getAuth(), getGoogleProvider());
+      const isMobile = window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+      if (isMobile) {
+        console.log("[GoogleSignIn] Mobile device detected, initiating signInWithRedirect...");
+        await signInWithRedirect(getAuth(), getGoogleProvider());
+      } else {
+        console.log("[GoogleSignIn] Desktop device detected, initiating signInWithPopup...");
+        await signInWithPopup(getAuth(), getGoogleProvider());
+      }
     } catch (err: any) {
       console.error("Google Sign-In Error Captured:", err);
       if (err.code === 'auth/unauthorized-domain') {
         setAuthError(
           `Unauthorized Domain: Current host "${window.location.hostname}" is not authorized for Google Sign-In in Firebase Console. Please add it under Authentication -> Settings.`
         );
-      } else if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
-        console.log("[GoogleSignIn] Popup blocked or cancelled, falling back to signInWithRedirect...");
-        try {
-          await signInWithRedirect(getAuth(), getGoogleProvider());
-        } catch (redirectErr: any) {
-          setAuthError(`Google Redirect Login failed: ${redirectErr.message}`);
-        }
+      } else if (err.code === 'auth/popup-blocked') {
+        setAuthError("Google Sign-In pop-up was blocked by your browser. Please allow popups for this site, or try using a mobile browser.");
       } else if (err.code === 'auth/popup-closed-by-user') {
         console.log("[GoogleSignIn] Popup closed by user.");
       } else {
-        console.log("[GoogleSignIn] Encountered restriction or timeout, attempting redirect fallback...");
-        try {
-          await signInWithRedirect(getAuth(), getGoogleProvider());
-        } catch (fallbackErr: any) {
-          setAuthError(`Google Sign-In failed: ${err.message || 'Unknown error'}`);
-        }
+        setAuthError(`Google Sign-In failed: ${err.message || 'Unknown error'}`);
       }
     } finally {
       setAuthProcessing(false);
