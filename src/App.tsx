@@ -597,7 +597,35 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showProFeaturesModal, setShowProFeaturesModal] = useState(false);
   const [firedReminders, setFiredReminders] = useState<Capsule[]>([]);
-  const notifiedIdsRef = useRef<Set<string>>(new Set());
+  const notifiedIdsRef = useRef<Set<string>>(null as any);
+  if (notifiedIdsRef.current === null) {
+    let initialSet = new Set<string>();
+    try {
+      const raw = safeLocalStorageGet('luminote_notified_reminder_ids');
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          initialSet = new Set(arr);
+        }
+      }
+    } catch { /* ignore */ }
+    notifiedIdsRef.current = initialSet;
+  }
+
+  const addNotifiedId = (id: string) => {
+    notifiedIdsRef.current.add(id);
+    try {
+      safeLocalStorageSet('luminote_notified_reminder_ids', JSON.stringify(Array.from(notifiedIdsRef.current)));
+    } catch { /* ignore */ }
+  };
+
+  const [isFirebaseReady, setIsFirebaseReady] = useState(false);
+  useEffect(() => {
+    ensureFirebaseReady().then(() => {
+      setIsFirebaseReady(true);
+    });
+  }, []);
+
   const appStartTime = useRef(Date.now());
   const recentColorsRef = useRef<number[]>([]); // track last used color indices
 
@@ -1148,6 +1176,12 @@ export default function App() {
       }
     }
 
+    if (!isFirebaseReady) {
+      return () => {
+        clearTimeout(syncTimeoutId);
+      };
+    }
+
     const q = query(
       collection(getDb(), 'capsules'), 
       where('userId', '==', user.uid)
@@ -1196,7 +1230,7 @@ export default function App() {
       clearTimeout(syncTimeoutId);
       unsubscribe();
     };
-  }, [user]);
+  }, [user, isFirebaseReady]);
 
   useEffect(() => {
     let wasMobile = window.innerWidth <= 768;
@@ -1302,7 +1336,7 @@ export default function App() {
     };
 
     // Auto-repair onboarding status for old users who already have notes
-    if (user && (allCapsules.length > 0 || hasSeededOrCreated) && !hasSeenTutorial) {
+    if (user && (allCapsules.length > 0 || hasSeededOrCreated) && !hasSeenTutorial && isFirebaseReady) {
       safeLocalStorageSet(ONBOARDING_STORAGE_KEY, 'true');
       const updatedUser = { ...user, onboarded: true };
       setUser(updatedUser);
@@ -1322,7 +1356,7 @@ export default function App() {
          }
        }, 1500); // 1.5s delay for stable trigger
     }
-  }, [user, authLoading, dataLoading, allCapsules.length, hasSeenTutorial, hasSeededOrCreated, isSyncFinished]);
+  }, [user, authLoading, dataLoading, allCapsules.length, hasSeenTutorial, hasSeededOrCreated, isSyncFinished, isFirebaseReady]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const recognition = useRef<any>(null);
@@ -2158,13 +2192,8 @@ export default function App() {
       }
     };
 
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().then(permission => {
-        setNotificationPermission(permission);
-        if (permission === 'granted') {
-          syncRemindersToSW();
-        }
-      });
+    if ('Notification' in window && Notification.permission === 'granted') {
+      syncRemindersToSW();
     }
     
     const checkReminders = () => {
@@ -2187,7 +2216,7 @@ export default function App() {
         
         if (isHistorical) {
           if (!notifiedIdsRef.current.has(cap.id)) {
-            notifiedIdsRef.current.add(cap.id);
+            addNotifiedId(cap.id);
             
             // Silently update to next interval or set to none
             let shouldUpdate = false;
@@ -2234,7 +2263,7 @@ export default function App() {
           navigator.vibrate([150, 80, 150]);
         }
 
-        notifiedIdsRef.current.add(cap.id);
+        addNotifiedId(cap.id);
         hasNewFired = true;
         
         setFiredReminders(prev => {
@@ -2306,7 +2335,7 @@ export default function App() {
 
   // FCM Web Push Token Registration
   useEffect(() => {
-    if (!user || notificationPermission !== 'granted') return;
+    if (!user || notificationPermission !== 'granted' || !isFirebaseReady) return;
 
     const setupWebPush = async () => {
       try {
@@ -2347,7 +2376,7 @@ export default function App() {
     // 延时 2 秒进行 FCM 握手，规避首屏数据加载竞争
     const timer = setTimeout(setupWebPush, 2000);
     return () => clearTimeout(timer);
-  }, [user, notificationPermission, showToast]);
+  }, [user, notificationPermission, showToast, isFirebaseReady]);
 
   const sortedCapsules = allCapsules;
   
@@ -4557,13 +4586,18 @@ const CapsuleItem = memo(function CapsuleItem({
     } else {
       const type = tempReminderType === 'none' ? 'once' : tempReminderType;
       const date = tempReminderDate || (Date.now() + 3600000);
+      
+      const reminderObj: any = {
+        type,
+        date
+      };
+      if (type === 'custom') {
+        reminderObj.customInterval = customInterval;
+        reminderObj.customUnit = customUnit;
+      }
+      
       void onUpdate({
-        reminder: {
-          type,
-          date,
-          customInterval: type === 'custom' ? customInterval : undefined,
-          customUnit: type === 'custom' ? customUnit : undefined
-        }
+        reminder: reminderObj
       });
     }
     setShowReminderPicker(false);
