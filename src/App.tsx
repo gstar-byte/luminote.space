@@ -472,7 +472,7 @@ export default function App() {
 
   const [user, setUser] = useState<UserProfile | null>(() => {
     try {
-      const raw = localStorage.getItem('luminote_auth_user');
+      const raw = safeLocalStorageGet('luminote_auth_user');
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
@@ -550,7 +550,7 @@ export default function App() {
     if (!user) return false;
     const seededKey = `luminote_has_notes_seeded_${user.uid}`;
     return (
-      localStorage.getItem(seededKey) === 'true' ||
+      safeLocalStorageGet(seededKey) === 'true' ||
       user.hasNotesCreatedOrSeeded === true ||
       capsules.length > 0 ||
       demoCapsules.length > 0
@@ -578,9 +578,9 @@ export default function App() {
     if (!user) {
       const userCreatedCapsules = capsules.filter(c => c && c.id && typeof c.id === 'string' && !c.id.startsWith('mock-'));
       if (userCreatedCapsules.length > 0) {
-        localStorage.setItem('luminote_anonymous_cached_notes', JSON.stringify(userCreatedCapsules));
+        safeLocalStorageSet('luminote_anonymous_cached_notes', JSON.stringify(userCreatedCapsules));
       } else {
-        localStorage.removeItem('luminote_anonymous_cached_notes');
+        safeLocalStorageRemove('luminote_anonymous_cached_notes');
       }
     }
   }, [capsules, user]);
@@ -913,7 +913,7 @@ export default function App() {
       console.log('--- SEEDING DEMO DATA ---', generatedDemoCapsules);
       setDemoCapsules(generatedDemoCapsules);
       if (user) {
-        localStorage.setItem(`luminote_has_notes_seeded_${user.uid}`, 'true');
+        safeLocalStorageSet(`luminote_has_notes_seeded_${user.uid}`, 'true');
         updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
       }
     } catch (error) {
@@ -1030,7 +1030,7 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(getAuth(), (firebaseUser: User | null) => {
       if (firebaseUser) {
         // 1. 快速通道：使用缓存的用户数据或基础 Firebase 身份在 1ms 内登入主界面，绝不 pending 卡死！
-        const cachedRaw = localStorage.getItem('luminote_auth_user');
+        const cachedRaw = safeLocalStorageGet('luminote_auth_user');
         let quickUser = null;
         if (cachedRaw) {
           try {
@@ -1064,7 +1064,7 @@ export default function App() {
               hasNotesCreatedOrSeeded: docSnap.data().hasNotesCreatedOrSeeded || false
             };
             setUser(userData);
-            localStorage.setItem('luminote_auth_user', JSON.stringify(userData));
+            safeLocalStorageSet('luminote_auth_user', JSON.stringify(userData));
           } else {
             const userData = {
               uid: firebaseUser.uid,
@@ -1076,7 +1076,7 @@ export default function App() {
               hasNotesCreatedOrSeeded: false
             };
             setUser(userData);
-            localStorage.setItem('luminote_auth_user', JSON.stringify(userData));
+            safeLocalStorageSet('luminote_auth_user', JSON.stringify(userData));
             setDoc(userDocRef, {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
@@ -1098,7 +1098,7 @@ export default function App() {
           userDocUnsubscribe();
         }
         setUser(null);
-        localStorage.removeItem('luminote_auth_user');
+        safeLocalStorageRemove('luminote_auth_user');
         setCapsules([]);
         setDemoCapsules([]);
         setAuthLoading(false);
@@ -1127,7 +1127,7 @@ export default function App() {
 
     // 1. Instant loading of user-specific cached notes from localStorage
     const cacheKey = `luminote_cached_notes_${user.uid}`;
-    const cached = localStorage.getItem(cacheKey);
+    const cached = safeLocalStorageGet(cacheKey);
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
@@ -1168,9 +1168,9 @@ export default function App() {
       setCapsules(sortedDocs);
       
       // Update cache in background
-      localStorage.setItem(cacheKey, JSON.stringify(sortedDocs));
+      safeLocalStorageSet(cacheKey, JSON.stringify(sortedDocs));
       if (sortedDocs.length > 0) {
-        localStorage.setItem(`luminote_has_notes_seeded_${user.uid}`, 'true');
+        safeLocalStorageSet(`luminote_has_notes_seeded_${user.uid}`, 'true');
         updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
       }
 
@@ -1220,7 +1220,7 @@ export default function App() {
       safeLocalStorageSet(ONBOARDING_STORAGE_KEY, 'true');
       const updatedUser = { ...user, onboarded: true };
       setUser(updatedUser);
-      localStorage.setItem('luminote_auth_user', JSON.stringify(updatedUser));
+      safeLocalStorageSet('luminote_auth_user', JSON.stringify(updatedUser));
       updateDoc(doc(getDb(), 'users', user.uid), { onboarded: true }).catch((e) => {
         console.error('Firestore updateDoc onboarded auto-save error (silenced):', e);
       });
@@ -1300,7 +1300,7 @@ export default function App() {
       safeLocalStorageSet(ONBOARDING_STORAGE_KEY, 'true');
       const updatedUser = { ...user, onboarded: true };
       setUser(updatedUser);
-      localStorage.setItem('luminote_auth_user', JSON.stringify(updatedUser));
+      safeLocalStorageSet('luminote_auth_user', JSON.stringify(updatedUser));
       updateDoc(doc(getDb(), 'users', user.uid), { onboarded: true }).catch((e) => {
         // Silently degrade
         console.error('Firestore updateDoc onboarded auto-repair error (silenced):', e);
@@ -1626,7 +1626,7 @@ export default function App() {
       }
 
       if (user) {
-        localStorage.setItem(`luminote_has_notes_seeded_${user.uid}`, 'true');
+        safeLocalStorageSet(`luminote_has_notes_seeded_${user.uid}`, 'true');
         updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
       }
     } catch (error) {
@@ -1655,7 +1655,7 @@ export default function App() {
         });
         
         if (user) {
-          localStorage.setItem(`luminote_has_notes_seeded_${user.uid}`, 'true');
+          safeLocalStorageSet(`luminote_has_notes_seeded_${user.uid}`, 'true');
           updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
         }
       } catch (innerError) {
