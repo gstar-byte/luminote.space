@@ -488,6 +488,9 @@ export default function App() {
   const [isCaptureCollapsed, setIsCaptureCollapsed] = useState(true);
   const [quickCaptureMode, setQuickCaptureMode] = useState<'buttons' | 'text' | 'voice'>('buttons');
   const [quickText, setQuickText] = useState('');
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => {
+    return typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default';
+  });
   const [authLoading, setAuthLoading] = useState(true);
   const [capsules, setCapsules] = useState<Capsule[]>([
     {
@@ -1587,7 +1590,9 @@ export default function App() {
 
       // Automatically request browser notification permission if a new reminder was created
       if (hasReminder && window.Notification && Notification.permission === 'default') {
-        Notification.requestPermission();
+        Notification.requestPermission().then(permission => {
+          setNotificationPermission(permission);
+        });
       }
       
       const createdCapsule: Capsule = {
@@ -2155,6 +2160,7 @@ export default function App() {
 
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().then(permission => {
+        setNotificationPermission(permission);
         if (permission === 'granted') {
           syncRemindersToSW();
         }
@@ -2300,7 +2306,7 @@ export default function App() {
 
   // FCM Web Push Token Registration
   useEffect(() => {
-    if (!user || Notification.permission !== 'granted') return;
+    if (!user || notificationPermission !== 'granted') return;
 
     const setupWebPush = async () => {
       try {
@@ -2341,7 +2347,7 @@ export default function App() {
     // 延时 2 秒进行 FCM 握手，规避首屏数据加载竞争
     const timer = setTimeout(setupWebPush, 2000);
     return () => clearTimeout(timer);
-  }, [user, showToast]);
+  }, [user, notificationPermission, showToast]);
 
   const sortedCapsules = allCapsules;
   
@@ -3337,6 +3343,7 @@ export default function App() {
                       isPremium={hasPremiumAccess(user)}
                       showToast={showToast}
                       onSelectAll={() => setSelectedIds(new Set(filteredCapsules.map(c => c.id)))}
+                      setNotificationPermission={setNotificationPermission}
                     />
                   </div>
                 </div>
@@ -4254,6 +4261,7 @@ interface CapsuleItemProps {
   isPremium: boolean;
   showToast?: (msg: string, type?: 'info' | 'success' | 'error') => void;
   onSelectAll?: () => void;
+  setNotificationPermission?: (permission: NotificationPermission) => void;
 }
 
 const formatNoteDateTime = (ts: number) => new Date(ts).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -4288,6 +4296,7 @@ const CapsuleItem = memo(function CapsuleItem({
   isPremium,
   showToast,
   onSelectAll,
+  setNotificationPermission,
 }: CapsuleItemProps) {
   const capsuleColor = capsule.color || PRESET_COLORS[index % PRESET_COLORS.length] || '#E65100';
   const [showOptions, setShowOptions] = useState(false);
@@ -4538,7 +4547,9 @@ const CapsuleItem = memo(function CapsuleItem({
   const saveReminder = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (window.Notification && Notification.permission === 'default') {
-      Notification.requestPermission();
+      Notification.requestPermission().then(permission => {
+        setNotificationPermission?.(permission);
+      });
     }
     
     if (tempReminderType === 'none' && !tempReminderDate) {
