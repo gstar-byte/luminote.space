@@ -29,6 +29,7 @@ type Props = {
   isProcessing: boolean;
   isVoiceRecording: boolean;
   startVoice: () => Promise<void>;
+  limit: number;
 };
 
 // Helper to extract clean plain text for mini items
@@ -60,12 +61,13 @@ export function QuickCaptureModal({
   isProcessing,
   isVoiceRecording,
   startVoice,
+  limit,
 }: Props) {
   const [inputText, setInputText] = useState('');
 
   const recentCapsules = capsules
     .filter(c => !c.isArchived && !c.isDeleted)
-    .slice(0, 3);
+    .slice(0, limit);
 
   const handleSend = async () => {
     if (!inputText.trim()) return;
@@ -106,7 +108,7 @@ export function QuickCaptureModal({
                 </TouchableOpacity>
               </View>
 
-              {/* Body (Latest 3 Notes) */}
+              {/* Body (Latest Entries) */}
               <View style={styles.body}>
                 <Text style={styles.secLabel}>RECENT ENTRIES</Text>
                 {recentCapsules.length === 0 ? (
@@ -117,7 +119,8 @@ export function QuickCaptureModal({
                   <FlatList
                     data={recentCapsules}
                     keyExtractor={(item) => item.id}
-                    scrollEnabled={false}
+                    scrollEnabled={recentCapsules.length > 3}
+                    style={{ maxHeight: 220 }}
                     renderItem={({ item }) => {
                       const hasReminder = item.reminder && item.reminder.type !== 'none';
                       return (
@@ -196,7 +199,7 @@ export function QuickCaptureModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
   },

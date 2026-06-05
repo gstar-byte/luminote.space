@@ -63,9 +63,10 @@ import {
   User as UserIcon,
   X,
   Zap,
+  Settings as SettingsIcon,
 } from 'lucide-react-native';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import type { Capsule, FilterType, ReminderConfig, ReminderType, UserProfile } from './types';
+import type { Capsule, FilterType, ReminderConfig, ReminderType, UserProfile, AppSettings } from './types';
 import { PRESET_COLORS } from './constants';
 import { categorizeThought, categorizeThoughtFromAudio } from './services/geminiService';
 import { GoogleSignInButton } from './components/GoogleSignInButton';
@@ -341,8 +342,44 @@ function capsulePartialToFirestoreData(updates: Partial<Capsule>): Record<string
   return clean;
 }
 
+const DEFAULT_APP_SETTINGS: AppSettings = {
+  swipeEnabled: true,
+  swipeRightAction: 'archive',
+  edgePanelEnabled: true,
+  ongoingNotificationEnabled: true,
+  accessibilityWakeEnabled: true,
+  quickCaptureLimit: 5,
+};
+
 export default function IdeaCapsuleApp() {
   const searchInputRef = useRef<TextInput>(null);
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('lumi_app_settings');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setSettings({ ...DEFAULT_APP_SETTINGS, ...parsed });
+        }
+      } catch (e) {
+        console.error('Failed to load settings:', e);
+      }
+    };
+    void loadSettings();
+  }, []);
+
+  const updateSettings = async (newSettings: Partial<AppSettings>) => {
+    try {
+      const updated = { ...settings, ...newSettings };
+      setSettings(updated);
+      await AsyncStorage.setItem('lumi_app_settings', JSON.stringify(updated));
+    } catch (e) {
+      console.error('Failed to save settings:', e);
+    }
+  };
+
   const [user, setUser] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showAuthScreen, setShowAuthScreen] = useState(false);
@@ -447,12 +484,36 @@ export default function IdeaCapsuleApp() {
     }
   }, []);
 
+  const [refreshTitle, setRefreshTitle] = useState('Pull to sync');
+  const pullReachedRef = useRef(false);
+
+  const handleScroll = (event: any) => {
+    const y = event.nativeEvent.contentOffset.y;
+    if (y < -75) {
+      if (!pullReachedRef.current && !refreshing && !isSyncing) {
+        pullReachedRef.current = true;
+        setRefreshTitle('Release to sync…');
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } else {
+      if (pullReachedRef.current) {
+        pullReachedRef.current = false;
+        if (!refreshing && !isSyncing) {
+          setRefreshTitle('Pull to sync');
+        }
+      }
+    }
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    setRefreshTitle('Syncing…');
     try {
       await syncCapsules();
     } finally {
       setRefreshing(false);
+      setRefreshTitle('Pull to sync');
+      pullReachedRef.current = false;
     }
   }, [syncCapsules]);
 
@@ -1841,12 +1902,14 @@ export default function IdeaCapsuleApp() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           removeClippedSubviews={Platform.OS === 'android'}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
               refreshing={refreshing || isSyncing}
               onRefresh={onRefresh}
               tintColor="#007AFF"
-              title={isSyncing || refreshing ? 'Syncing…' : 'Pull to sync'}
+              title={refreshTitle}
               titleColor="#8E8E93"
             />
           }
@@ -1862,12 +1925,19 @@ export default function IdeaCapsuleApp() {
                 </View>
               );
 
-              const renderRightActions = () => (
-                <View style={s.swipeRightAction}>
-                  <Trash2 size={18} color="#FFF" />
-                  <Text style={s.swipeActionTxt}>Delete</Text>
-                </View>
-              );
+              const renderRightActions = () => {
+                const isArchive = settings.swipeRightAction === 'archive';
+                return (
+                  <View style={[s.swipeRightAction, isArchive && { backgroundColor: '#FF9500' }]}>
+                    {isArchive ? (
+                      <Archive size={18} color="#FFF" />
+                    ) : (
+                      <Trash2 size={18} color="#FFF" />
+                    )}
+                    <Text style={s.swipeActionTxt}>{isArchive ? 'Archive' : 'Delete'}</Text>
+                  </View>
+                );
+              };
 
               const handleSwipeOpen = (direction: 'left' | 'right') => {
                 if (direction === 'left') {
@@ -1878,7 +1948,11 @@ export default function IdeaCapsuleApp() {
                   });
                 } else if (direction === 'right') {
                   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                  void updateCapsule(item.id, { isDeleted: true });
+                  if (settings.swipeRightAction === 'archive') {
+                    void updateCapsule(item.id, { isArchived: true });
+                  } else {
+                    void updateCapsule(item.id, { isDeleted: true });
+                  }
                 }
                 // Close the swipeable automatically after triggers
                 setTimeout(() => {
@@ -1917,7 +1991,7 @@ export default function IdeaCapsuleApp() {
                       )}
                     </TouchableOpacity>
                   )}
-                  {viewMode === 'list' && !isMultiSelectMode ? (
+                  {viewMode === 'list' && !isMultiSelectMode && settings.swipeEnabled ? (
                     <Swipeable
                       ref={swipeRef}
                       renderLeftActions={renderLeftActions}
@@ -2325,6 +2399,24 @@ export default function IdeaCapsuleApp() {
                   }}
                 />
               ))}
+            <View style={{ height: 16 }} />
+            <View
+              style={[
+                s.sideNavPillWrap,
+                { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E5E5EA', paddingTop: 12, marginTop: 4 }
+              ]}
+            >
+              <SidebarRow
+                label="Preferences"
+                icon="settings"
+                count={0}
+                active={false}
+                onPress={() => {
+                  setIsSidebarOpen(false);
+                  setShowSettings(true);
+                }}
+              />
+            </View>
           </ScrollView>
           <View style={[s.sideFooter, { paddingBottom: Math.max(insets.bottom, 10) }]}>
             <View style={s.userCard}>
@@ -2897,6 +2989,8 @@ export default function IdeaCapsuleApp() {
             setShowPremiumModal(true);
           }}
           onDowngrade={handleDowngrade}
+          settings={settings}
+          onUpdateSettings={updateSettings}
         />
 
         <PremiumModalMobile
@@ -3199,15 +3293,18 @@ export default function IdeaCapsuleApp() {
             </View>
           </View>
         </Modal>
-        <EdgeMiniPanel
-          capsules={capsules}
-          onCreateCapsule={handleCreateCapsule}
-          onToggleTodo={(id, completed) => updateCapsule(id, { completed })}
-          onSelectCapsule={(capsule) => setEditingCapsule(capsule)}
-          isProcessing={isProcessing}
-          isVoiceRecording={isVoiceRecording}
-          startVoice={startVoice}
-        />
+        {settings.edgePanelEnabled && (
+          <EdgeMiniPanel
+            capsules={capsules}
+            onCreateCapsule={handleCreateCapsule}
+            onToggleTodo={(id, completed) => updateCapsule(id, { completed })}
+            onSelectCapsule={(capsule) => setEditingCapsule(capsule)}
+            isProcessing={isProcessing}
+            isVoiceRecording={isVoiceRecording}
+            startVoice={startVoice}
+            limit={settings.quickCaptureLimit}
+          />
+        )}
         <QuickCaptureModal
           visible={showQuickCapture}
           onClose={() => setShowQuickCapture(false)}
@@ -3217,6 +3314,7 @@ export default function IdeaCapsuleApp() {
           isProcessing={isProcessing}
           isVoiceRecording={isVoiceRecording}
           startVoice={startVoice}
+          limit={settings.quickCaptureLimit}
         />
       </SafeAreaView>
     </View>
@@ -3317,7 +3415,7 @@ function SidebarRow({
   active?: boolean;
   isSub?: boolean;
   onPress: () => void;
-  icon?: 'star' | 'all';
+  icon?: 'star' | 'all' | 'settings';
 }) {
   return (
     <TouchableOpacity
@@ -3334,6 +3432,13 @@ function SidebarRow({
         />
       ) : icon === 'all' ? (
         <Layers
+          size={18}
+          color="#007AFF"
+          strokeWidth={2.2}
+          style={{ marginRight: 10 }}
+        />
+      ) : icon === 'settings' ? (
+        <SettingsIcon
           size={18}
           color="#007AFF"
           strokeWidth={2.2}
