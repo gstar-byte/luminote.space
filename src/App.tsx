@@ -978,11 +978,7 @@ export default function App() {
     setAuthProcessing(true);
     try {
       console.log("[GoogleSignIn] Initiating authentication with signInWithPopup...");
-      const popupPromise = signInWithPopup(getAuth(), getGoogleProvider());
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error("Sign-in request timed out. Please check your network or try again.")), 10000)
-      );
-      await Promise.race([popupPromise, timeoutPromise]);
+      await signInWithPopup(getAuth(), getGoogleProvider());
     } catch (err: any) {
       console.error("Google Sign-In Error Captured:", err);
       if (err.code === 'auth/unauthorized-domain') {
