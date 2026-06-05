@@ -13,6 +13,7 @@ import { Check, X } from 'lucide-react-native';
 import type { Capsule, ReminderConfig, ReminderType } from '../types';
 import { ReminderDateField } from './ReminderDateField';
 import { requestNotificationPermissions } from '../lib/notificationsMobile';
+import * as Haptics from 'expo-haptics';
 
 const REPEAT_OPTIONS: ReminderType[] = [
   'once',
@@ -103,11 +104,17 @@ export function CapsuleReminderSheet({ capsule, onSave, onClose }: Props) {
     };
 
     onSave(next);
+    if (Platform.OS !== 'web') {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
     onClose();
   };
 
   const clearReminder = () => {
     onSave(undefined);
+    if (Platform.OS !== 'web') {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }
     onClose();
   };
 

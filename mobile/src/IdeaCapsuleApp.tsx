@@ -76,6 +76,9 @@ import { AppLogo } from './components/AppLogo';
 import { LandingScreen } from './components/LandingScreen';
 import { PremiumModalMobile } from './components/PremiumModalMobile';
 import { SettingsModalMobile } from './components/SettingsModalMobile';
+import { EdgeMiniPanel } from './components/EdgeMiniPanel';
+import { QuickCaptureModal } from './components/QuickCaptureModal';
+import * as Linking from 'expo-linking';
 import {
   AUTO_DEMO_CAPSULES,
   autoDemoSeedStorageKey,
@@ -107,6 +110,8 @@ import {
   VOICE_FREE_LIMIT,
 } from './lib/voiceQuota';
 import { hasPremiumAccess, PAYWALL_ACTIVE } from './featureFlags';
+import * as Haptics from 'expo-haptics';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import {
   initNotifications,
   requestNotificationPermissions,
@@ -352,6 +357,31 @@ export default function IdeaCapsuleApp() {
   useEffect(() => {
     initNotifications();
   }, []);
+
+  useEffect(() => {
+    const handleUrl = (event: { url: string }) => {
+      try {
+        const parsed = Linking.parse(event.url);
+        if (parsed.path === 'quick-capture') {
+          setShowQuickCapture(true);
+        }
+      } catch (e) {
+        console.error('Failed to parse linking URL:', e);
+      }
+    };
+
+    const subscription = Linking.addEventListener('url', handleUrl);
+    
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleUrl({ url });
+      }
+    });
+    
+    return () => {
+      subscription.remove();
+    };
+  }, []);
   // Automatically sync local OS notifications when capsules list updates
   useEffect(() => {
     void syncAllCapsuleNotifications(capsules);
@@ -384,6 +414,7 @@ export default function IdeaCapsuleApp() {
   const [showSettings, setShowSettings] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [isGuestMode, setIsGuestMode] = useState(true);
+  const [showQuickCapture, setShowQuickCapture] = useState(false);
 
   const [isFilterSectionExpanded, setIsFilterSectionExpanded] = useState(false);
   const [isCategoriesExpanded, setIsCategoriesExpanded] = useState(false);
@@ -1226,6 +1257,7 @@ export default function IdeaCapsuleApp() {
       voiceRecordingRef.current = null;
       try {
         await prev.stopAndUnloadAsync();
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       } catch (e) {
         console.error(e);
         setIsVoiceRecording(false);
@@ -1308,6 +1340,7 @@ export default function IdeaCapsuleApp() {
       const rec = new Audio.Recording();
       await rec.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       await rec.startAsync();
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       voiceRecordingRef.current = rec;
       setIsVoiceRecording(true);
     } catch (e) {
@@ -1819,62 +1852,129 @@ export default function IdeaCapsuleApp() {
           }
         >
           <View style={viewMode === 'grid' ? s.gridRow : s.listCol}>
-            {filteredCapsules.map((item) => (
-              <View
-                key={item.id}
-                style={[
-                  viewMode === 'grid' ? s.cardWrapGrid : s.cardWrapList,
-                  viewMode === 'grid' && { width: gridColWidth },
-                ]}
-              >
-                {isMultiSelectMode && (
-                  <TouchableOpacity
-                    style={[
-                      s.multiCheck,
-                      viewMode === 'grid' && s.multiCheckFloating,
-                    ]}
-                    onPress={() => {
-                      setSelectedIds((prev) =>
-                        prev.includes(item.id)
-                          ? prev.filter((x) => x !== item.id)
-                          : [...prev, item.id],
-                      );
-                    }}
-                  >
-                    {selectedIds.includes(item.id) ? (
-                      <View style={s.checkedCircle}>
-                        <Check size={12} color="#FFF" />
-                      </View>
-                    ) : (
-                      <View style={[s.uncheckCircle, viewMode === 'grid' && s.uncheckCircleOnCard]} />
-                    )}
-                  </TouchableOpacity>
-                )}
-                <CapsuleCard
-                  item={item}
-                  isGrid={viewMode === 'grid'}
-                  isSelected={selectedIds.includes(item.id)}
-                  isMulti={isMultiSelectMode}
-                  onPress={() =>
-                    isMultiSelectMode
-                      ? setSelectedIds((prev) =>
+            {filteredCapsules.map((item) => {
+              const swipeRef = React.createRef<Swipeable>();
+              
+              const renderLeftActions = () => (
+                <View style={s.swipeLeftAction}>
+                  <Check size={18} color="#FFF" />
+                  <Text style={s.swipeActionTxt}>Done</Text>
+                </View>
+              );
+
+              const renderRightActions = () => (
+                <View style={s.swipeRightAction}>
+                  <Trash2 size={18} color="#FFF" />
+                  <Text style={s.swipeActionTxt}>Delete</Text>
+                </View>
+              );
+
+              const handleSwipeOpen = (direction: 'left' | 'right') => {
+                if (direction === 'left') {
+                  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  void updateCapsule(item.id, { 
+                    completed: !item.completed,
+                    isTodo: true
+                  });
+                } else if (direction === 'right') {
+                  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                  void updateCapsule(item.id, { isDeleted: true });
+                }
+                // Close the swipeable automatically after triggers
+                setTimeout(() => {
+                  swipeRef.current?.close();
+                }, 100);
+              };
+
+              return (
+                <View
+                  key={item.id}
+                  style={[
+                    viewMode === 'grid' ? s.cardWrapGrid : s.cardWrapList,
+                    viewMode === 'grid' && { width: gridColWidth },
+                  ]}
+                >
+                  {isMultiSelectMode && (
+                    <TouchableOpacity
+                      style={[
+                        s.multiCheck,
+                        viewMode === 'grid' && s.multiCheckFloating,
+                      ]}
+                      onPress={() => {
+                        setSelectedIds((prev) =>
                           prev.includes(item.id)
                             ? prev.filter((x) => x !== item.id)
                             : [...prev, item.id],
-                        )
-                      : setEditingCapsule(item)
-                  }
-                  onLongPress={() => {
-                    setIsMultiSelectMode(true);
-                    setSelectedIds([item.id]);
-                  }}
-                  onMenu={() => openMenu(item)}
-                  onToggleTodo={() =>
-                    updateCapsule(item.id, { completed: !item.completed })
-                  }
-                />
-              </View>
-            ))}
+                        );
+                      }}
+                    >
+                      {selectedIds.includes(item.id) ? (
+                        <View style={s.checkedCircle}>
+                          <Check size={12} color="#FFF" />
+                        </View>
+                      ) : (
+                        <View style={[s.uncheckCircle, viewMode === 'grid' && s.uncheckCircleOnCard]} />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                  {viewMode === 'list' && !isMultiSelectMode ? (
+                    <Swipeable
+                      ref={swipeRef}
+                      renderLeftActions={renderLeftActions}
+                      renderRightActions={renderRightActions}
+                      onSwipeableOpen={handleSwipeOpen}
+                      friction={2}
+                      leftThreshold={40}
+                      rightThreshold={40}
+                    >
+                      <CapsuleCard
+                        item={item}
+                        isGrid={false}
+                        isSelected={selectedIds.includes(item.id)}
+                        isMulti={false}
+                        onPress={() => setEditingCapsule(item)}
+                        onLongPress={() => {
+                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          setIsMultiSelectMode(true);
+                          setSelectedIds([item.id]);
+                        }}
+                        onMenu={() => openMenu(item)}
+                        onToggleTodo={() => {
+                          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          void updateCapsule(item.id, { completed: !item.completed });
+                        }}
+                      />
+                    </Swipeable>
+                  ) : (
+                    <CapsuleCard
+                      item={item}
+                      isGrid={viewMode === 'grid'}
+                      isSelected={selectedIds.includes(item.id)}
+                      isMulti={isMultiSelectMode}
+                      onPress={() =>
+                        isMultiSelectMode
+                          ? setSelectedIds((prev) =>
+                              prev.includes(item.id)
+                                ? prev.filter((x) => x !== item.id)
+                                : [...prev, item.id],
+                            )
+                          : setEditingCapsule(item)
+                      }
+                      onLongPress={() => {
+                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        setIsMultiSelectMode(true);
+                        setSelectedIds([item.id]);
+                      }}
+                      onMenu={() => openMenu(item)}
+                      onToggleTodo={() => {
+                        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        void updateCapsule(item.id, { completed: !item.completed });
+                      }}
+                    />
+                  )}
+                </View>
+              );
+            })}
             {filteredCapsules.length === 0 && (
               <View style={s.emptyWrap}>
                 <View style={s.emptyCircle}>
@@ -3099,6 +3199,25 @@ export default function IdeaCapsuleApp() {
             </View>
           </View>
         </Modal>
+        <EdgeMiniPanel
+          capsules={capsules}
+          onCreateCapsule={handleCreateCapsule}
+          onToggleTodo={(id, completed) => updateCapsule(id, { completed })}
+          onSelectCapsule={(capsule) => setEditingCapsule(capsule)}
+          isProcessing={isProcessing}
+          isVoiceRecording={isVoiceRecording}
+          startVoice={startVoice}
+        />
+        <QuickCaptureModal
+          visible={showQuickCapture}
+          onClose={() => setShowQuickCapture(false)}
+          capsules={capsules}
+          onCreateCapsule={handleCreateCapsule}
+          onToggleTodo={(id, completed) => updateCapsule(id, { completed })}
+          isProcessing={isProcessing}
+          isVoiceRecording={isVoiceRecording}
+          startVoice={startVoice}
+        />
       </SafeAreaView>
     </View>
   );
@@ -3239,6 +3358,33 @@ function SidebarRow({
 }
 
 const s = StyleSheet.create({
+  swipeLeftAction: {
+    backgroundColor: '#34C759',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingLeft: 24,
+    height: '100%',
+    borderRadius: 12,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  swipeRightAction: {
+    backgroundColor: '#FF3B30',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingRight: 24,
+    height: '100%',
+    borderRadius: 12,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  swipeActionTxt: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
   loadingRoot: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' },
   landingRoot: { flex: 1, backgroundColor: '#FFF' },
   landingInner: { flex: 1, padding: 32, justifyContent: 'center' },
