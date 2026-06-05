@@ -2158,13 +2158,8 @@ export default function App() {
       }
     };
 
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().then(permission => {
-        setNotificationPermission(permission);
-        if (permission === 'granted') {
-          syncRemindersToSW();
-        }
-      });
+    if ('Notification' in window && Notification.permission === 'granted') {
+      syncRemindersToSW();
     }
     
     const checkReminders = () => {
@@ -4557,13 +4552,18 @@ const CapsuleItem = memo(function CapsuleItem({
     } else {
       const type = tempReminderType === 'none' ? 'once' : tempReminderType;
       const date = tempReminderDate || (Date.now() + 3600000);
+      
+      const reminderObj: any = {
+        type,
+        date
+      };
+      if (type === 'custom') {
+        reminderObj.customInterval = customInterval;
+        reminderObj.customUnit = customUnit;
+      }
+      
       void onUpdate({
-        reminder: {
-          type,
-          date,
-          customInterval: type === 'custom' ? customInterval : undefined,
-          customUnit: type === 'custom' ? customUnit : undefined
-        }
+        reminder: reminderObj
       });
     }
     setShowReminderPicker(false);
