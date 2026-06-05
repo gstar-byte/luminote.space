@@ -3,7 +3,7 @@
   "appId": "1:363947566256:web:e3b68f791bb09269630775",
   "apiKey": "AIzaSyDrgLyVQKJpgglo1VUTPMJ3GgSJYFEiYUw",
   "authDomain": "luminote.space",
-  "firestoreDatabaseId": "ai-studio-8168f6c5-af0e-4af5-a66e-1210ad9c976d",
+  "firestoreDatabaseId": "(default)",
   "storageBucket": "ai-studio-applet-webapp-e17fe.firebasestorage.app",
   "messagingSenderId": "363947566256",
   "measurementId": ""
