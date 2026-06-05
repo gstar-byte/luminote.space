@@ -11,6 +11,8 @@ export interface Capsule {
   id: string;
   userId?: string; // Owner ID
   content: string;
+  /** Optional subject / title line displayed above the note body. */
+  subject?: string;
   category?: string;
   createdAt: number;
   updatedAt?: number;

@@ -7,6 +7,29 @@ import {defineConfig, loadEnv} from 'vite';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+            editor: [
+              '@tiptap/react', 
+              '@tiptap/starter-kit', 
+              '@tiptap/extension-image', 
+              '@tiptap/extension-link', 
+              '@tiptap/extension-placeholder', 
+              '@tiptap/extension-text-align', 
+              '@tiptap/extension-text-style', 
+              '@tiptap/extension-underline', 
+              '@tiptap/extension-bubble-menu', 
+              '@tiptap/extension-color'
+            ],
+            motion: ['motion'],
+            vendor: ['react', 'react-dom', 'react-helmet-async', 'lucide-react'],
+          },
+        },
+      },
+    },
     plugins: [
       react(),
       tailwindcss(),

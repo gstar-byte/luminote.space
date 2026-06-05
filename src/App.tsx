@@ -85,9 +85,24 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   deleteField,
+  onAuthStateChanged,
+  setDoc,
+  getDocs,
+  writeBatch,
+  doc,
+  collection,
+  query,
+  where,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  ensureFirebaseReady,
 } from './lib/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { setDoc, getDocs, writeBatch, doc, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import type { User } from 'firebase/auth';
+
+// 启动后台静默异步预加载 Firebase SDK，提升后续数据交互速度
+void ensureFirebaseReady();
 
 import { showSystemNotification } from './lib/notifications';
 import { cn } from './lib/utils';
@@ -1456,6 +1471,8 @@ export default function App() {
   /** Local draft for detail editor — avoids Firestore write on every keystroke. */
   const [editContentDraft, setEditContentDraft] = useState('');
   const editContentDraftRef = useRef('');
+  const [editSubjectDraft, setEditSubjectDraft] = useState('');
+  const editSubjectDraftRef = useRef('');
   const editSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [editDetailCategory, setEditDetailCategory] = useState('');
@@ -1544,7 +1561,8 @@ export default function App() {
 
       const newCapsuleData: Record<string, unknown> = {
         userId: user?.uid,
-        content: refinedContent,
+        content: '',
+        subject: refinedContent,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         completed: false,
@@ -1567,7 +1585,7 @@ export default function App() {
       if (isStarred) newCapsuleData.isStarred = true;
       if (isPinned) newCapsuleData.isPinned = true;
       
-      console.log('[handleCreate] saving to Firestore:', JSON.stringify({ content: newCapsuleData.content, isTodo: newCapsuleData.isTodo, hasReminder: !!newCapsuleData.reminder, isAmbiguous: newCapsuleData.isAmbiguous }));
+      console.log('[handleCreate] saving to Firestore:', JSON.stringify({ content: newCapsuleData.content, subject: newCapsuleData.subject, isTodo: newCapsuleData.isTodo, hasReminder: !!newCapsuleData.reminder, isAmbiguous: newCapsuleData.isAmbiguous }));
       
       const docRef = await addDoc(collection(getDb(), 'capsules'), newCapsuleData);
       console.log('[handleCreate] saved doc id:', docRef.id);
@@ -1580,7 +1598,8 @@ export default function App() {
       const createdCapsule: Capsule = {
         id: docRef.id,
         userId: user?.uid || '',
-        content: refinedContent,
+        content: '',
+        subject: refinedContent,
         createdAt: newCapsuleData.createdAt as number,
         updatedAt: newCapsuleData.updatedAt as number,
         completed: false,
@@ -1623,7 +1642,8 @@ export default function App() {
       const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
       const fallbackDoc = {
         userId: user?.uid,
-        content: text,
+        content: '',
+        subject: text,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         completed: false,
@@ -1762,6 +1782,9 @@ export default function App() {
       const t = editingCapsule.content;
       setEditContentDraft(t);
       editContentDraftRef.current = t;
+      const s = editingCapsule.subject || '';
+      setEditSubjectDraft(s);
+      editSubjectDraftRef.current = s;
     }
     const id = editingCapsule?.id;
     if (!id) {
@@ -1777,7 +1800,10 @@ export default function App() {
         clearTimeout(editSaveTimerRef.current);
         editSaveTimerRef.current = null;
       }
-      void updateCapsuleRef.current(id, { content: editContentDraftRef.current });
+      void updateCapsuleRef.current(id, { 
+        content: editContentDraftRef.current,
+        subject: editSubjectDraftRef.current ? editSubjectDraftRef.current : undefined
+      });
     };
   }, [editingCapsule?.id]);
 
@@ -1791,6 +1817,20 @@ export default function App() {
       void updateCapsuleRef.current(id, { content: draft });
       setEditingCapsule((prev) =>
         prev?.id === id ? { ...prev, content: draft } : prev,
+      );
+    }, 450);
+  }, [editingCapsule?.id]);
+
+  const queueEditSubjectSave = useCallback(() => {
+    if (!editingCapsule) return;
+    const id = editingCapsule.id;
+    if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+    editSaveTimerRef.current = setTimeout(() => {
+      editSaveTimerRef.current = null;
+      const draft = editSubjectDraftRef.current;
+      void updateCapsuleRef.current(id, { subject: draft ? draft : undefined });
+      setEditingCapsule((prev) =>
+        prev?.id === id ? { ...prev, subject: draft ? draft : undefined } : prev,
       );
     }, 450);
   }, [editingCapsule?.id]);
@@ -1811,6 +1851,12 @@ export default function App() {
       }
       if (tagsSignature(cap.tags) !== tagsSignature(tagParts)) {
         patch.tags = tagParts.length ? tagParts : undefined;
+      }
+      if (cap.content !== editContentDraftRef.current) {
+        patch.content = editContentDraftRef.current;
+      }
+      if ((cap.subject || '') !== editSubjectDraftRef.current) {
+        patch.subject = editSubjectDraftRef.current ? editSubjectDraftRef.current : undefined;
       }
       if (Object.keys(patch).length > 0) {
         void updateCapsuleRef.current(cap.id, patch);
@@ -2988,22 +3034,9 @@ export default function App() {
            <button
              type="button"
              onClick={async () => {
-               if ('Notification' in window) {
-                 if (Notification.permission === 'default') {
-                   const permission = await Notification.requestPermission();
-                   if (permission === 'granted') {
-                     showToast('Notification access granted!', 'success');
-                     new Notification('Lumi Note', { body: 'Native notifications are now enabled!' });
-                   }
-                 } else if (Notification.permission === 'granted') {
-                   new Notification('Lumi Note (Manual Sync)', { body: 'System notifications are functioning normally!' });
-                 } else if (Notification.permission === 'denied') {
-                   showToast('Notifications blocked! Please unlock in your browser url bar.', 'error');
-                 }
-               }
-               void handleSync();
-             }}
-             disabled={isSyncing}
+                void handleSync();
+              }}
+              disabled={isSyncing}
              aria-label="Manual sync"
              title="Manual sync"
              className={cn(
@@ -3386,9 +3419,20 @@ export default function App() {
                   className="h-14 w-full flex items-center justify-between px-5 md:px-6 gap-3"
                   style={{ backgroundColor: 'white', borderBottom: '1px solid #F2F2F7' }}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: editingCapsule.color || '#F2F2F7' }} />
-                    <span className="font-black tracking-tight text-lg md:text-xl text-[#1D1D1F] truncate">Edit Note</span>
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: editingCapsule.color || '#F2F2F7' }} />
+                    <input
+                      type="text"
+                      value={editSubjectDraft}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditSubjectDraft(val);
+                        editSubjectDraftRef.current = val;
+                        queueEditSubjectSave();
+                      }}
+                      placeholder="Note Title"
+                      className="font-black tracking-tight text-lg md:text-xl text-[#1D1D1F] bg-transparent border-none outline-none w-full p-0 placeholder-[#C7C7CC] focus:ring-0"
+                    />
                   </div>
                   {/* 详情页聚焦编辑：分类/标签/颜色/置顶/星标/待办/分享均下沉到列表卡片的 ⋮ 菜单，
                       由 AI 解析意图自动归类，这里仅保留关闭按钮。 */}
@@ -4697,7 +4741,7 @@ const CapsuleItem = memo(function CapsuleItem({
             capsule.isTodo && capsule.completed ? "line-through opacity-50 text-white/70" : "text-white",
             viewMode === 'grid' ? "whitespace-pre-wrap line-clamp-4" : "line-clamp-1"
           )}>
-            <span>{plainTextFromContent(capsule.content)}</span>
+            <span>{capsule.subject || plainTextFromContent(capsule.content) || 'Untitled Note'}</span>
           </div>
           
           <div className={cn(

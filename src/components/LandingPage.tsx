@@ -3,7 +3,6 @@ import { motion } from 'motion/react';
 import { AppLogo } from './AppLogo';
 import { Zap, Mic, CheckSquare, Sparkles, Command, Shield, ArrowRight, Share2, Palette, Clock, Repeat, CalendarDays, Smartphone, Monitor, Tablet, Apple, Play } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { getAuth, getGoogleProvider, signInWithPopup, signInWithRedirect } from '../lib/firebase';
 import { Helmet } from 'react-helmet-async';
 
 interface LandingPageProps {
@@ -13,6 +12,7 @@ interface LandingPageProps {
 export function LandingPage({ onLogin }: LandingPageProps) {
   const handleGoogleLogin = async () => {
     try {
+      const { getAuth, getGoogleProvider, signInWithRedirect, signInWithPopup } = await import('../lib/firebase');
       const isMobile = window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
       if (isMobile) {
         await signInWithRedirect(getAuth(), getGoogleProvider());
