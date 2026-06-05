@@ -9,27 +9,12 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Platform,
 } from 'react-native';
-import { User as UserIcon, X } from 'lucide-react-native';
-import type { UserProfile } from '../types';
+import { User as UserIcon, X, Sliders } from 'lucide-react-native';
+import type { UserProfile, AppSettings } from '../types';
 import { PAYWALL_ACTIVE } from '../featureFlags';
-
-function CrownJewel({ size = 22 }: { size?: number }) {
-  return (
-    <Text
-      style={{
-        fontSize: size,
-        lineHeight: size * 1.15,
-        textShadowColor: '#FFD700',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 5,
-        includeFontPadding: false,
-      }}
-    >
-      👑
-    </Text>
-  );
-}
+import * as Haptics from 'expo-haptics';
 
 type Props = {
   visible: boolean;
@@ -37,39 +22,9 @@ type Props = {
   user: UserProfile | null;
   onUpgrade: () => void;
   onDowngrade: () => void;
+  settings: AppSettings;
+  onUpdateSettings: (newSettings: Partial<AppSettings>) => Promise<void>;
 };
-
-type ProFeatureRow = {
-  label: string;
-  sub: string;
-  /** Free: toggling on opens paywall; switch stays off until user is Pro. */
-  openPaywallOnToggle?: boolean;
-};
-
-const PRO_FEATURE_ROWS: ProFeatureRow[] = [
-  {
-    label: 'Video in notes',
-    sub: 'Attach video clips to capsules alongside photos (Pro).',
-    openPaywallOnToggle: true,
-  },
-  {
-    label: 'Desktop home screen widget',
-    sub: 'Pin capture and glanceable notes on your launcher (Pro).',
-    openPaywallOnToggle: true,
-  },
-  {
-    label: 'Persistent notification',
-    sub: 'Shade shortcut / ongoing tile to capture without opening the app.',
-  },
-  {
-    label: 'Edge swipe capture',
-    sub: 'Swipe from the screen edge to start a quick note.',
-  },
-  {
-    label: 'Volume-key quick capture',
-    sub: 'Wake capture from hardware keys when the OS allows it.',
-  },
-];
 
 export function SettingsModalMobile({
   visible,
@@ -77,123 +32,221 @@ export function SettingsModalMobile({
   user,
   onUpgrade,
   onDowngrade,
+  settings,
+  onUpdateSettings,
 }: Props) {
   if (!visible) return null;
 
-  const isPro = !!user?.isPremium;
+  const handleToggle = async (key: keyof AppSettings, val: boolean) => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await onUpdateSettings({ [key]: val });
+  };
+
+  const handleSegmentChange = async (key: keyof AppSettings, val: any) => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await onUpdateSettings({ [key]: val });
+  };
 
   return (
     <Modal transparent visible animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={styles.sheet}>
+          {/* Header */}
           <View style={styles.head}>
             <View style={styles.headLeft}>
-              <CrownJewel size={24} />
-              <Text style={styles.title}>Settings</Text>
+              <Sliders size={20} color="#007AFF" strokeWidth={2.5} />
+              <Text style={styles.title}>Preferences</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={12}>
               <X size={20} color="#8E8E93" />
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={styles.body}>
-            {!PAYWALL_ACTIVE ? (
-              <View style={styles.proBanner}>
-                <Text style={styles.proBannerCrown}>👑</Text>
-                <Text style={styles.proBannerTxt}>
-                  All features available. Paywall is off until billing is connected.
-                </Text>
-              </View>
-            ) : !user?.isPremium ? (
-              <TouchableOpacity style={styles.upgradeHero} onPress={onUpgrade} activeOpacity={0.9}>
-                <CrownJewel size={22} />
-                <Text style={styles.upgradeHeroTxt}>Upgrade to Pro</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.proBanner}>
-                <Text style={styles.proBannerCrown}>👑</Text>
-                <Text style={styles.proBannerTxt}>You have Idea Capsule Pro</Text>
+          <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+            {/* Pro Status / Billing */}
+            {PAYWALL_ACTIVE && (
+              <View style={styles.card}>
+                <View style={styles.accountRow}>
+                  {user?.photoURL ? (
+                    <Image source={{ uri: user.photoURL }} style={styles.avatar} />
+                  ) : (
+                    <View style={styles.avatarPh}>
+                      <UserIcon size={24} color="#007AFF" />
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.name} numberOfLines={1}>
+                      {user?.displayName || (user ? 'User' : 'Guest')}
+                    </Text>
+                    <Text style={styles.email} numberOfLines={1}>
+                      {user?.email || 'Not signed in'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.tierRow}>
+                  <View>
+                    <Text style={styles.tierLbl}>ACCOUNT STATUS</Text>
+                    {user?.isPremium ? (
+                      <View style={styles.tierPro}>
+                        <Text style={styles.tierCrown}>👑</Text>
+                        <Text style={styles.tierProTxt}>Idea Capsule Pro</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.tierFree}>Free Tier</Text>
+                    )}
+                  </View>
+                  {user?.isPremium ? (
+                    <TouchableOpacity style={styles.downBtn} onPress={onDowngrade}>
+                      <Text style={styles.downBtnTxt}>Downgrade</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity style={styles.upgradeBtn} onPress={onUpgrade}>
+                      <Text style={styles.upgradeBtnTxt}>Upgrade</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             )}
 
-            <View style={styles.card}>
-              <View style={styles.accountRow}>
-                {user?.photoURL ? (
-                  <Image source={{ uri: user.photoURL }} style={styles.avatar} />
-                ) : (
-                  <View style={styles.avatarPh}>
-                    <UserIcon size={24} color="#007AFF" />
-                  </View>
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {user?.displayName || (user ? 'User' : 'Guest')}
-                  </Text>
-                  <Text style={styles.email} numberOfLines={1}>
-                    {user?.email || 'Not signed in'}
-                  </Text>
+            {/* Section: Gesture Interactions */}
+            <Text style={styles.sectionLbl}>GESTURES & TOUCH</Text>
+            <View style={styles.sectionCard}>
+              {/* Swipe Action Enabled */}
+              <View style={styles.row}>
+                <View style={styles.rowMeta}>
+                  <Text style={styles.rowTitle}>Swipe Actions</Text>
+                  <Text style={styles.rowSub}>Enable left/right swipe shortcuts in list mode</Text>
                 </View>
+                <Switch
+                  value={settings.swipeEnabled}
+                  onValueChange={(val) => handleToggle('swipeEnabled', val)}
+                  trackColor={{ false: '#E5E5EA', true: '#34C759' }}
+                  thumbColor="#FFF"
+                  ios_backgroundColor="#E5E5EA"
+                />
               </View>
 
-              <View style={styles.tierRow}>
-                <View>
-                  <Text style={styles.tierLbl}>ACCOUNT</Text>
-                  {!PAYWALL_ACTIVE ? (
-                    <Text style={styles.tierFree}>Full access</Text>
-                  ) : user?.isPremium ? (
-                    <View style={styles.tierPro}>
-                      <Text style={styles.tierCrown}>👑</Text>
-                      <Text style={styles.tierProTxt}>Idea Capsule Pro</Text>
+              {/* Swipe Right Mapping */}
+              {settings.swipeEnabled && (
+                <View style={styles.rowDivider}>
+                  <View style={styles.row}>
+                    <View style={styles.rowMeta}>
+                      <Text style={styles.rowTitle}>Right Swipe Trigger</Text>
+                      <Text style={styles.rowSub}>Action triggered when swiping card to the right</Text>
                     </View>
-                  ) : (
-                    <Text style={styles.tierFree}>Free</Text>
-                  )}
+                    <View style={styles.segmentContainer}>
+                      {(['archive', 'delete'] as const).map((opt) => (
+                        <TouchableOpacity
+                          key={opt}
+                          style={[
+                            styles.segmentBtn,
+                            settings.swipeRightAction === opt && styles.segmentBtnActive,
+                          ]}
+                          onPress={() => handleSegmentChange('swipeRightAction', opt)}
+                        >
+                          <Text style={[
+                            styles.segmentBtnTxt,
+                            settings.swipeRightAction === opt && styles.segmentBtnTxtActive
+                          ]}>
+                            {opt === 'archive' ? 'Archive' : 'Delete'}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
                 </View>
-                {PAYWALL_ACTIVE && user?.isPremium ? (
-                  <TouchableOpacity style={styles.downBtn} onPress={onDowngrade}>
-                    <Text style={styles.downBtnTxt}>Downgrade</Text>
-                  </TouchableOpacity>
-                ) : null}
+              )}
+            </View>
+
+            {/* Section: Floating Panels */}
+            <Text style={styles.sectionLbl}>FLOATING PANELS</Text>
+            <View style={styles.sectionCard}>
+              {/* Edge Mini Panel */}
+              <View style={styles.row}>
+                <View style={styles.rowMeta}>
+                  <Text style={styles.rowTitle}>Edge Swipe Panel</Text>
+                  <Text style={styles.rowSub}>Show a floating handle on screen edge to pull side note widget</Text>
+                </View>
+                <Switch
+                  value={settings.edgePanelEnabled}
+                  onValueChange={(val) => handleToggle('edgePanelEnabled', val)}
+                  trackColor={{ false: '#E5E5EA', true: '#34C759' }}
+                  thumbColor="#FFF"
+                  ios_backgroundColor="#E5E5EA"
+                />
+              </View>
+
+              {/* Display Note Count Limit */}
+              <View style={styles.rowDivider}>
+                <View style={styles.row}>
+                  <View style={styles.rowMeta}>
+                    <Text style={styles.rowTitle}>Quick Capture Limit</Text>
+                    <Text style={styles.rowSub}>Max notes to show in Edge Drawer & Quick Dialog</Text>
+                  </View>
+                  <View style={styles.segmentContainer}>
+                    {[3, 5, 8].map((num) => (
+                      <TouchableOpacity
+                        key={num}
+                        style={[
+                          styles.segmentBtn,
+                          settings.quickCaptureLimit === num && styles.segmentBtnActive,
+                        ]}
+                        onPress={() => handleSegmentChange('quickCaptureLimit', num)}
+                      >
+                        <Text style={[
+                          styles.segmentBtnTxt,
+                          settings.quickCaptureLimit === num && styles.segmentBtnTxtActive
+                        ]}>
+                          {num}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
               </View>
             </View>
 
-            <Text style={styles.sectionLbl}>PRO FEATURES</Text>
-            <View style={styles.proCard}>
-              {PRO_FEATURE_ROWS.map((row, i) => (
-                <View
-                  key={row.label}
-                  style={[
-                    styles.proRow,
-                    i === PRO_FEATURE_ROWS.length - 1 && { borderBottomWidth: 0 },
-                  ]}
-                >
-                  <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
-                    <Text style={styles.rowTitle}>{row.label}</Text>
-                    <Text style={styles.rowSub}>{row.sub}</Text>
-                  </View>
-                  <View style={styles.switchHit}>
+            {/* Section: Platform Native Integrations */}
+            {Platform.OS === 'android' && (
+              <>
+                <Text style={styles.sectionLbl}>ANDROID INTEGRATIONS</Text>
+                <View style={styles.sectionCard}>
+                  {/* Ongoing Notification */}
+                  <View style={styles.row}>
+                    <View style={styles.rowMeta}>
+                      <Text style={styles.rowTitle}>Ongoing Notification</Text>
+                      <Text style={styles.rowSub}>Keep permanent quick capture entry in notification tray</Text>
+                    </View>
                     <Switch
-                      value={isPro}
-                      onValueChange={(next) => {
-                        if (next && !isPro) {
-                          onUpgrade();
-                        }
-                      }}
-                      disabled={isPro}
+                      value={settings.ongoingNotificationEnabled}
+                      onValueChange={(val) => handleToggle('ongoingNotificationEnabled', val)}
                       trackColor={{ false: '#E5E5EA', true: '#34C759' }}
                       thumbColor="#FFF"
                       ios_backgroundColor="#E5E5EA"
                     />
                   </View>
+
+                  {/* Volume Key Long Press */}
+                  <View style={styles.rowDivider}>
+                    <View style={styles.row}>
+                      <View style={styles.rowMeta}>
+                        <Text style={styles.rowTitle}>Volume Key Wake</Text>
+                        <Text style={styles.rowSub}>Long press volume down globally to wake quick entry window (Requires accessibility service enabled)</Text>
+                      </View>
+                      <Switch
+                        value={settings.accessibilityWakeEnabled}
+                        onValueChange={(val) => handleToggle('accessibilityWakeEnabled', val)}
+                        trackColor={{ false: '#E5E5EA', true: '#34C759' }}
+                        thumbColor="#FFF"
+                        ios_backgroundColor="#E5E5EA"
+                      />
+                    </View>
+                  </View>
                 </View>
-              ))}
-              {!isPro ? (
-                <Text style={styles.proHint}>
-                  Turn a switch on to open checkout — subscribe to unlock everything.
-                </Text>
-              ) : null}
-            </View>
+              </>
+            )}
 
             <TouchableOpacity style={styles.done} onPress={onClose}>
               <Text style={styles.doneTxt}>Done</Text>
@@ -208,7 +261,7 @@ export function SettingsModalMobile({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
@@ -220,6 +273,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F7',
     borderRadius: 28,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
   head: {
     flexDirection: 'row',
@@ -232,112 +287,126 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E5EA',
   },
   headLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  title: { fontSize: 18, fontWeight: '800', color: '#1D1D1F' },
-  closeBtn: { padding: 8, backgroundColor: '#F2F2F7', borderRadius: 999 },
+  title: { fontSize: 16, fontWeight: '900', color: '#1D1D1F', letterSpacing: 0.5 },
+  closeBtn: { padding: 6, backgroundColor: '#F2F2F7', borderRadius: 999 },
   body: { padding: 16, paddingBottom: 28 },
-  upgradeHero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: '#007AFF',
-    paddingVertical: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-  },
-  upgradeHeroTxt: { color: '#FFF', fontWeight: '900', fontSize: 17 },
-  proBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(175,82,222,0.12)',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    marginBottom: 12,
-  },
-  proBannerCrown: { fontSize: 18 },
-  proBannerTxt: { color: '#1D1D1F', fontWeight: '800', fontSize: 14, flex: 1 },
   card: {
     backgroundColor: '#FFF',
     borderRadius: 20,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
   },
   accountRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderColor: '#E5E5EA' },
+  avatar: { width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: '#E5E5EA' },
   avatarPh: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: 'rgba(0,122,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  name: { fontSize: 17, fontWeight: '800', color: '#1D1D1F' },
-  email: { fontSize: 13, color: '#8E8E93', marginTop: 2 },
+  name: { fontSize: 16, fontWeight: '800', color: '#1D1D1F' },
+  email: { fontSize: 12, color: '#8E8E93', marginTop: 2 },
   tierRow: {
-    marginTop: 16,
-    paddingTop: 16,
+    marginTop: 14,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: '#E5E5EA',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  tierLbl: { fontSize: 11, fontWeight: '800', color: '#8E8E93', letterSpacing: 0.5 },
-  tierFree: { fontSize: 15, fontWeight: '800', color: '#1D1D1F', marginTop: 4 },
-  tierPro: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  tierCrown: { fontSize: 16 },
-  tierProTxt: { fontSize: 15, fontWeight: '800', color: '#AF52DE' },
+  tierLbl: { fontSize: 10, fontWeight: '900', color: '#8E8E93', letterSpacing: 0.5 },
+  tierFree: { fontSize: 14, fontWeight: '800', color: '#1D1D1F', marginTop: 4 },
+  tierPro: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  tierCrown: { fontSize: 14 },
+  tierProTxt: { fontSize: 14, fontWeight: '800', color: '#AF52DE' },
   downBtn: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#FF3B30',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
-  downBtnTxt: { color: '#FF3B30', fontWeight: '800', fontSize: 13 },
+  downBtnTxt: { color: '#FF3B30', fontWeight: '800', fontSize: 12 },
+  upgradeBtn: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  upgradeBtnTxt: { color: '#FFF', fontWeight: '800', fontSize: 12 },
   sectionLbl: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
     color: '#8E8E93',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
     marginBottom: 8,
-    marginLeft: 4,
+    marginLeft: 6,
   },
-  proCard: {
+  sectionCard: {
     backgroundColor: '#FFF',
     borderRadius: 20,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
   },
-  proRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
+    gap: 16,
   },
-  rowTitle: { fontSize: 14, fontWeight: '800', color: '#1D1D1F' },
-  rowSub: { fontSize: 12, fontWeight: '600', color: '#8E8E93', marginTop: 4, lineHeight: 16 },
-  proHint: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#8E8E93',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  rowDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E5E5EA',
   },
-  switchHit: {
-    position: 'relative',
-    alignSelf: 'flex-end',
-    minWidth: 52,
-    minHeight: 32,
+  rowMeta: { flex: 1, minWidth: 0 },
+  rowTitle: { fontSize: 13, fontWeight: '800', color: '#1D1D1F' },
+  rowSub: { fontSize: 11, fontWeight: '600', color: '#8E8E93', marginTop: 3, lineHeight: 15 },
+  segmentContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 10,
+    padding: 2,
+    alignItems: 'center',
+  },
+  segmentBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'flex-end',
   },
-  done: { alignItems: 'center', padding: 12, marginTop: 8 },
-  doneTxt: { color: '#007AFF', fontWeight: '800', fontSize: 16 },
+  segmentBtnActive: {
+    backgroundColor: '#FFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.12,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  segmentBtnTxt: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8E8E93',
+  },
+  segmentBtnTxtActive: {
+    color: '#007AFF',
+  },
+  done: { alignItems: 'center', padding: 12, marginTop: 4 },
+  doneTxt: { color: '#007AFF', fontWeight: '800', fontSize: 15 },
 });

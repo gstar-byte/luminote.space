@@ -48,3 +48,13 @@ export type FilterType =
   | 'starred'
   | 'archived' 
   | 'trash';
+
+export interface AppSettings {
+  swipeEnabled: boolean;
+  swipeRightAction: 'archive' | 'delete';
+  edgePanelEnabled: boolean;
+  ongoingNotificationEnabled: boolean;
+  accessibilityWakeEnabled: boolean;
+  quickCaptureLimit: number;
+}
+

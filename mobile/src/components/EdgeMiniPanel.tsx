@@ -40,6 +40,7 @@ type Props = {
   isProcessing: boolean;
   isVoiceRecording: boolean;
   startVoice: () => Promise<void>;
+  limit: number;
 };
 
 // Helper to extract clean plain text for mini items
@@ -70,6 +71,7 @@ export function EdgeMiniPanel({
   isProcessing,
   isVoiceRecording,
   startVoice,
+  limit,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -150,10 +152,10 @@ export function EdgeMiniPanel({
     };
   });
 
-  // Filter latest 5 non-archived, non-deleted capsules
+  // Filter latest non-archived, non-deleted capsules based on limit
   const recentCapsules = capsules
     .filter(c => !c.isArchived && !c.isDeleted)
-    .slice(0, 5);
+    .slice(0, limit);
 
   const handleSendText = async () => {
     if (!inputText.trim()) return;
