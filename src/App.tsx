@@ -1562,6 +1562,16 @@ export default function App() {
   const handleCreateCapsule = async (text: string) => {
     if (!text.trim()) return;
     
+    // Request notification permission IMMEDIATELY, while still in the synchronous
+    // call stack of the user's click gesture. Modern browsers silently block
+    // requestPermission() calls that happen after an await, because they're no
+    // longer considered a direct response to user interaction.
+    if (window.Notification && Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        setNotificationPermission(permission);
+      });
+    }
+    
     setIsProcessing(true);
     setInputText('');
     
@@ -1621,13 +1631,6 @@ export default function App() {
       
       const docRef = await addDoc(collection(getDb(), 'capsules'), newCapsuleData);
       console.log('[handleCreate] saved doc id:', docRef.id);
-
-      // Automatically request browser notification permission if a new reminder was created
-      if (hasReminder && window.Notification && Notification.permission === 'default') {
-        Notification.requestPermission().then(permission => {
-          setNotificationPermission(permission);
-        });
-      }
       
       const createdCapsule: Capsule = {
         id: docRef.id,
