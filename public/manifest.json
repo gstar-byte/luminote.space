@@ -28,7 +28,7 @@
       "src": "/app-logo.svg?v=15",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
