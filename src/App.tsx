@@ -1038,7 +1038,31 @@ export default function App() {
 
   // Auth Listener
   useEffect(() => {
-    let userDocUnsubscribe: () => void;
+    let userDocUnsubscribe: (() => void) | null = null;
+    let unsubscribe: (() => void) | null = null;
+    let isCancelled = false;
+
+    // 1. 快速检查本地是否有缓存的已登录用户
+    const cachedRaw = safeLocalStorageGet('luminote_auth_user');
+    let hasLocalUser = false;
+    if (cachedRaw) {
+      try {
+        const cachedUser = JSON.parse(cachedRaw);
+        if (cachedUser && cachedUser.uid) {
+          // 使用本地登录缓存快速渲染主界面，绝不 pending 卡死在 Loading！
+          setUser(cachedUser);
+          setAuthLoading(false);
+          hasLocalUser = true;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // 如果本地没有登录缓存，说明未登录，直接渲染 LandingPage，完全不用等 Firebase 初始化！
+    if (!hasLocalUser) {
+      setAuthLoading(false);
+    }
 
     // Active extraction of redirect authentication credentials (critical for mobile browser compatibility)
     const handleRedirectResult = async () => {
@@ -1058,93 +1082,108 @@ export default function App() {
         }
       }
     };
-    handleRedirectResult();
 
-    const unsubscribe = onAuthStateChanged(getAuth(), (firebaseUser: User | null) => {
-      if (firebaseUser) {
-        // 1. 快速通道：使用缓存的用户数据或基础 Firebase 身份在 1ms 内登入主界面，绝不 pending 卡死！
-        const cachedRaw = safeLocalStorageGet('luminote_auth_user');
-        let quickUser = null;
-        if (cachedRaw) {
-          try {
-            quickUser = JSON.parse(cachedRaw);
-          } catch { /* ignore */ }
-        }
-        if (!quickUser || quickUser.uid !== firebaseUser.uid) {
-          quickUser = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Lumi User',
-            photoURL: firebaseUser.photoURL,
-            isPremium: false,
-            onboarded: true // 默认为 true 避开 tour 干扰
-          };
-        }
-        setUser(quickUser);
-        setAuthLoading(false);
+    // 2. 异步后台启动 Firebase 初始化，不阻塞首屏渲染
+    ensureFirebaseReady().then(() => {
+      if (isCancelled) return;
 
-        // 2. 启动后台静默实时监听，网络慢用户也完全无感！
-        const userDocRef = doc(getDb(), 'users', firebaseUser.uid);
-        userDocUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const userData = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
-              isPremium: docSnap.data().isPremium || false,
-              onboarded: docSnap.data().onboarded || false,
-              hasNotesCreatedOrSeeded: docSnap.data().hasNotesCreatedOrSeeded || false
-            };
-            setUser(userData);
-            safeLocalStorageSet('luminote_auth_user', JSON.stringify(userData));
-          } else {
-            const userData = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
-              isPremium: false,
-              onboarded: false,
-              hasNotesCreatedOrSeeded: false
-            };
-            setUser(userData);
-            safeLocalStorageSet('luminote_auth_user', JSON.stringify(userData));
-            setDoc(userDocRef, {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
-              isPremium: false,
-              onboarded: false,
-              hasNotesCreatedOrSeeded: false,
-              updatedAt: Date.now()
-            }, { merge: true }).catch((e) => {
-              console.error('Firestore setDoc user error (silenced):', e);
-            });
+      // 处理 redirect 结果（如果发生过 redirect）
+      handleRedirectResult();
+
+      unsubscribe = onAuthStateChanged(getAuth(), (firebaseUser: User | null) => {
+        if (firebaseUser) {
+          // 已经登录：更新用户信息与静默长连接监听
+          const cachedRaw = safeLocalStorageGet('luminote_auth_user');
+          let quickUser = null;
+          if (cachedRaw) {
+            try {
+              quickUser = JSON.parse(cachedRaw);
+            } catch { /* ignore */ }
           }
-        }, (error) => {
-          console.error("user doc snapshot background error (silenced):", error);
-        });
-      } else {
-        if (userDocUnsubscribe) {
-          userDocUnsubscribe();
+          if (!quickUser || quickUser.uid !== firebaseUser.uid) {
+            quickUser = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Lumi User',
+              photoURL: firebaseUser.photoURL,
+              isPremium: false,
+              onboarded: true
+            };
+          }
+          setUser(quickUser);
+          setAuthLoading(false);
+
+          // 启动后台静默实时监听
+          const userDocRef = doc(getDb(), 'users', firebaseUser.uid);
+          userDocUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+              const userData = {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: docSnap.data().displayName || firebaseUser.displayName,
+                photoURL: docSnap.data().photoURL || firebaseUser.photoURL,
+                isPremium: docSnap.data().isPremium || false,
+                onboarded: docSnap.data().onboarded || false,
+                hasNotesCreatedOrSeeded: docSnap.data().hasNotesCreatedOrSeeded || false
+              };
+              setUser(userData);
+              safeLocalStorageSet('luminote_auth_user', JSON.stringify(userData));
+            } else {
+              const userData = {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName,
+                photoURL: firebaseUser.photoURL,
+                isPremium: false,
+                onboarded: false,
+                hasNotesCreatedOrSeeded: false
+              };
+              setUser(userData);
+              safeLocalStorageSet('luminote_auth_user', JSON.stringify(userData));
+              setDoc(userDocRef, {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName,
+                photoURL: firebaseUser.photoURL,
+                isPremium: false,
+                onboarded: false,
+                hasNotesCreatedOrSeeded: false,
+                updatedAt: Date.now()
+              }, { merge: true }).catch((e) => {
+                console.error('Firestore setDoc user error (silenced):', e);
+              });
+            }
+          }, (error) => {
+            console.error("user doc snapshot background error (silenced):", error);
+          });
+        } else {
+          // 未登录
+          if (userDocUnsubscribe) {
+            userDocUnsubscribe();
+          }
+          setUser(null);
+          safeLocalStorageRemove('luminote_auth_user');
+          setCapsules([]);
+          setDemoCapsules([]);
+          setAuthLoading(false);
+          setDataLoading(true);
+          setIsSyncFinished(false);
         }
-        setUser(null);
-        safeLocalStorageRemove('luminote_auth_user');
-        setCapsules([]);
-        setDemoCapsules([]);
-        setAuthLoading(false);
-        setDataLoading(true);
-        setIsSyncFinished(false);
-      }
+      });
+    }).catch((err) => {
+      console.warn("Firebase lazy init failed (offline/no vpn):", err);
+      setAuthLoading(false);
     });
+
     return () => {
+      isCancelled = true;
       if (userDocUnsubscribe) {
         userDocUnsubscribe();
       }
-      unsubscribe();
-    }
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   // Firestore Sync Listener
