@@ -38,6 +38,7 @@ export interface UserProfile {
   photoURL: string | null;
   isPremium?: boolean;
   onboarded?: boolean;
+  hasNotesCreatedOrSeeded?: boolean;
 }
 
 export type FilterType = 
