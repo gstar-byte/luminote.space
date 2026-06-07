@@ -375,7 +375,7 @@ function CrownJewel({ className, size = 32 }: { className?: string; size?: numbe
 }
 
 /** Open width when sidebar is expanded (mobile narrower). */
-const SIDEBAR_W = { mobile: 200, desktop: 240 } as const;
+const SIDEBAR_W = { mobile: 160, desktop: 240 } as const;
 
 /**
  * Helper to extract plain text from Tiptap JSON or plain string
