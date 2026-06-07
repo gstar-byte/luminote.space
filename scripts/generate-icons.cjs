@@ -41,11 +41,11 @@ async function generate() {
     console.log(`Generated: ${outputPath} (${size}x${size}, logo scale ${svgSize}x${svgSize})`);
   };
 
-  // Generate different resolutions
-  await generatePng('favicon-48.png', 48, 38);
-  await generatePng('favicon-192.png', 192, 150);
-  await generatePng('favicon-512.png', 512, 400);
-  await generatePng('apple-touch-icon.png', 180, 140);
+  // Generate different resolutions with physical cache-bust filenames
+  await generatePng('favicon-48-v15.png', 48, 38);
+  await generatePng('favicon-192-v15.png', 192, 150);
+  await generatePng('favicon-512-v15.png', 512, 400);
+  await generatePng('apple-touch-icon-v15.png', 180, 140);
 
   console.log('All icons generated successfully with clean solid white background!');
 }
