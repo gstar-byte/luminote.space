@@ -2009,7 +2009,7 @@ export default function IdeaCapsuleApp() {
                   {item.completed ? (
                     <>
                       <RotateCcw size={18} color="#FFF" />
-                      <Text style={s.swipeActionTxt}>Undo</Text>
+                      <Text style={s.swipeActionTxt}>Activate</Text>
                     </>
                   ) : (
                     <>
@@ -2517,10 +2517,7 @@ export default function IdeaCapsuleApp() {
               ))}
             <View style={{ height: 16 }} />
             <View
-              style={[
-                s.sideNavPillWrap,
-                { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E5E5EA', paddingTop: 4, marginTop: 2 }
-              ]}
+              style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E5E5EA', paddingTop: 8, marginTop: 4 }}
             >
               <SidebarRow
                 label="Settings"
