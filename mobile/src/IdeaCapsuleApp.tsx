@@ -1946,8 +1946,6 @@ export default function IdeaCapsuleApp() {
         >
           <View style={viewMode === 'grid' ? s.gridRow : s.listCol}>
             {filteredCapsules.map((item) => {
-              const swipeRef = React.createRef<Swipeable>();
-              
               const renderLeftActions = () => (
                 <View style={s.swipeLeftAction}>
                   <Check size={18} color="#FFF" />
@@ -1969,7 +1967,7 @@ export default function IdeaCapsuleApp() {
                 );
               };
 
-              const handleSwipeOpen = (direction: 'left' | 'right') => {
+              const handleSwipeTrigger = (direction: 'left' | 'right') => {
                 if (direction === 'left') {
                   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                   void updateCapsule(item.id, { 
@@ -1984,10 +1982,6 @@ export default function IdeaCapsuleApp() {
                     void updateCapsule(item.id, { isDeleted: true });
                   }
                 }
-                // Close the swipeable automatically after triggers
-                setTimeout(() => {
-                  swipeRef.current?.close();
-                }, 100);
               };
 
               return (
@@ -2022,16 +2016,11 @@ export default function IdeaCapsuleApp() {
                     </TouchableOpacity>
                   )}
                   {viewMode === 'list' && !isMultiSelectMode && settings.swipeEnabled ? (
-                    <Swipeable
-                      ref={swipeRef}
-                      containerStyle={{ width: '100%' }}
-                      childrenContainerStyle={{ width: '100%' }}
+                    <SwipeableCardWrapper
+                      item={item}
                       renderLeftActions={renderLeftActions}
                       renderRightActions={renderRightActions}
-                      onSwipeableOpen={handleSwipeOpen}
-                      friction={2}
-                      leftThreshold={40}
-                      rightThreshold={40}
+                      onSwipeTrigger={handleSwipeTrigger}
                     >
                       <CapsuleCard
                         item={item}
@@ -2052,7 +2041,7 @@ export default function IdeaCapsuleApp() {
                           void updateCapsule(item.id, { completed: !item.completed });
                         }}
                       />
-                    </Swipeable>
+                    </SwipeableCardWrapper>
                   ) : (
                     <CapsuleCard
                       item={item}
@@ -3261,6 +3250,50 @@ export default function IdeaCapsuleApp() {
         />
       </SafeAreaView>
     </View>
+  );
+}
+
+function SwipeableCardWrapper({
+  item,
+  renderLeftActions,
+  renderRightActions,
+  onSwipeTrigger,
+  children,
+}: {
+  item: Capsule;
+  renderLeftActions: () => React.ReactNode;
+  renderRightActions: () => React.ReactNode;
+  onSwipeTrigger: (direction: 'left' | 'right') => void;
+  children: React.ReactNode;
+}) {
+  const swipeRef = useRef<Swipeable>(null);
+
+  const handleSwipeOpen = (direction: 'left' | 'right') => {
+    onSwipeTrigger(direction);
+    // 动作触发后自动回弹关闭滑块
+    setTimeout(() => {
+      swipeRef.current?.close();
+    }, 100);
+  };
+
+  return (
+    <Swipeable
+      ref={swipeRef}
+      containerStyle={{ width: '100%' }}
+      childrenContainerStyle={{ width: '100%' }}
+      renderLeftActions={renderLeftActions}
+      renderRightActions={renderRightActions}
+      onSwipeableOpen={handleSwipeOpen}
+      onSwipeableWillOpen={() => {
+        // 在即将滑开的物理临界点触发清脆轻微的原生震动反馈
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }}
+      friction={1.5}
+      leftThreshold={50}
+      rightThreshold={50}
+    >
+      {children}
+    </Swipeable>
   );
 }
 

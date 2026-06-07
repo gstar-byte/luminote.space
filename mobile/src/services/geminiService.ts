@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { SYSTEM_PROMPT } from '../constants';
+import { categorizeThoughtLocal } from './localNlpService';
 
 function getGeminiKey(): string {
   return (
@@ -79,6 +80,23 @@ export async function categorizeThoughtFromAudio(
 }
 
 export async function categorizeThought(text: string): Promise<CategorizeThoughtResult> {
+  // 1. Fast-path: check if local NLP can resolve a definitive reminder with zero ambiguity
+  try {
+    const localResult = await categorizeThoughtLocal(text);
+    if (localResult.reminder && !localResult.isAmbiguous) {
+      console.log('[Mobile NLP Router] Fast-path hit: Local NLP resolved definitive reminder.', localResult);
+      return {
+        category: localResult.category,
+        tags: localResult.tags,
+        refinedContent: localResult.refinedContent,
+        isTodo: localResult.isTodo,
+        reminder: localResult.reminder,
+      };
+    }
+  } catch (e) {
+    console.warn('[Mobile NLP Router] Local NLP fast-path error:', e);
+  }
+
   const apiKey = getGeminiKey();
   if (!apiKey) {
     return { refinedContent: text };
