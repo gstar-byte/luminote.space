@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Svg, Rect, Circle, Ellipse, Path, Defs, LinearGradient, Stop } from 'react-native-svg';
+import { Svg, Rect, Circle, Ellipse, Path, Defs, Stop } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   ActivityIndicator,
   Alert,
@@ -152,11 +153,10 @@ function CrownJewel({ size = 36 }: { size?: number }) {
 
 const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'pure-note', label: 'Only Notes' },
-  { value: 'pending-todo', label: 'Pending to-do' },
-  { value: 'completed-todo', label: 'Finished to-do' },
-  { value: 'repeat-reminder', label: 'Repeat reminder' },
-  { value: 'finished-reminder', label: 'Finished reminder' },
+  { value: 'pure-note', label: 'Note(s)' },
+  { value: 'pending-todo', label: 'To-do' },
+  { value: 'completed-todo', label: 'Completed' },
+  { value: 'repeat-reminder', label: 'Recurring' },
   { value: 'archived', label: 'Archived' },
   { value: 'trash', label: 'Trash' },
 ];
@@ -539,6 +539,8 @@ export default function IdeaCapsuleApp() {
   const [editContent, setEditContent] = useState('');
   const [editCategoryDraft, setEditCategoryDraft] = useState('');
   const [editTagsDraft, setEditTagsDraft] = useState('');
+  const [editSubjectDraft, setEditSubjectDraft] = useState('');
+  const [isTextInputFocused, setIsTextInputFocused] = useState(false);
   const [editCategoryFocused, setEditCategoryFocused] = useState(false);
   const [editTagsFocused, setEditTagsFocused] = useState(false);
   const editModalCapsuleIdRef = useRef<string | null>(null);
@@ -567,6 +569,8 @@ export default function IdeaCapsuleApp() {
 
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const [isWebListening, setIsWebListening] = useState(false);
+  const [quickCaptureMode, setQuickCaptureMode] = useState<'buttons' | 'text' | 'voice'>('buttons');
+  const [editMode, setEditMode] = useState<'plain' | 'markdown'>('markdown');
   const voiceRecordingRef = useRef<Audio.Recording | null>(null);
   const webSpeechRef = useRef<any>(null);
 
@@ -815,7 +819,7 @@ export default function IdeaCapsuleApp() {
           case 'without-todo':
             return !c.isTodo;
           case 'completed-todo':
-            return c.isTodo && c.completed;
+            return (c.isTodo && c.completed) || hasFinishedOneShotReminder(c);
           case 'repeat-reminder':
             return hasRepeatReminder(c);
           case 'without-reminder':
@@ -1626,11 +1630,12 @@ export default function IdeaCapsuleApp() {
       .slice(0, 8);
   }, [editTagsFocused, editTagsDraft, allTags]);
 
-  const saveEdit = useCallback(() => {
+  const saveEditSilent = useCallback(() => {
     if (!editingCapsule) return;
     const id = editingCapsule.id;
     const original = capsules.find((c) => c.id === id);
     const content = editContent;
+    const subjectTrim = editSubjectDraft.trim();
     const catTrim = editCategoryDraft.trim();
     const tagParts = editTagsDraft.split(',').map((t) => t.trim()).filter(Boolean);
 
@@ -1641,6 +1646,9 @@ export default function IdeaCapsuleApp() {
     if (!original || original.content !== content) {
       updates.content = content;
     }
+    if ((original?.subject || '') !== subjectTrim) {
+      updates.subject = subjectTrim ? subjectTrim : undefined;
+    }
     const prevCat = (original?.category || '').trim();
     if (prevCat !== catTrim) {
       updates.category = catTrim ? catTrim : undefined;
@@ -1649,17 +1657,22 @@ export default function IdeaCapsuleApp() {
       updates.tags = tagParts.length ? tagParts : undefined;
     }
 
-    setEditingCapsule(null);
     if (Object.keys(updates).length === 0) return;
     void updateCapsule(id, updates);
   }, [
     editingCapsule,
     editContent,
+    editSubjectDraft,
     editCategoryDraft,
     editTagsDraft,
-    updateCapsule,
     capsules,
+    updateCapsule,
   ]);
+
+  const saveEdit = useCallback(() => {
+    saveEditSilent();
+    setEditingCapsule(null);
+  }, [saveEditSilent]);
 
   useEffect(() => {
     if (!editingCapsule) {
@@ -1669,6 +1682,7 @@ export default function IdeaCapsuleApp() {
     if (editModalCapsuleIdRef.current !== editingCapsule.id) {
       editModalCapsuleIdRef.current = editingCapsule.id;
       setEditContent(editingCapsule.content);
+      setEditSubjectDraft(editingCapsule.subject || '');
       setEditCategoryDraft(editingCapsule.category || '');
       setEditTagsDraft((editingCapsule.tags || []).join(', '));
     }
@@ -2027,7 +2041,10 @@ export default function IdeaCapsuleApp() {
                         onPress={() => setEditingCapsule(item)}
                         onLongPress={() => {
                           void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                          openMenu(item);
+                          setIsMultiSelectMode(true);
+                          setSelectedIds((prev) =>
+                            prev.includes(item.id) ? prev : [...prev, item.id],
+                          );
                         }}
                         onMenu={() => openMenu(item)}
                         onToggleTodo={() => {
@@ -2053,7 +2070,10 @@ export default function IdeaCapsuleApp() {
                       }
                       onLongPress={() => {
                         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        openMenu(item);
+                        setIsMultiSelectMode(true);
+                        setSelectedIds((prev) =>
+                          prev.includes(item.id) ? prev : [...prev, item.id],
+                        );
                       }}
                       onMenu={() => openMenu(item)}
                       onToggleTodo={() => {
@@ -2091,52 +2111,84 @@ export default function IdeaCapsuleApp() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? Math.max(insets.top, 12) + 8 : 0}
           style={s.captureBarWrap}
         >
-          <View style={[s.captureBar, { paddingBottom: Math.max(insets.bottom, 12), paddingTop: 8 }]}>
-            <TouchableOpacity
-              onPress={startVoice}
-              style={[s.iconBtn, s.captureBarHit]}
-              disabled={(isProcessing && !isVoiceRecording) || isWebListening}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          <View style={[s.captureBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+            <View
+              style={[
+                s.captureInputCapsule,
+                isVoiceRecording && s.captureInputCapsuleListening,
+                isTextInputFocused && s.captureInputCapsuleActive,
+              ]}
             >
-              {isVoiceRecording || isWebListening ? (
-                <ActivityIndicator size="small" color="#FF3B30" />
-              ) : (
-                <Mic size={22} color="#1D1D1F" />
-              )}
-            </TouchableOpacity>
-            <TextInput
-              style={s.captureInput}
-              placeholder="Capture an idea…"
-              value={inputText}
-              onChangeText={setInputText}
-              onSubmitEditing={() => {
-                if (!inputText.trim()) {
-                  alertCaptureEmpty();
-                  return;
-                }
-                handleCreateCapsule(inputText);
-              }}
-              placeholderTextColor="#8E8E93"
-              multiline={false}
-              returnKeyType="done"
-            />
-            <TouchableOpacity
-              style={[s.fab, s.captureBarHit]}
-              disabled={isProcessing}
-              onPress={() => {
-                if (!inputText.trim()) {
-                  alertCaptureEmpty();
-                  return;
-                }
-                handleCreateCapsule(inputText);
-              }}
-            >
+              <View style={s.captureZapIcon}>
+                <Zap size={18} color="#007AFF" strokeWidth={2.5} />
+              </View>
+              <TextInput
+                style={s.captureTextInput}
+                placeholder={isVoiceRecording ? "Listening..." : "Record your thoughts..."}
+                placeholderTextColor="#8E8E93"
+                value={inputText}
+                onChangeText={setInputText}
+                onSubmitEditing={() => {
+                  if (!inputText.trim()) {
+                    alertCaptureEmpty();
+                    return;
+                  }
+                  void handleCreateCapsule(inputText);
+                  setInputText('');
+                }}
+                returnKeyType="done"
+                editable={!isProcessing && !isVoiceRecording}
+                onFocus={() => setIsTextInputFocused(true)}
+                onBlur={() => setIsTextInputFocused(false)}
+              />
               {isProcessing ? (
-                <ActivityIndicator color="#FFF" size="small" />
-              ) : (
-                <Check size={22} color="#FFF" strokeWidth={3} />
-              )}
-            </TouchableOpacity>
+                <ActivityIndicator size="small" color="#007AFF" style={{ marginLeft: 4 }} />
+              ) : inputText.trim().length > 0 ? (
+                <TouchableOpacity
+                  style={s.captureCheckBtn}
+                  onPress={() => {
+                    if (!inputText.trim()) return;
+                    void handleCreateCapsule(inputText);
+                    setInputText('');
+                  }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Check size={20} color="#007AFF" strokeWidth={3} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {isVoiceRecording ? (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[s.captureMicBtn, s.captureMicBtnListening]}
+                onPress={() => {
+                  void startVoice();
+                }}
+              >
+                <View style={s.waveDotBox}>
+                  <View style={s.waveDot} />
+                  <View style={[s.waveDot, { marginHorizontal: 3 }]} />
+                  <View style={s.waveDot} />
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  void startVoice();
+                }}
+              >
+                <LinearGradient
+                  colors={['#007AFF', '#00C6FF']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={s.captureMicBtn}
+                >
+                  {[<Mic key="mic" size={20} color="#FFF" />]}
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
           </View>
         </KeyboardAvoidingView>
 
@@ -2162,7 +2214,11 @@ export default function IdeaCapsuleApp() {
               <View style={s.logoMini}>
                 <AppLogo width={36} height={36} />
               </View>
+              <Text style={s.sideBrandTitle}>Lumi Note</Text>
             </View>
+            <TouchableOpacity onPress={() => setIsSidebarOpen(false)} style={s.sideCloseBtn} hitSlop={8}>
+              <ChevronLeft size={20} color="#8E8E93" />
+            </TouchableOpacity>
           </View>
           <ScrollView
             style={s.sideScroll}
@@ -2235,7 +2291,7 @@ export default function IdeaCapsuleApp() {
             {isFilterSectionExpanded && (
               <View style={{ backgroundColor: '#F9F9F9', borderBottomLeftRadius: 16, borderBottomRightRadius: 16, paddingBottom: 4, marginBottom: 10 }}>
                 <SidebarRow
-                  label="Only Notes"
+                  label="Note(s)"
                   count={
                     capsules.filter(
                       (c) =>
@@ -2252,7 +2308,7 @@ export default function IdeaCapsuleApp() {
                   }}
                 />
                 <SidebarRow
-                  label="Pending to-do"
+                  label="To-do"
                   count={capsules.filter(c => !c.isDeleted && !c.isArchived && c.isTodo && !c.completed).length}
                   isSub
                   active={filter === 'pending-todo'}
@@ -2264,8 +2320,8 @@ export default function IdeaCapsuleApp() {
                   }}
                 />
                 <SidebarRow
-                  label="Finished to-do"
-                  count={capsules.filter(c => !c.isDeleted && !c.isArchived && c.isTodo && c.completed).length}
+                  label="Completed"
+                  count={capsules.filter(c => !c.isDeleted && !c.isArchived && ((c.isTodo && c.completed) || hasFinishedOneShotReminder(c))).length}
                   isSub
                   active={filter === 'completed-todo'}
                   onPress={() => {
@@ -2276,24 +2332,12 @@ export default function IdeaCapsuleApp() {
                   }}
                 />
                 <SidebarRow
-                  label="Repeat reminder"
+                  label="Recurring"
                   count={capsules.filter(c => !c.isDeleted && !c.isArchived && hasRepeatReminder(c)).length}
                   isSub
                   active={filter === 'repeat-reminder'}
                   onPress={() => {
                     setFilter('repeat-reminder');
-                    setCategoryFilter('all');
-                    setTagFilter(null);
-                    setIsSidebarOpen(false);
-                  }}
-                />
-                <SidebarRow
-                  label="Finished reminder"
-                  count={capsules.filter(c => !c.isDeleted && !c.isArchived && hasFinishedOneShotReminder(c)).length}
-                  isSub
-                  active={filter === 'finished-reminder'}
-                  onPress={() => {
-                    setFilter('finished-reminder');
                     setCategoryFilter('all');
                     setTagFilter(null);
                     setIsSidebarOpen(false);
@@ -2529,286 +2573,134 @@ export default function IdeaCapsuleApp() {
               contentContainerStyle={{ paddingBottom: 6 }}
             >
                 <View style={[s.threeDotsBox, { width: menuSheetWidth }]}>
-                  {/* Menu Header - Just categories/tags inputs now */}
                   {activeMenuCapsule && !activeMenuCapsule.isDeleted ? (
-                    <>
-                      {/* GROUP 1: Category & Tags */}
-                      <View style={{ paddingBottom: 8 }}>
-                        <View style={[s.menuSec, s.menuSecTightTop, { backgroundColor: 'transparent' }]}>
-                          <Text style={s.menuSecTxt}>Category & Tags</Text>
-                        </View>
-                        <View style={[s.menuInputWrap, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
-                          <TextInput
-                            style={[s.menuInput, { flex: 1 }]}
-                            value={menuCategory}
-                            onChangeText={setMenuCategory}
-                            placeholder="Category..."
-                            placeholderTextColor="#8E8E93"
-                            onFocus={() => setMenuCategoryFocused(true)}
-                            onBlur={() => {
-                              setTimeout(() => setMenuCategoryFocused(false), 400);
-                            }}
-                            onSubmitEditing={() => {
-                              // Auto-save is already handled by useEffect, just blur
-                            }}
-                            blurOnSubmit={true}
-                            returnKeyType="done"
-                          />
-                          {(menuCategory.trim() || activeMenuCapsule.category) ? (
-                            <Pressable onPress={clearMenuCategory} hitSlop={12} accessibilityLabel="Clear category">
-                              <X size={18} color="#8E8E93" />
-                            </Pressable>
-                          ) : null}
-                        </View>
-                        {menuCategoryAutocomplete.length > 0 && (
-                          <View style={s.menuAutocompleteBox}>
-                            {menuCategoryAutocomplete.map((cat) => (
-                              <TouchableOpacity
-                                key={cat}
-                                style={s.menuAutocompleteRow}
-                                onPress={() => {
-                                  setMenuCategoryFocused(false);
-                                  applyMenuCategoryPick(cat);
-                                }}
-                              >
-                                <Text style={s.menuAutocompleteRowTxt} numberOfLines={1}>{cat}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                        )}
-
-                        {(activeMenuCapsule.tags || []).length > 0 && (
-                          <View style={[s.menuTagChipsRow, { marginTop: 6 }]}>
-                            {(activeMenuCapsule.tags || []).map((t) => (
-                              <View key={t} style={s.menuTagChip}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                  <Text style={s.menuTagChipTxt}>#{t}</Text>
-                                  <Pressable
-                                    onPress={() => removeMenuTag(t)}
-                                    hitSlop={10}
-                                    accessibilityLabel={`Remove tag ${t}`}
-                                  >
-                                    <X size={14} color="#007AFF" />
-                                  </Pressable>
-                                </View>
-                              </View>
-                            ))}
-                          </View>
-                        )}
-                        <View style={[s.menuInputWrap, { marginTop: 4 }]}>
-                          <TextInput
-                            style={s.menuInput}
-                            placeholder="Add Tag..."
-                            placeholderTextColor="#8E8E93"
-                            value={menuTagInput}
-                            onChangeText={setMenuTagInput}
-                            onFocus={() => setMenuTagFocused(true)}
-                            onBlur={() => {
-                              setTimeout(() => setMenuTagFocused(false), 450);
-                            }}
-                            onSubmitEditing={() => flushMenuTag()}
-                            blurOnSubmit={false}
-                            returnKeyType="done"
-                          />
-                        </View>
-                        {menuTagAutocomplete.length > 0 && (
-                          <View style={s.menuAutocompleteBox}>
-                            {menuTagAutocomplete.map((tag) => (
-                              <TouchableOpacity
-                                key={tag}
-                                style={s.menuAutocompleteRow}
-                                onPress={() => {
-                                  setMenuTagFocused(false);
-                                  applyMenuTagPick(tag);
-                                }}
-                              >
-                                <Text style={s.menuAutocompleteRowTxt} numberOfLines={1}>#{tag}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                        )}
-                      </View>
-
-                      <View style={s.menuHairline} />
-
-                      {/* GROUP 2: Actions (single note only) */}
-                      <View style={{ paddingVertical: 4 }}>
-                        {/* Pin / Unpin */}
-                        <TouchableOpacity
-                          style={s.mItem}
-                          onPress={() => {
-                            if (!activeMenuCapsule) return;
-                            const merged = flushMenuTag() ?? activeMenuCapsule;
-                            void updateCapsule(merged.id, { isPinned: !merged.isPinned });
-                            setMenuTagInput('');
-                            setActiveMenuCapsule(null);
-                          }}
-                        >
-                          <Pin
-                            size={18}
-                            color="#007AFF"
-                            fill={activeMenuCapsule.isPinned ? '#007AFF' : 'transparent'}
-                            style={{ transform: [{ rotate: '45deg' }] }}
-                          />
-                          <Text style={[s.mItemTxt, activeMenuCapsule.isPinned && { color: '#007AFF' }]}>
-                            {activeMenuCapsule.isPinned ? 'Unpin Note' : 'Pin Note'}
-                          </Text>
-                        </TouchableOpacity>
-
-                        {/* Star / Unstar */}
-                        <TouchableOpacity
-                          style={s.mItem}
-                          onPress={() => {
-                            if (!activeMenuCapsule) return;
-                            const merged = flushMenuTag() ?? activeMenuCapsule;
-                            void updateCapsule(merged.id, { isStarred: !merged.isStarred });
-                            setMenuTagInput('');
-                            setActiveMenuCapsule(null);
-                          }}
-                        >
-                          <Star
-                            size={18}
-                            color="#007AFF"
-                            fill={activeMenuCapsule.isStarred ? '#FFB800' : 'transparent'}
-                          />
-                          <Text style={[s.mItemTxt, activeMenuCapsule.isStarred && { color: '#007AFF' }]}>
-                            {activeMenuCapsule.isStarred ? 'Unstar Note' : 'Star Note'}
-                          </Text>
-                        </TouchableOpacity>
-
-                        {/* Change Color */}
-                        <TouchableOpacity
-                          style={s.mItem}
-                          onPress={() => {
-                            const merged = flushMenuTag();
-                            const cap = merged ?? activeMenuCapsule;
-                            if (cap) setColorPickerCapsule(cap);
-                            setMenuTagInput('');
-                            setActiveMenuCapsule(null);
-                          }}
-                        >
-                          <Palette size={18} color="#8E8E93" />
-                          <Text style={s.mItemTxt}>Change Color</Text>
-                        </TouchableOpacity>
-
-                        {/* Set Reminder */}
-                        <TouchableOpacity
-                          style={s.mItem}
-                          onPress={() => {
-                            const merged = flushMenuTag();
-                            const cap = merged ?? activeMenuCapsule;
-                            if (cap) setReminderTarget(cap);
-                            setMenuTagInput('');
-                            setActiveMenuCapsule(null);
-                          }}
-                        >
-                          <Calendar size={18} color="#8E8E93" />
-                          <Text style={s.mItemTxt}>Set Reminder</Text>
-                        </TouchableOpacity>
-
-                        {/* Cancel To-do / Set To-do */}
-                        <TouchableOpacity
-                          style={s.mItem}
-                          onPress={() => {
-                            if (!activeMenuCapsule) return;
-                            const merged = flushMenuTag() ?? activeMenuCapsule;
-                            void updateCapsule(merged.id, {
-                              isTodo: !merged.isTodo,
-                            });
-                            setMenuTagInput('');
-                            setActiveMenuCapsule(null);
-                          }}
-                        >
-                          {activeMenuCapsule.isTodo ? (
-                            <Square size={18} color="#8E8E93" />
-                          ) : (
-                            <CheckSquare size={18} color="#007AFF" />
-                          )}
-                          <Text style={[s.mItemTxt, !activeMenuCapsule.isTodo && { color: '#007AFF' }]}>
-                            {activeMenuCapsule.isTodo ? 'Cancel To-do' : 'Set To-do'}
-                          </Text>
-                        </TouchableOpacity>
-
-                        {/* Archive / Unarchive */}
-                        <TouchableOpacity
-                          style={s.mItem}
-                          onPress={() => {
-                            if (!activeMenuCapsule) return;
-                            const merged = flushMenuTag() ?? activeMenuCapsule;
-                            void updateCapsule(merged.id, { isArchived: !merged.isArchived });
-                            setMenuTagInput('');
-                            setActiveMenuCapsule(null);
-                          }}
-                        >
-                          <Archive size={18} color="#8E8E93" />
-                          <Text style={s.mItemTxt}>
-                            {activeMenuCapsule.isArchived ? 'Unarchive Note' : 'Archive Note'}
-                          </Text>
-                        </TouchableOpacity>
-
-                        {/* Share */}
-                        <TouchableOpacity
-                          style={s.mItem}
-                          onPress={async () => {
-                            if (!activeMenuCapsule) return;
-                            const shareText = plainTextFromContent(activeMenuCapsule.content);
-                            try {
-                              await Share.share({
-                                message: shareText,
-                              });
-                            } catch (err) {
-                              console.warn('Share error:', err);
-                            }
-                            setMenuTagInput('');
-                            setActiveMenuCapsule(null);
-                          }}
-                        >
-                          <ShareIcon size={18} color="#8E8E93" />
-                          <Text style={s.mItemTxt}>Share Note</Text>
-                        </TouchableOpacity>
-
-                        {/* Move to Trash */}
-                        <TouchableOpacity
-                          style={s.mItem}
-                          onPress={() => {
-                            if (!activeMenuCapsule) return;
-                            const merged = flushMenuTag() ?? activeMenuCapsule;
-                            void updateCapsule(merged.id, { isDeleted: true });
-                            setMenuTagInput('');
-                            setActiveMenuCapsule(null);
-                          }}
-                        >
-                          <Trash2 size={18} color="#FF3B30" />
-                          <Text style={[s.mItemTxt, { color: '#FF3B30' }]}>Move to Trash</Text>
-                        </TouchableOpacity>
-
-                        {/* Select Note (for batch editing) */}
-                        <TouchableOpacity
-                          style={s.mItem}
-                          onPress={() => {
-                            if (!activeMenuCapsule) return;
-                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                            setIsMultiSelectMode(true);
-                            setSelectedIds([activeMenuCapsule.id]);
-                            setMenuTagInput('');
-                            setActiveMenuCapsule(null);
-                          }}
-                        >
-                          <Check size={18} color="#8E8E93" />
-                          <Text style={s.mItemTxt}>Select Note</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </>
-                  ) : activeMenuCapsule?.isDeleted ? (
-                    <>
-                      <View style={s.menuHairline} />
+                    <View style={{ paddingVertical: 4 }}>
+                      {/* Pin / Unpin */}
                       <TouchableOpacity
                         style={s.mItem}
                         onPress={() => {
                           if (!activeMenuCapsule) return;
-                          flushMenuTag();
+                          void updateCapsule(activeMenuCapsule.id, { isPinned: !activeMenuCapsule.isPinned });
+                          setActiveMenuCapsule(null);
+                        }}
+                      >
+                        <Pin
+                          size={18}
+                          color="#007AFF"
+                          fill={activeMenuCapsule.isPinned ? '#007AFF' : 'transparent'}
+                          style={{ transform: [{ rotate: '45deg' }] }}
+                        />
+                        <Text style={[s.mItemTxt, activeMenuCapsule.isPinned && { color: '#007AFF' }]}>
+                          {activeMenuCapsule.isPinned ? 'Unpin Note' : 'Pin Note'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Star / Unstar */}
+                      <TouchableOpacity
+                        style={s.mItem}
+                        onPress={() => {
+                          if (!activeMenuCapsule) return;
+                          void updateCapsule(activeMenuCapsule.id, { isStarred: !activeMenuCapsule.isStarred });
+                          setActiveMenuCapsule(null);
+                        }}
+                      >
+                        <Star
+                          size={18}
+                          color="#007AFF"
+                          fill={activeMenuCapsule.isStarred ? '#FFB800' : 'transparent'}
+                        />
+                        <Text style={[s.mItemTxt, activeMenuCapsule.isStarred && { color: '#007AFF' }]}>
+                          {activeMenuCapsule.isStarred ? 'Unstar Note' : 'Star Note'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Change Color */}
+                      <TouchableOpacity
+                        style={s.mItem}
+                        onPress={() => {
+                          if (activeMenuCapsule) setColorPickerCapsule(activeMenuCapsule);
+                          setActiveMenuCapsule(null);
+                        }}
+                      >
+                        <Palette size={18} color="#8E8E93" />
+                        <Text style={s.mItemTxt}>Change Color</Text>
+                      </TouchableOpacity>
+
+                      {/* Set Reminder */}
+                      <TouchableOpacity
+                        style={s.mItem}
+                        onPress={() => {
+                          if (activeMenuCapsule) setReminderTarget(activeMenuCapsule);
+                          setActiveMenuCapsule(null);
+                        }}
+                      >
+                        <Calendar size={18} color="#8E8E93" />
+                        <Text style={s.mItemTxt}>Set Reminder</Text>
+                      </TouchableOpacity>
+
+                      {/* Cancel To-do / Set To-do */}
+                      <TouchableOpacity
+                        style={s.mItem}
+                        onPress={() => {
+                          if (!activeMenuCapsule) return;
+                          void updateCapsule(activeMenuCapsule.id, {
+                            isTodo: !activeMenuCapsule.isTodo,
+                          });
+                          setActiveMenuCapsule(null);
+                        }}
+                      >
+                        {activeMenuCapsule.isTodo ? (
+                          <Square size={18} color="#8E8E93" />
+                        ) : (
+                          <CheckSquare size={18} color="#007AFF" />
+                        )}
+                        <Text style={[s.mItemTxt, !activeMenuCapsule.isTodo && { color: '#007AFF' }]}>
+                          {activeMenuCapsule.isTodo ? 'Cancel To-do' : 'Set To-do'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Archive / Unarchive */}
+                      <TouchableOpacity
+                        style={s.mItem}
+                        onPress={() => {
+                          if (!activeMenuCapsule) return;
+                          void updateCapsule(activeMenuCapsule.id, { isArchived: !activeMenuCapsule.isArchived });
+                          setActiveMenuCapsule(null);
+                        }}
+                      >
+                        <Archive size={18} color="#8E8E93" />
+                        <Text style={s.mItemTxt}>
+                          {activeMenuCapsule.isArchived ? 'Unarchive Note' : 'Archive Note'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Share */}
+                      <TouchableOpacity
+                        style={s.mItem}
+                        onPress={async () => {
+                          if (!activeMenuCapsule) return;
+                          const shareText = plainTextFromContent(activeMenuCapsule.content);
+                          try {
+                            await Share.share({
+                              message: shareText,
+                            });
+                          } catch (err) {
+                            console.warn('Share error:', err);
+                          }
+                          setActiveMenuCapsule(null);
+                        }}
+                      >
+                        <ShareIcon size={18} color="#8E8E93" />
+                        <Text style={s.mItemTxt}>Share Note</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : activeMenuCapsule?.isDeleted ? (
+                    <View style={{ paddingVertical: 4 }}>
+                      <TouchableOpacity
+                        style={s.mItem}
+                        onPress={() => {
+                          if (!activeMenuCapsule) return;
                           void updateCapsule(activeMenuCapsule.id, { isDeleted: false });
-                          setMenuTagInput('');
                           setActiveMenuCapsule(null);
                         }}
                       >
@@ -2819,16 +2711,14 @@ export default function IdeaCapsuleApp() {
                         style={s.mItem}
                         onPress={() => {
                           if (!activeMenuCapsule) return;
-                          flushMenuTag();
                           void removeCapsuleForever(activeMenuCapsule.id);
-                          setMenuTagInput('');
                           setActiveMenuCapsule(null);
                         }}
                       >
                         <Trash2 size={18} color="#FF3B30" />
                         <Text style={[s.mItemTxt, { color: '#FF3B30' }]}>Delete Forever</Text>
                       </TouchableOpacity>
-                    </>
+                    </View>
                   ) : null}
                 </View>
             </ScrollView>
@@ -3122,130 +3012,35 @@ export default function IdeaCapsuleApp() {
           >
             <Pressable
               style={[StyleSheet.absoluteFillObject, s.editBackdropTint]}
-              onPress={() => setEditingCapsule(null)}
+              onPress={saveEdit}
             />
             <View style={[s.editBoxCenter, { paddingBottom: Math.max(insets.bottom, 8) }]}>
               <View style={s.editBox}>
-                <View
-                  style={[
-                    s.editHeader,
-                    { backgroundColor: editingCapsule?.color || '#FFB900' },
-                  ]}
-                >
-                  <View style={s.editHeaderActions}>
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (!editingCapsule) return;
-                        const id = editingCapsule.id;
-                        const next = !editingCapsule.isPinned;
-                        void updateCapsule(id, { isPinned: next });
-                        setEditingCapsule({ ...editingCapsule, isPinned: next });
-                      }}
-                      style={s.editStarFab}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      accessibilityRole="button"
-                      accessibilityLabel={
-                        editingCapsule?.isPinned ? 'Unpin note' : 'Pin note'
-                      }
-                    >
-                      <Pin
-                        size={22}
-                        color={editingCapsule?.isPinned ? '#0051D5' : '#3C3C43'}
-                        fill={editingCapsule?.isPinned ? '#007AFF' : 'transparent'}
-                        strokeWidth={2.2}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (!editingCapsule) return;
-                        const id = editingCapsule.id;
-                        const next = !editingCapsule.isStarred;
-                        void updateCapsule(id, { isStarred: next });
-                        setEditingCapsule({ ...editingCapsule, isStarred: next });
-                      }}
-                      style={s.editStarFab}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      accessibilityRole="button"
-                      accessibilityLabel={
-                        editingCapsule?.isStarred ? 'Unstar note' : 'Star note'
-                      }
-                    >
-                      <Star
-                        size={22}
-                        color={editingCapsule?.isStarred ? '#B45309' : '#3C3C43'}
-                        fill={editingCapsule?.isStarred ? '#FFB800' : 'transparent'}
-                        strokeWidth={2.2}
-                      />
-                    </TouchableOpacity>
+                <View style={s.editHeader}>
+                  <View style={s.editHeaderLeft}>
+                    {/* Color dot indicator */}
+                    <View
+                      style={[
+                        s.editColorDot,
+                        { backgroundColor: editingCapsule?.color || '#FFB900' },
+                      ]}
+                    />
+                    {/* Note Title Input */}
+                    <TextInput
+                      style={s.editTitleInput}
+                      value={editSubjectDraft}
+                      onChangeText={setEditSubjectDraft}
+                      placeholder="Note Title"
+                      placeholderTextColor="#C7C7CC"
+                      returnKeyType="done"
+                      onBlur={saveEditSilent}
+                    />
                   </View>
-                  <TouchableOpacity onPress={() => setEditingCapsule(null)}>
-                    <X size={24} color="#FFF" />
+                  <TouchableOpacity onPress={saveEdit} style={s.editCloseBtn}>
+                    <X size={20} color="#8E8E93" />
                   </TouchableOpacity>
                 </View>
-                {editingCapsule ? (
-                  <View style={s.editMetaForm}>
-                    <Text style={s.editFieldLbl}>Category</Text>
-                    <TextInput
-                      value={editCategoryDraft}
-                      onChangeText={setEditCategoryDraft}
-                      onFocus={() => setEditCategoryFocused(true)}
-                      onBlur={() => setEditCategoryFocused(false)}
-                      placeholder="e.g. Work"
-                      placeholderTextColor="#AEAEB2"
-                      style={s.editFieldIn}
-                    />
-                    {editCategorySuggestions.length > 0 ? (
-                      <View style={s.editSuggestBox}>
-                        <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{ maxHeight: 120 }}>
-                          {editCategorySuggestions.map((c) => (
-                            <TouchableOpacity
-                              key={c}
-                              style={s.editSuggestRow}
-                              onPress={() => {
-                                setEditCategoryDraft(c);
-                                setEditCategoryFocused(false);
-                              }}
-                            >
-                              <Text style={s.editSuggestTxt}>{c}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    ) : null}
 
-                    <Text style={[s.editFieldLbl, { marginTop: 10 }]}>Tags (comma separated)</Text>
-                    <TextInput
-                      value={editTagsDraft}
-                      onChangeText={setEditTagsDraft}
-                      onFocus={() => setEditTagsFocused(true)}
-                      onBlur={() => setEditTagsFocused(false)}
-                      placeholder="idea, follow-up"
-                      placeholderTextColor="#AEAEB2"
-                      style={s.editFieldIn}
-                    />
-                    {editTagSuggestions.length > 0 ? (
-                      <View style={s.editSuggestBox}>
-                        <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{ maxHeight: 120 }}>
-                          {editTagSuggestions.map((t) => (
-                            <TouchableOpacity
-                              key={t}
-                              style={s.editSuggestRow}
-                              onPress={() => {
-                                const parts = editTagsDraft.split(',');
-                                parts.pop();
-                                const prefix = parts.map((p) => p.trim()).filter(Boolean);
-                                setEditTagsDraft([...prefix, t].join(', '));
-                                setEditTagsFocused(false);
-                              }}
-                            >
-                              <Text style={s.editSuggestTxt}>#{t}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    ) : null}
-                  </View>
-                ) : null}
                 <ScrollView
                   style={{ flex: 1 }}
                   contentContainerStyle={{ flexGrow: 1 }}
@@ -3253,12 +3048,58 @@ export default function IdeaCapsuleApp() {
                   keyboardDismissMode="on-drag"
                 >
                   <View style={s.editBodyContainer}>
+                    {/* Plain / Markdown switcher */}
+                    <View style={s.editModeTabWrap}>
+                      <View style={s.editModeTabs}>
+                        <TouchableOpacity
+                          style={[s.editModeTab, editMode === 'plain' && s.editModeTabActive]}
+                          onPress={() => setEditMode('plain')}
+                        >
+                          <Text style={[s.editModeTabTxt, editMode === 'plain' && s.editModeTabTxtActive]}>Plain</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[s.editModeTab, editMode === 'markdown' && s.editModeTabActive]}
+                          onPress={() => setEditMode('markdown')}
+                        >
+                          <Text style={[s.editModeTabTxt, editMode === 'markdown' && s.editModeTabTxtActive]}>Markdown</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
                     <CapsuleEditorMobile
                       content={editContent}
                       onChange={(json) => setEditContent(json)}
                       placeholder="Type your brilliant thought here..."
                       autoFocus
+                      editMode={editMode}
                     />
+
+                    {/* Category & Tags Input */}
+                    <View style={s.editMetaForm}>
+                      <View style={s.editField}>
+                        <Text style={s.editFieldLbl}>Category</Text>
+                        <TextInput
+                          style={s.editFieldIn}
+                          placeholder="e.g. Work, Ideas"
+                          placeholderTextColor="#8E8E93"
+                          value={editCategoryDraft}
+                          onChangeText={setEditCategoryDraft}
+                          onBlur={saveEditSilent}
+                        />
+                      </View>
+                      <View style={[s.editField, { marginTop: 12 }]}>
+                        <Text style={s.editFieldLbl}>Tags (comma separated)</Text>
+                        <TextInput
+                          style={s.editFieldIn}
+                          placeholder="e.g. design, slide, coding"
+                          placeholderTextColor="#8E8E93"
+                          value={editTagsDraft}
+                          onChangeText={setEditTagsDraft}
+                          onBlur={saveEditSilent}
+                        />
+                      </View>
+                    </View>
+
                     {editingCapsule?.attachments?.length ? (
                       <View style={s.editAttachments}>
                         {editingCapsule.attachments.map((a, i) => (
@@ -3556,7 +3397,15 @@ function SidebarRow({
           ]}
         />
       )}
-      <Text style={[s.sideLabel, active && { color: '#FFF' }]}>{label}</Text>
+      <Text
+        style={[
+          s.sideLabel,
+          icon ? s.sideLabelPrimary : null,
+          active && { color: '#FFF' },
+        ]}
+      >
+        {label}
+      </Text>
       {count > 0 && (
         <Text style={[s.sideCount, active && { color: '#FFF' }]}>{count}</Text>
       )}
@@ -4364,6 +4213,12 @@ const s = StyleSheet.create({
     shadowRadius: 3,
     elevation: 4,
   },
+  editColorDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+  },
   editMetaForm: {
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -4500,16 +4355,11 @@ const s = StyleSheet.create({
   captureBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingTop: 6,
+    paddingHorizontal: 12,
+    paddingTop: 8,
     paddingBottom: 8,
     backgroundColor: '#FFF',
-    gap: 8,
-    zIndex: 1,
-    ...Platform.select({
-      web: { width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' },
-      default: {},
-    }),
+    gap: 10,
   },
   captureBarHit: {
     zIndex: 2,
@@ -4580,4 +4430,132 @@ const s = StyleSheet.create({
   },
   colorDotSelected: { borderWidth: 3, borderColor: '#007AFF' },
   colorCloseBtn: { alignItems: 'center', marginTop: 14, paddingVertical: 8 },
+  sideBrandTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#1D1D1F',
+    marginLeft: 8,
+  },
+  sideLabelPrimary: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1D1D1F',
+  },
+  editHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
+  },
+  editTitleInput: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1D1D1F',
+    flex: 1,
+    paddingVertical: 6,
+  },
+  editCloseBtn: {
+    padding: 6,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 999,
+  },
+  editModeTabWrap: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: '#FFF',
+  },
+  editModeTabs: {
+    flexDirection: 'row',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 10,
+    padding: 2,
+  },
+  editModeTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+  },
+  editModeTabActive: {
+    backgroundColor: '#FFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  editModeTabTxt: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8E8E93',
+  },
+  editModeTabTxtActive: {
+    color: '#007AFF',
+  },
+  editField: {
+    flex: 1,
+  },
+  captureInputCapsule: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 22,
+    height: 44,
+    paddingHorizontal: 12,
+  },
+  captureInputCapsuleActive: {
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,122,255,0.22)',
+  },
+  captureInputCapsuleListening: {
+    borderWidth: 1.5,
+    borderColor: '#EF4444',
+  },
+  captureZapIcon: {
+    marginRight: 6,
+    opacity: 0.8,
+  },
+  captureTextInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1D1D1F',
+    paddingVertical: 4,
+  },
+  captureCheckBtn: {
+    padding: 6,
+    marginLeft: 4,
+  },
+  captureMicBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  captureMicBtnListening: {
+    backgroundColor: '#EF4444',
+  },
+  waveDotBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  waveDot: {
+    width: 4,
+    height: 12,
+    borderRadius: 2,
+    backgroundColor: '#FFF',
+  },
 });

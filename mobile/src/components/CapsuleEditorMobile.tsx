@@ -17,6 +17,7 @@ interface CapsuleEditorMobileProps {
   onChange: (json: string, text: string) => void;
   placeholder?: string;
   autoFocus?: boolean;
+  editMode?: 'plain' | 'markdown';
 }
 
 function plainTextFromStored(raw: string): string {
@@ -126,6 +127,9 @@ function CapsuleEditorNative({
 }
 
 export function CapsuleEditorMobile(props: CapsuleEditorMobileProps) {
+  if (props.editMode === 'plain') {
+    return <WebPlainEditor {...props} />;
+  }
   if (Platform.OS === 'web') {
     return <WebPlainEditor {...props} />;
   }

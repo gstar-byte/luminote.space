@@ -68,8 +68,7 @@ import {
   ListOrdered,
   ListChecks,
   Undo,
-  Inbox,
-  Check
+  Inbox
 } from 'lucide-react';
 import { Capsule, FilterType, ReminderConfig, ReminderType, UserProfile } from './types';
 import { PRESET_COLORS } from './constants';
@@ -376,7 +375,7 @@ function CrownJewel({ className, size = 32 }: { className?: string; size?: numbe
 }
 
 /** Open width when sidebar is expanded (mobile narrower). */
-const SIDEBAR_W = { mobile: 140, desktop: 240 } as const;
+const SIDEBAR_W = { mobile: 260, desktop: 240 } as const;
 
 /**
  * Helper to extract plain text from Tiptap JSON or plain string
@@ -1515,7 +1514,7 @@ export default function App() {
   const editingCapsuleRef = useRef<Capsule | null>(null);
   editingCapsuleRef.current = editingCapsule;
   const [isMarkdownPreview, setIsMarkdownPreview] = useState(false);
-  const [editMode, setEditMode] = useState<'plain' | 'markdown'>('markdown');
+  const [editMode, setEditMode] = useState<'plain' | 'markdown' | 'rich'>('markdown');
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isUploadingMediaRef = useRef(false);
 
@@ -2410,7 +2409,7 @@ export default function App() {
       switch (filter) {
         case 'pending-todo': return c.isTodo && !c.completed;
         case 'without-todo': return !c.isTodo;
-        case 'completed-todo': return c.isTodo && c.completed;
+        case 'completed-todo': return (c.isTodo && c.completed) || hasFinishedOneShotReminder(c);
         case 'repeat-reminder': return hasRepeatReminder(c);
         case 'without-reminder': return !hasActiveReminder(c);
         case 'finished-reminder': return hasFinishedOneShotReminder(c);
@@ -2434,7 +2433,7 @@ export default function App() {
         case 'pending-todo':
           return c.isTodo && !c.completed;
         case 'completed-todo':
-          return c.isTodo && !!c.completed;
+          return (c.isTodo && !!c.completed) || hasFinishedOneShotReminder(c);
         case 'repeat-reminder':
           return hasRepeatReminder(c);
         case 'finished-reminder':
@@ -2448,11 +2447,10 @@ export default function App() {
 
   const filterOptions: { value: FilterType, label: string }[] = [
     { value: 'all', label: 'All' },
-    { value: 'pure-note', label: 'Only Notes' },
-    { value: 'pending-todo', label: 'Pending to-do' },
-    { value: 'completed-todo', label: 'Finished to-do' },
-    { value: 'repeat-reminder', label: 'Repeat reminder' },
-    { value: 'finished-reminder', label: 'Finished reminder' },
+    { value: 'pure-note', label: 'Note(s)' },
+    { value: 'pending-todo', label: 'To-do' },
+    { value: 'completed-todo', label: 'Completed' },
+    { value: 'repeat-reminder', label: 'Recurring' },
     { value: 'archived', label: 'Archived' },
     { value: 'trash', label: 'Trash' },
   ];
@@ -2819,7 +2817,7 @@ export default function App() {
                   if (isMobile) setIsSidebarOpen(false);
                 }}
                 className={cn(
-                  'w-full mb-1 flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border transition-all text-left',
+                  'w-full mb-1 flex items-center justify-between gap-2 pl-2 pr-3 py-2.5 rounded-xl border transition-all text-left',
                   filter === 'all' && categoryFilter === 'all' && !tagFilter
                     ? 'bg-[#007AFF] border-[#007AFF] text-white shadow-lg'
                     : 'bg-[#F2F2F7] border-[#E5E5EA] hover:bg-[#ECECEC]',
@@ -2861,7 +2859,7 @@ export default function App() {
                 ) : null}
               </button>
               <div
-                className="mt-1 mb-1 w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-colors bg-[#F2F2F7] border border-[#E5E5EA] hover:bg-[#ECECEC]"
+                className="mt-1 mb-1 w-full flex items-center justify-between gap-2 pl-2 pr-3 py-2.5 rounded-xl cursor-pointer transition-colors bg-[#F2F2F7] border border-[#E5E5EA] hover:bg-[#ECECEC]"
                 onClick={() => setIsFilterNavExpanded(!isFilterNavExpanded)}
               >
                 <div className="flex items-center gap-2">
@@ -2909,7 +2907,7 @@ export default function App() {
                   if (isMobile) setIsSidebarOpen(false);
                 }}
                 className={cn(
-                  'w-full mb-1 flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border transition-all text-left',
+                  'w-full mb-1 flex items-center justify-between gap-2 pl-2 pr-3 py-2.5 rounded-xl border transition-all text-left',
                   filter === 'starred'
                     ? 'bg-[#007AFF] border-[#007AFF] text-white shadow-lg'
                     : 'bg-[#F2F2F7] border-[#E5E5EA] hover:bg-[#ECECEC]',
@@ -2950,7 +2948,7 @@ export default function App() {
               {allCategories.length > 0 && (
                 <>
                   <div
-                    className="mt-4 mb-1 w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-colors bg-[#F2F2F7] border border-[#E5E5EA] hover:bg-[#ECECEC]"
+                    className="mt-4 mb-1 w-full flex items-center justify-between gap-2 pl-2 pr-3 py-2.5 rounded-xl cursor-pointer transition-colors bg-[#F2F2F7] border border-[#E5E5EA] hover:bg-[#ECECEC]"
                     onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
                   >
                     <div className="flex items-center gap-2">
@@ -3001,7 +2999,7 @@ export default function App() {
               {allTags.length > 0 && (
                 <>
                   <div
-                    className="mt-4 mb-1 w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-colors bg-[#F2F2F7] border border-[#E5E5EA] hover:bg-[#ECECEC]"
+                    className="mt-4 mb-1 w-full flex items-center justify-between gap-2 pl-2 pr-3 py-2.5 rounded-xl cursor-pointer transition-colors bg-[#F2F2F7] border border-[#E5E5EA] hover:bg-[#ECECEC]"
                     onClick={() => setIsTagsExpanded(!isTagsExpanded)}
                   >
                     <div className="flex items-center gap-2">
@@ -3081,7 +3079,7 @@ export default function App() {
              title="Manual sync"
              className={cn(
                "w-full flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold text-[#8E8E93] hover:text-[#007AFF] hover:bg-[#007AFF]/10 transition-all disabled:opacity-60",
-               isSidebarOpen ? "px-4 justify-start" : "px-0 justify-center"
+               isSidebarOpen ? "pl-2.5 pr-4 justify-start" : "px-0 justify-center"
              )}
            >
              <RefreshCw size={14} className={isSyncing ? "animate-spin text-[#007AFF]" : ""} />
@@ -4217,7 +4215,9 @@ function SidebarItem({
     >
       <div 
         onClick={() => !isEditing && onClick()}
-        className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all cursor-pointer select-none group/item ${
+        className={`w-full flex items-center gap-2 rounded-2xl transition-all cursor-pointer select-none group/item ${
+          isSidebarOpen ? 'pl-2 pr-3 py-2.5' : 'p-3'
+        } ${
           isActive 
             ? 'bg-[#007AFF] text-white shadow-lg' 
             : 'text-[#8E8E93] hover:bg-[#F2F2F7] hover:text-[#1D1D1F]'
@@ -4228,7 +4228,7 @@ function SidebarItem({
             {icon}
           </div>
         ) : (
-          <div className={`flex-shrink-0 w-2 h-2 rounded-full ${isActive ? 'bg-white' : 'bg-[#C7C7CC]'} ml-1.5`} />
+          <div className={`flex-shrink-0 w-2 h-2 rounded-full ${isActive ? 'bg-white' : 'bg-[#C7C7CC]'} ml-0.5`} />
         )}
         {isSidebarOpen && (
           isEditing ? (
@@ -5215,7 +5215,7 @@ function TagItem({ tag, tagFilter, setTagFilter, setCategoryFilter, removeTag, o
           setCategoryFilter('all');
           if (isMobile) setIsSidebarOpen(false);
         }}
-        className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all cursor-pointer select-none ${
+        className={`w-full flex items-center gap-2 pl-2 pr-3 py-2 rounded-xl text-sm transition-all cursor-pointer select-none ${
           tagFilter === tag 
             ? 'bg-[#007AFF] text-white shadow-lg' 
             : 'text-[#8E8E93] hover:bg-[#F2F2F7] hover:text-[#1D1D1F]'

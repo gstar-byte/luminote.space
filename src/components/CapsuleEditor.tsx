@@ -244,7 +244,7 @@ function markdownToHtml(md: string): string {
     if (isUnordered) {
       if (inList !== 'unordered') {
         if (inList) {
-          outputLines.push(inList === 'ordered' ? '</ol>' : '</ul>');
+          outputLines.push('</ol>');
         }
         inList = 'unordered';
         outputLines.push('<ul>');
@@ -253,7 +253,7 @@ function markdownToHtml(md: string): string {
     } else if (isOrdered) {
       if (inList !== 'ordered') {
         if (inList) {
-          outputLines.push(inList === 'ordered' ? '</ol>' : '</ul>');
+          outputLines.push('</ul>');
         }
         inList = 'ordered';
         outputLines.push('<ol>');

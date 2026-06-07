@@ -11,6 +11,7 @@ export interface Capsule {
   id: string;
   userId?: string; // Owner ID
   content: string;
+  subject?: string; // Note Title aligned with PC
   category?: string;
   createdAt: number;
   updatedAt?: number;
