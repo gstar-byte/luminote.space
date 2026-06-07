@@ -19,7 +19,11 @@ async function generate() {
     const left = Math.round((size - svgSize) / 2);
 
     const svgResized = await sharp(svgBuffer)
-      .resize(svgSize, svgSize)
+      .trim() // 1. 物理切除 SVG 外部多余的透明留边
+      .resize(svgSize, svgSize, {
+        fit: 'contain',
+        background: { r: 255, g: 255, b: 255, alpha: 0 }
+      })
       .toBuffer();
 
     await sharp({
@@ -42,12 +46,12 @@ async function generate() {
   };
 
   // Generate different resolutions with physical cache-bust filenames
-  await generatePng('favicon-48-v15.png', 48, 48);
-  await generatePng('favicon-192-v15.png', 192, 192);
-  await generatePng('favicon-512-v15.png', 512, 512);
-  await generatePng('apple-touch-icon-v15.png', 180, 180);
+  await generatePng('favicon-48-v16.png', 48, 48);
+  await generatePng('favicon-192-v16.png', 192, 192);
+  await generatePng('favicon-512-v16.png', 512, 512);
+  await generatePng('apple-touch-icon-v16.png', 180, 180);
 
-  console.log('All icons generated successfully with transparent background!');
+  console.log('All icons generated successfully with transparent background and max scale!');
 }
 
 generate().catch(console.error);
