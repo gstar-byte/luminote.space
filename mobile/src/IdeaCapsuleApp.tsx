@@ -2450,7 +2450,7 @@ export default function IdeaCapsuleApp() {
               ]}
             >
               <SidebarRow
-                label="Preferences"
+                label="Settings"
                 icon="settings"
                 count={0}
                 active={false}
@@ -3985,7 +3985,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
     zIndex: 1500,
   },
-  sideHeadLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sideHeadLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sideTitle: { fontSize: 17, fontWeight: '900' },
   logoMini: {
     width: 36,
@@ -4018,8 +4018,8 @@ const s = StyleSheet.create({
     marginTop: 0,
   },
   sideSectionTitle: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#1D1D1F',
     letterSpacing: 0.2,
   },
@@ -4033,7 +4033,7 @@ const s = StyleSheet.create({
   },
   sideActive: { backgroundColor: '#007AFF' },
   mark: { width: 6, height: 6, borderRadius: 3 },
-  sideLabel: { flex: 1, marginLeft: 6, fontSize: 13, fontWeight: '700', color: '#8E8E93' },
+  sideLabel: { flex: 1, marginLeft: 6, fontSize: 13, fontWeight: '500', color: '#8E8E93' },
   sideCount: { fontSize: 10, fontWeight: '800', color: '#C7C7CC', marginRight: 2 },
   modalRoot: { flex: 1, backgroundColor: 'transparent' },
   modalBackdrop: { backgroundColor: 'rgba(0,0,0,0.35)' },
@@ -4459,14 +4459,13 @@ const s = StyleSheet.create({
   colorDotSelected: { borderWidth: 3, borderColor: '#007AFF' },
   colorCloseBtn: { alignItems: 'center', marginTop: 14, paddingVertical: 8 },
   sideBrandTitle: {
-    fontSize: 20,
-    fontWeight: '900',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#1D1D1F',
-    marginLeft: 8,
   },
   sideLabelPrimary: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '600',
     color: '#1D1D1F',
   },
   editHeaderLeft: {
