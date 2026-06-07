@@ -15,6 +15,7 @@ import { User as UserIcon, X, Sliders } from 'lucide-react-native';
 import type { UserProfile, AppSettings } from '../types';
 import { PAYWALL_ACTIVE } from '../featureFlags';
 import * as Haptics from 'expo-haptics';
+import { Alert } from 'react-native';
 
 type Props = {
   visible: boolean;
@@ -61,7 +62,7 @@ export function SettingsModalMobile({
           <View style={styles.head}>
             <View style={styles.headLeft}>
               <Sliders size={20} color="#007AFF" strokeWidth={2.5} />
-              <Text style={styles.title}>Preferences</Text>
+              <Text style={styles.title}>Settings</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={12}>
               <X size={20} color="#8E8E93" />
@@ -225,7 +226,37 @@ export function SettingsModalMobile({
                       </View>
                       <Switch
                         value={settings.accessibilityWakeEnabled}
-                        onValueChange={(val) => handleToggle('accessibilityWakeEnabled', val)}
+                        onValueChange={(val) => {
+                          if (val) {
+                            Alert.alert(
+                              'Accessibility Setup Required',
+                              'To enable Volume Key Wake, you need to enable the Lumi Note Accessibility Service in your Android System Settings.\n\nGo to:\nSettings → Accessibility → Installed Services → Lumi Note → Enable',
+                              [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'Enable Anyway', onPress: () => handleToggle('accessibilityWakeEnabled', true) },
+                              ]
+                            );
+                          } else {
+                            handleToggle('accessibilityWakeEnabled', false);
+                          }
+                        }}
+                        trackColor={{ false: '#E5E5EA', true: '#34C759' }}
+                        thumbColor="#FFF"
+                        ios_backgroundColor="#E5E5EA"
+                      />
+                    </View>
+                  </View>
+
+                  {/* Edge Panel */}
+                  <View style={styles.rowDivider}>
+                    <View style={styles.row}>
+                      <View style={styles.rowMeta}>
+                        <Text style={styles.rowTitle}>Edge Panel</Text>
+                        <Text style={styles.rowSub}>Floating side bar on the right edge for instant capture and recent notes</Text>
+                      </View>
+                      <Switch
+                        value={settings.edgePanelEnabled}
+                        onValueChange={(val) => handleToggle('edgePanelEnabled', val)}
                         trackColor={{ false: '#E5E5EA', true: '#34C759' }}
                         thumbColor="#FFF"
                         ios_backgroundColor="#E5E5EA"

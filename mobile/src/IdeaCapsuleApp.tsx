@@ -79,6 +79,8 @@ import { LandingScreen } from './components/LandingScreen';
 import { PremiumModalMobile } from './components/PremiumModalMobile';
 import { SettingsModalMobile } from './components/SettingsModalMobile';
 import { QuickCaptureModal } from './components/QuickCaptureModal';
+import { EdgeMiniPanel } from './components/EdgeMiniPanel';
+import * as Notifications from 'expo-notifications';
 import * as Linking from 'expo-linking';
 import {
   AUTO_DEMO_CAPSULES,
@@ -342,11 +344,11 @@ function capsulePartialToFirestoreData(updates: Partial<Capsule>): Record<string
 }
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
-  swipeEnabled: true,
+  swipeEnabled: false,
   swipeRightAction: 'archive',
-  edgePanelEnabled: true,
-  ongoingNotificationEnabled: true,
-  accessibilityWakeEnabled: true,
+  edgePanelEnabled: false,
+  ongoingNotificationEnabled: false,
+  accessibilityWakeEnabled: false,
   quickCaptureLimit: 5,
 };
 
@@ -398,6 +400,59 @@ export default function IdeaCapsuleApp() {
     }
   };
 
+  // Ongoing Notification service manager for Android PWA/Native alignment
+  const updateOngoingNotification = async (enabled: boolean) => {
+    if (Platform.OS !== 'android') return;
+    const ONGOING_NOTIF_ID = 'lumi-ongoing-quick-capture';
+    if (enabled) {
+      try {
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        if (existingStatus !== 'granted') {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+        if (finalStatus !== 'granted') {
+          console.warn('[Ongoing Notification] Permission denied');
+          return;
+        }
+
+        await Notifications.setNotificationChannelAsync('ongoing-channel', {
+          name: 'Lumi Quick Capture',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0],
+          lightColor: '#007AFF',
+          showBadge: false,
+        });
+
+        await Notifications.scheduleNotificationAsync({
+          identifier: ONGOING_NOTIF_ID,
+          content: {
+            title: 'Lumi Note 🚀',
+            body: 'Tap here to capture your thought instantly',
+            sticky: true,
+            autoDismiss: false,
+            color: '#007AFF',
+            data: { action: 'open_quick_capture' },
+          },
+          trigger: null,
+        });
+      } catch (err) {
+        console.warn('[Ongoing Notification] Error scheduling:', err);
+      }
+    } else {
+      try {
+        await Notifications.dismissNotificationAsync(ONGOING_NOTIF_ID);
+      } catch (err) {
+        console.warn('[Ongoing Notification] Error dismissing:', err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    void updateOngoingNotification(settings.ongoingNotificationEnabled);
+  }, [settings.ongoingNotificationEnabled]);
+
   const [user, setUser] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showAuthScreen, setShowAuthScreen] = useState(false);
@@ -412,6 +467,32 @@ export default function IdeaCapsuleApp() {
   useEffect(() => {
     initNotifications();
   }, []);
+
+  // Listener for tap notification action to trigger Quick Capture
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      if (data && data.action === 'open_quick_capture') {
+        setShowQuickCapture(true);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } else if (data && data.capsuleId) {
+        const found = capsules.find(c => c.id === data.capsuleId);
+        if (found) {
+          setEditingCapsule(found);
+          setEditContent(found.content);
+          setEditSubjectDraft(found.subject || '');
+          setEditCategoryDraft(found.category || '');
+          setEditTagsDraft(found.tags?.join(', ') || '');
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [capsules]);
 
   useEffect(() => {
     const handleUrl = (event: { url: string }) => {
@@ -570,7 +651,7 @@ export default function IdeaCapsuleApp() {
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const [isWebListening, setIsWebListening] = useState(false);
   const [quickCaptureMode, setQuickCaptureMode] = useState<'buttons' | 'text' | 'voice'>('buttons');
-  const [editMode, setEditMode] = useState<'plain' | 'markdown'>('markdown');
+  const [editMode, setEditMode] = useState<'plain' | 'markdown' | 'rich'>('markdown');
   const voiceRecordingRef = useRef<Audio.Recording | null>(null);
   const webSpeechRef = useRef<any>(null);
 
@@ -3031,7 +3112,7 @@ export default function IdeaCapsuleApp() {
                   keyboardDismissMode="on-drag"
                 >
                   <View style={s.editBodyContainer}>
-                    {/* Plain / Markdown switcher */}
+                    {/* Plain / Markdown / Rich switcher — aligned with PC Web */}
                     <View style={s.editModeTabWrap}>
                       <View style={s.editModeTabs}>
                         <TouchableOpacity
@@ -3045,6 +3126,12 @@ export default function IdeaCapsuleApp() {
                           onPress={() => setEditMode('markdown')}
                         >
                           <Text style={[s.editModeTabTxt, editMode === 'markdown' && s.editModeTabTxtActive]}>Markdown</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[s.editModeTab, editMode === 'rich' && s.editModeTabActive]}
+                          onPress={() => setEditMode('rich')}
+                        >
+                          <Text style={[s.editModeTabTxt, editMode === 'rich' && s.editModeTabTxtActive]}>Rich</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -3242,6 +3329,26 @@ export default function IdeaCapsuleApp() {
           startVoice={startVoice}
           limit={settings.quickCaptureLimit}
         />
+
+        {/* Android Edge Panel — global floating side bar for quick capture */}
+        {Platform.OS === 'android' && settings.edgePanelEnabled && (
+          <EdgeMiniPanel
+            capsules={capsules}
+            onCreateCapsule={handleCreateCapsule}
+            onToggleTodo={(id, completed) => updateCapsule(id, { completed })}
+            onSelectCapsule={(capsule) => {
+              setEditingCapsule(capsule);
+              setEditContent(capsule.content);
+              setEditSubjectDraft(capsule.subject || '');
+              setEditCategoryDraft(capsule.category || '');
+              setEditTagsDraft(capsule.tags?.join(', ') || '');
+            }}
+            isProcessing={isProcessing}
+            isVoiceRecording={isVoiceRecording}
+            startVoice={startVoice}
+            limit={settings.quickCaptureLimit}
+          />
+        )}
       </SafeAreaView>
     </View>
   );
