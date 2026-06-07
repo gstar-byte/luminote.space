@@ -48,10 +48,15 @@ export function SettingsModalMobile({
   };
 
   return (
-    <Modal transparent visible animationType="fade" onRequestClose={onClose}>
+    <Modal transparent visible animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={styles.sheet}>
+          {/* Drag Indicator Bar */}
+          <View style={styles.indicatorContainer}>
+            <View style={styles.indicator} />
+          </View>
+
           {/* Header */}
           <View style={styles.head}>
             <View style={styles.headLeft}>
@@ -245,19 +250,31 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
+    justifyContent: 'flex-end',
   },
   sheet: {
     width: '100%',
-    maxWidth: 400,
-    maxHeight: '88%',
+    maxHeight: '90%',
     backgroundColor: '#F2F2F7',
-    borderRadius: 28,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.05)',
+  },
+  indicatorContainer: {
+    width: '100%',
+    height: 14,
+    backgroundColor: '#F2F2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 8,
+  },
+  indicator: {
+    width: 38,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: 'rgba(0,0,0,0.12)',
   },
   head: {
     flexDirection: 'row',
@@ -265,9 +282,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    backgroundColor: '#F2F2F7',
   },
   headLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   title: { fontSize: 16, fontWeight: '900', color: '#1D1D1F', letterSpacing: 0.5 },

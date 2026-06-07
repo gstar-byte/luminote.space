@@ -40,7 +40,7 @@ export default defineConfig(({mode}) => {
           importScripts: ['/notification-sw.js'],
         },
         registerType: 'autoUpdate',
-        includeAssets: ['favicon-48.png', 'favicon-192.png', 'app-logo.svg'],
+        includeAssets: ['favicon-48.png', 'favicon-192.png', 'favicon-512.png', 'apple-touch-icon.png', 'app-logo.svg'],
       }),
     ],
     define: {

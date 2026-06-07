@@ -10,3 +10,5 @@ coverage/
 # Firebase Admin Credentials
 *-firebase-adminsdk-*.json
 serviceAccountKey.json
+scratch/
+

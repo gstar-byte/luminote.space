@@ -68,8 +68,7 @@ import {
   ListOrdered,
   ListChecks,
   Undo,
-  Inbox,
-  Check
+  Inbox
 } from 'lucide-react';
 import { Capsule, FilterType, ReminderConfig, ReminderType, UserProfile } from './types';
 import { PRESET_COLORS } from './constants';
@@ -376,7 +375,7 @@ function CrownJewel({ className, size = 32 }: { className?: string; size?: numbe
 }
 
 /** Open width when sidebar is expanded (mobile narrower). */
-const SIDEBAR_W = { mobile: 140, desktop: 240 } as const;
+const SIDEBAR_W = { mobile: 200, desktop: 240 } as const;
 
 /**
  * Helper to extract plain text from Tiptap JSON or plain string
@@ -1039,7 +1038,31 @@ export default function App() {
 
   // Auth Listener
   useEffect(() => {
-    let userDocUnsubscribe: () => void;
+    let userDocUnsubscribe: (() => void) | null = null;
+    let unsubscribe: (() => void) | null = null;
+    let isCancelled = false;
+
+    // 1. 快速检查本地是否有缓存的已登录用户
+    const cachedRaw = safeLocalStorageGet('luminote_auth_user');
+    let hasLocalUser = false;
+    if (cachedRaw) {
+      try {
+        const cachedUser = JSON.parse(cachedRaw);
+        if (cachedUser && cachedUser.uid) {
+          // 使用本地登录缓存快速渲染主界面，绝不 pending 卡死在 Loading！
+          setUser(cachedUser);
+          setAuthLoading(false);
+          hasLocalUser = true;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // 如果本地没有登录缓存，说明未登录，直接渲染 LandingPage，完全不用等 Firebase 初始化！
+    if (!hasLocalUser) {
+      setAuthLoading(false);
+    }
 
     // Active extraction of redirect authentication credentials (critical for mobile browser compatibility)
     const handleRedirectResult = async () => {
@@ -1059,93 +1082,108 @@ export default function App() {
         }
       }
     };
-    handleRedirectResult();
 
-    const unsubscribe = onAuthStateChanged(getAuth(), (firebaseUser: User | null) => {
-      if (firebaseUser) {
-        // 1. 快速通道：使用缓存的用户数据或基础 Firebase 身份在 1ms 内登入主界面，绝不 pending 卡死！
-        const cachedRaw = safeLocalStorageGet('luminote_auth_user');
-        let quickUser = null;
-        if (cachedRaw) {
-          try {
-            quickUser = JSON.parse(cachedRaw);
-          } catch { /* ignore */ }
-        }
-        if (!quickUser || quickUser.uid !== firebaseUser.uid) {
-          quickUser = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Lumi User',
-            photoURL: firebaseUser.photoURL,
-            isPremium: false,
-            onboarded: true // 默认为 true 避开 tour 干扰
-          };
-        }
-        setUser(quickUser);
-        setAuthLoading(false);
+    // 2. 异步后台启动 Firebase 初始化，不阻塞首屏渲染
+    ensureFirebaseReady().then(() => {
+      if (isCancelled) return;
 
-        // 2. 启动后台静默实时监听，网络慢用户也完全无感！
-        const userDocRef = doc(getDb(), 'users', firebaseUser.uid);
-        userDocUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const userData = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
-              isPremium: docSnap.data().isPremium || false,
-              onboarded: docSnap.data().onboarded || false,
-              hasNotesCreatedOrSeeded: docSnap.data().hasNotesCreatedOrSeeded || false
-            };
-            setUser(userData);
-            safeLocalStorageSet('luminote_auth_user', JSON.stringify(userData));
-          } else {
-            const userData = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
-              isPremium: false,
-              onboarded: false,
-              hasNotesCreatedOrSeeded: false
-            };
-            setUser(userData);
-            safeLocalStorageSet('luminote_auth_user', JSON.stringify(userData));
-            setDoc(userDocRef, {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
-              isPremium: false,
-              onboarded: false,
-              hasNotesCreatedOrSeeded: false,
-              updatedAt: Date.now()
-            }, { merge: true }).catch((e) => {
-              console.error('Firestore setDoc user error (silenced):', e);
-            });
+      // 处理 redirect 结果（如果发生过 redirect）
+      handleRedirectResult();
+
+      unsubscribe = onAuthStateChanged(getAuth(), (firebaseUser: User | null) => {
+        if (firebaseUser) {
+          // 已经登录：更新用户信息与静默长连接监听
+          const cachedRaw = safeLocalStorageGet('luminote_auth_user');
+          let quickUser = null;
+          if (cachedRaw) {
+            try {
+              quickUser = JSON.parse(cachedRaw);
+            } catch { /* ignore */ }
           }
-        }, (error) => {
-          console.error("user doc snapshot background error (silenced):", error);
-        });
-      } else {
-        if (userDocUnsubscribe) {
-          userDocUnsubscribe();
+          if (!quickUser || quickUser.uid !== firebaseUser.uid) {
+            quickUser = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Lumi User',
+              photoURL: firebaseUser.photoURL,
+              isPremium: false,
+              onboarded: true
+            };
+          }
+          setUser(quickUser);
+          setAuthLoading(false);
+
+          // 启动后台静默实时监听
+          const userDocRef = doc(getDb(), 'users', firebaseUser.uid);
+          userDocUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+              const userData = {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: docSnap.data().displayName || firebaseUser.displayName,
+                photoURL: docSnap.data().photoURL || firebaseUser.photoURL,
+                isPremium: docSnap.data().isPremium || false,
+                onboarded: docSnap.data().onboarded || false,
+                hasNotesCreatedOrSeeded: docSnap.data().hasNotesCreatedOrSeeded || false
+              };
+              setUser(userData);
+              safeLocalStorageSet('luminote_auth_user', JSON.stringify(userData));
+            } else {
+              const userData = {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName,
+                photoURL: firebaseUser.photoURL,
+                isPremium: false,
+                onboarded: false,
+                hasNotesCreatedOrSeeded: false
+              };
+              setUser(userData);
+              safeLocalStorageSet('luminote_auth_user', JSON.stringify(userData));
+              setDoc(userDocRef, {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName,
+                photoURL: firebaseUser.photoURL,
+                isPremium: false,
+                onboarded: false,
+                hasNotesCreatedOrSeeded: false,
+                updatedAt: Date.now()
+              }, { merge: true }).catch((e) => {
+                console.error('Firestore setDoc user error (silenced):', e);
+              });
+            }
+          }, (error) => {
+            console.error("user doc snapshot background error (silenced):", error);
+          });
+        } else {
+          // 未登录
+          if (userDocUnsubscribe) {
+            userDocUnsubscribe();
+          }
+          setUser(null);
+          safeLocalStorageRemove('luminote_auth_user');
+          setCapsules([]);
+          setDemoCapsules([]);
+          setAuthLoading(false);
+          setDataLoading(true);
+          setIsSyncFinished(false);
         }
-        setUser(null);
-        safeLocalStorageRemove('luminote_auth_user');
-        setCapsules([]);
-        setDemoCapsules([]);
-        setAuthLoading(false);
-        setDataLoading(true);
-        setIsSyncFinished(false);
-      }
+      });
+    }).catch((err) => {
+      console.warn("Firebase lazy init failed (offline/no vpn):", err);
+      setAuthLoading(false);
     });
+
     return () => {
+      isCancelled = true;
       if (userDocUnsubscribe) {
         userDocUnsubscribe();
       }
-      unsubscribe();
-    }
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   // Firestore Sync Listener
@@ -1515,7 +1553,7 @@ export default function App() {
   const editingCapsuleRef = useRef<Capsule | null>(null);
   editingCapsuleRef.current = editingCapsule;
   const [isMarkdownPreview, setIsMarkdownPreview] = useState(false);
-  const [editMode, setEditMode] = useState<'plain' | 'markdown'>('markdown');
+  const [editMode, setEditMode] = useState<'plain' | 'markdown' | 'rich'>('markdown');
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isUploadingMediaRef = useRef(false);
 
@@ -2410,7 +2448,7 @@ export default function App() {
       switch (filter) {
         case 'pending-todo': return c.isTodo && !c.completed;
         case 'without-todo': return !c.isTodo;
-        case 'completed-todo': return c.isTodo && c.completed;
+        case 'completed-todo': return (c.isTodo && c.completed) || hasFinishedOneShotReminder(c);
         case 'repeat-reminder': return hasRepeatReminder(c);
         case 'without-reminder': return !hasActiveReminder(c);
         case 'finished-reminder': return hasFinishedOneShotReminder(c);
@@ -2434,7 +2472,7 @@ export default function App() {
         case 'pending-todo':
           return c.isTodo && !c.completed;
         case 'completed-todo':
-          return c.isTodo && !!c.completed;
+          return (c.isTodo && !!c.completed) || hasFinishedOneShotReminder(c);
         case 'repeat-reminder':
           return hasRepeatReminder(c);
         case 'finished-reminder':
@@ -2448,11 +2486,10 @@ export default function App() {
 
   const filterOptions: { value: FilterType, label: string }[] = [
     { value: 'all', label: 'All' },
-    { value: 'pure-note', label: 'Only Notes' },
-    { value: 'pending-todo', label: 'Pending to-do' },
-    { value: 'completed-todo', label: 'Finished to-do' },
-    { value: 'repeat-reminder', label: 'Repeat reminder' },
-    { value: 'finished-reminder', label: 'Finished reminder' },
+    { value: 'pure-note', label: 'Note(s)' },
+    { value: 'pending-todo', label: 'To-do' },
+    { value: 'completed-todo', label: 'Completed' },
+    { value: 'repeat-reminder', label: 'Recurring' },
     { value: 'archived', label: 'Archived' },
     { value: 'trash', label: 'Trash' },
   ];
@@ -2819,7 +2856,7 @@ export default function App() {
                   if (isMobile) setIsSidebarOpen(false);
                 }}
                 className={cn(
-                  'w-full mb-1 flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border transition-all text-left',
+                  'w-full mb-1 flex items-center justify-between gap-2 pl-2 pr-3 py-2.5 rounded-xl border transition-all text-left',
                   filter === 'all' && categoryFilter === 'all' && !tagFilter
                     ? 'bg-[#007AFF] border-[#007AFF] text-white shadow-lg'
                     : 'bg-[#F2F2F7] border-[#E5E5EA] hover:bg-[#ECECEC]',
@@ -2861,7 +2898,7 @@ export default function App() {
                 ) : null}
               </button>
               <div
-                className="mt-1 mb-1 w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-colors bg-[#F2F2F7] border border-[#E5E5EA] hover:bg-[#ECECEC]"
+                className="mt-1 mb-1 w-full flex items-center justify-between gap-2 pl-2 pr-3 py-2.5 rounded-xl cursor-pointer transition-colors bg-[#F2F2F7] border border-[#E5E5EA] hover:bg-[#ECECEC]"
                 onClick={() => setIsFilterNavExpanded(!isFilterNavExpanded)}
               >
                 <div className="flex items-center gap-2">
@@ -2909,7 +2946,7 @@ export default function App() {
                   if (isMobile) setIsSidebarOpen(false);
                 }}
                 className={cn(
-                  'w-full mb-1 flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border transition-all text-left',
+                  'w-full mb-1 flex items-center justify-between gap-2 pl-2 pr-3 py-2.5 rounded-xl border transition-all text-left',
                   filter === 'starred'
                     ? 'bg-[#007AFF] border-[#007AFF] text-white shadow-lg'
                     : 'bg-[#F2F2F7] border-[#E5E5EA] hover:bg-[#ECECEC]',
@@ -2950,7 +2987,7 @@ export default function App() {
               {allCategories.length > 0 && (
                 <>
                   <div
-                    className="mt-4 mb-1 w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-colors bg-[#F2F2F7] border border-[#E5E5EA] hover:bg-[#ECECEC]"
+                    className="mt-4 mb-1 w-full flex items-center justify-between gap-2 pl-2 pr-3 py-2.5 rounded-xl cursor-pointer transition-colors bg-[#F2F2F7] border border-[#E5E5EA] hover:bg-[#ECECEC]"
                     onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
                   >
                     <div className="flex items-center gap-2">
@@ -3001,7 +3038,7 @@ export default function App() {
               {allTags.length > 0 && (
                 <>
                   <div
-                    className="mt-4 mb-1 w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-colors bg-[#F2F2F7] border border-[#E5E5EA] hover:bg-[#ECECEC]"
+                    className="mt-4 mb-1 w-full flex items-center justify-between gap-2 pl-2 pr-3 py-2.5 rounded-xl cursor-pointer transition-colors bg-[#F2F2F7] border border-[#E5E5EA] hover:bg-[#ECECEC]"
                     onClick={() => setIsTagsExpanded(!isTagsExpanded)}
                   >
                     <div className="flex items-center gap-2">
@@ -3081,7 +3118,7 @@ export default function App() {
              title="Manual sync"
              className={cn(
                "w-full flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold text-[#8E8E93] hover:text-[#007AFF] hover:bg-[#007AFF]/10 transition-all disabled:opacity-60",
-               isSidebarOpen ? "px-4 justify-start" : "px-0 justify-center"
+               isSidebarOpen ? "pl-2.5 pr-4 justify-start" : "px-0 justify-center"
              )}
            >
              <RefreshCw size={14} className={isSyncing ? "animate-spin text-[#007AFF]" : ""} />
@@ -4217,7 +4254,9 @@ function SidebarItem({
     >
       <div 
         onClick={() => !isEditing && onClick()}
-        className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all cursor-pointer select-none group/item ${
+        className={`w-full flex items-center gap-2 rounded-2xl transition-all cursor-pointer select-none group/item ${
+          isSidebarOpen ? 'pl-2 pr-3 py-2.5' : 'p-3'
+        } ${
           isActive 
             ? 'bg-[#007AFF] text-white shadow-lg' 
             : 'text-[#8E8E93] hover:bg-[#F2F2F7] hover:text-[#1D1D1F]'
@@ -4228,7 +4267,7 @@ function SidebarItem({
             {icon}
           </div>
         ) : (
-          <div className={`flex-shrink-0 w-2 h-2 rounded-full ${isActive ? 'bg-white' : 'bg-[#C7C7CC]'} ml-1.5`} />
+          <div className={`flex-shrink-0 w-2 h-2 rounded-full ${isActive ? 'bg-white' : 'bg-[#C7C7CC]'} ml-0.5`} />
         )}
         {isSidebarOpen && (
           isEditing ? (
@@ -5215,7 +5254,7 @@ function TagItem({ tag, tagFilter, setTagFilter, setCategoryFilter, removeTag, o
           setCategoryFilter('all');
           if (isMobile) setIsSidebarOpen(false);
         }}
-        className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all cursor-pointer select-none ${
+        className={`w-full flex items-center gap-2 pl-2 pr-3 py-2 rounded-xl text-sm transition-all cursor-pointer select-none ${
           tagFilter === tag 
             ? 'bg-[#007AFF] text-white shadow-lg' 
             : 'text-[#8E8E93] hover:bg-[#F2F2F7] hover:text-[#1D1D1F]'
