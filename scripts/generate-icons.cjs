@@ -31,7 +31,9 @@ async function generate() {
         width: size,
         height: size,
         channels: 4,
-        background: { r: 255, g: 255, b: 255, alpha: isMaskable ? 1 : 0 } // maskable使用白底，其它使用透明底！
+        background: isMaskable 
+          ? { r: 230, g: 244, b: 254, alpha: 1 } // maskable 使用与移动端对齐的淡蓝底
+          : { r: 255, g: 255, b: 255, alpha: 0 } // 其它使用透明底
       }
     })
     .composite([{
