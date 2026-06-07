@@ -1784,12 +1784,6 @@ export default function IdeaCapsuleApp() {
         <LandingScreen
           onEmailAuth={() => setShowAuthScreen(true)}
           onGuestPress={() => setIsGuestMode(true)}
-          onFacebookPress={() =>
-            Alert.alert(
-              'Facebook',
-              'Facebook sign-in needs the Facebook SDK wired to Firebase—use email or Google for now.',
-            )
-          }
         />
       );
     }
@@ -1861,17 +1855,6 @@ export default function IdeaCapsuleApp() {
             <Text style={s.dividerLabel}>Or continue with</Text>
             <View style={s.socialRow}>
               <GoogleSignInButton variant="light" compact />
-              <TouchableOpacity
-                style={[s.socialBtn, { backgroundColor: '#1877F2' }]}
-                onPress={() =>
-                  Alert.alert(
-                    'Facebook',
-                    'Facebook sign-in is not set up yet—use email or Google.',
-                  )
-                }
-              >
-                <Text style={{ color: '#FFF', fontWeight: '800' }}>f</Text>
-              </TouchableOpacity>
             </View>
 
             <TouchableOpacity style={{ marginTop: 24 }} onPress={() => setIsRegistering(!isRegistering)}>
@@ -2023,8 +2006,17 @@ export default function IdeaCapsuleApp() {
             {filteredCapsules.map((item) => {
               const renderLeftActions = () => (
                 <View style={s.swipeLeftAction}>
-                  <Check size={18} color="#FFF" />
-                  <Text style={s.swipeActionTxt}>Done</Text>
+                  {item.completed ? (
+                    <>
+                      <RotateCcw size={18} color="#FFF" />
+                      <Text style={s.swipeActionTxt}>Undo</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={18} color="#FFF" />
+                      <Text style={s.swipeActionTxt}>Done</Text>
+                    </>
+                  )}
                 </View>
               );
 
@@ -2527,7 +2519,7 @@ export default function IdeaCapsuleApp() {
             <View
               style={[
                 s.sideNavPillWrap,
-                { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E5E5EA', paddingTop: 12, marginTop: 4 }
+                { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E5E5EA', paddingTop: 4, marginTop: 2 }
               ]}
             >
               <SidebarRow
@@ -3268,7 +3260,7 @@ export default function IdeaCapsuleApp() {
               style={[StyleSheet.absoluteFillObject, s.modalFrontCenter]}
               pointerEvents="box-none"
             >
-              <View style={[s.threeDotsBox, { width: 220 }]} pointerEvents="auto">
+              <View style={[s.threeDotsBox, { width: 200 }]} pointerEvents="auto">
                 <View style={[s.menuSec, s.menuSecTightTop]}>
                   <Text style={s.menuSecTxt}>SORT BY</Text>
                 </View>
@@ -3276,7 +3268,7 @@ export default function IdeaCapsuleApp() {
                   style={[s.mItem, sortBy === 'updatedAt' && { backgroundColor: 'rgba(0,122,255,0.06)' }]}
                   onPress={() => setSortBy('updatedAt')}
                 >
-                  <Text style={[s.mItemTxt, sortBy === 'updatedAt' && { color: '#007AFF', fontWeight: '800' }]}>Modification Time</Text>
+                  <Text style={[s.mItemTxt, sortBy === 'updatedAt' && { color: '#007AFF', fontWeight: '800' }]}>Modified Time</Text>
                   {sortBy === 'updatedAt' && <ArrowDown size={16} color="#007AFF" />}
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -3417,7 +3409,6 @@ function CapsuleCard({
   onMenu: () => void;
   onToggleTodo: () => void;
 }) {
-  const bellRight = isMulti ? 10 : 48;
   return (
     <TouchableOpacity
       activeOpacity={0.9}
@@ -3457,9 +3448,17 @@ function CapsuleCard({
           </Text>
         </View>
       </View>
+      {/* Star & Pin badges — top-right, aligned with PC Web */}
+      {(item.isStarred || item.isPinned) && (
+        <View style={{ position: 'absolute', top: 5, right: isMulti ? 5 : 36, flexDirection: 'row', gap: 3, zIndex: 3 }}>
+          {item.isPinned && <Pin size={10} color="rgba(255,255,255,0.9)" />}
+          {item.isStarred && <Star size={10} color="#FFD60A" fill="#FFD60A" />}
+        </View>
+      )}
+      {/* Reminder bell — bottom-right corner */}
       {hasActiveReminder(item) ? (
-        <View style={[s.cardBellCorner, { right: bellRight }]} pointerEvents="none">
-          <Bell size={12} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
+        <View style={s.cardBellCorner} pointerEvents="none">
+          <Bell size={10} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
         </View>
       ) : null}
       {!isMulti ? (
@@ -3948,11 +3947,12 @@ const s = StyleSheet.create({
   },
   cardBellCorner: {
     position: 'absolute',
-    bottom: 8,
+    bottom: 5,
+    right: 5,
     zIndex: 2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: 'rgba(0,0,0,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -4092,7 +4092,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
     zIndex: 1500,
   },
-  sideHeadLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sideHeadLeft: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   sideTitle: { fontSize: 17, fontWeight: '900' },
   logoMini: {
     width: 36,
@@ -4479,9 +4479,9 @@ const s = StyleSheet.create({
   captureBarWrap: {
     zIndex: 500,
     elevation: 28,
-    backgroundColor: '#FFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(0,0,0,0.08)',
     ...Platform.select({
       web: { width: '100%', maxWidth: '100%', minWidth: 0 },
       default: {},
@@ -4490,11 +4490,16 @@ const s = StyleSheet.create({
   captureBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 8,
-    backgroundColor: '#FFF',
-    gap: 10,
+    paddingHorizontal: 10,
+    paddingTop: 6,
+    paddingBottom: 6,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    marginHorizontal: 8,
+    marginVertical: 4,
+    borderRadius: 28,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.06)',
+    gap: 8,
   },
   captureBarHit: {
     zIndex: 2,
@@ -4566,8 +4571,8 @@ const s = StyleSheet.create({
   colorDotSelected: { borderWidth: 3, borderColor: '#007AFF' },
   colorCloseBtn: { alignItems: 'center', marginTop: 14, paddingVertical: 8 },
   sideBrandTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
     color: '#1D1D1F',
   },
   sideLabelPrimary: {
@@ -4643,9 +4648,11 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F2F2F7',
-    borderRadius: 22,
-    height: 44,
-    paddingHorizontal: 12,
+    borderRadius: 24,
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
   },
   captureInputCapsuleActive: {
     backgroundColor: '#FFF',

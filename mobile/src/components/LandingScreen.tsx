@@ -10,17 +10,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Apple, ArrowRight, Play, Sparkles } from 'lucide-react-native';
+import { ArrowRight, Sparkles } from 'lucide-react-native';
 import { GoogleSignInButton } from './GoogleSignInButton';
 
 type Props = {
   onEmailAuth: () => void;
-  onFacebookPress: () => void;
   onGuestPress?: () => void;
 };
 
-/** 与 https://idea-capsule-ten.vercel.app/ 主文案、区块结构对齐（简化为 RN 可滚动版） */
-export function LandingScreen({ onEmailAuth, onFacebookPress, onGuestPress }: Props) {
+/** Aligned with PC Web LandingPage — brand "Lumi Note", no Facebook */
+export function LandingScreen({ onEmailAuth, onGuestPress }: Props) {
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactMsg, setContactMsg] = useState('');
@@ -44,7 +43,7 @@ export function LandingScreen({ onEmailAuth, onFacebookPress, onGuestPress }: Pr
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.nav}>
-            <Text style={styles.brand}>Idea Capsule</Text>
+            <Text style={styles.brand}>Lumi Note</Text>
             <View style={styles.navActions}>
               <TouchableOpacity onPress={onEmailAuth}>
                 <Text style={styles.navLink}>Log in</Text>
@@ -66,7 +65,7 @@ export function LandingScreen({ onEmailAuth, onFacebookPress, onGuestPress }: Pr
 
           <View style={styles.badge}>
             <Sparkles size={14} color="#007AFF" />
-            <Text style={styles.badgeTxt}>BLAZING FAST INSPIRATION CAPTURE</Text>
+            <Text style={styles.badgeTxt}>LIGHTNING-FAST INSPIRATION CAPTURE</Text>
           </View>
 
           <Text style={styles.h1}>
@@ -74,8 +73,9 @@ export function LandingScreen({ onEmailAuth, onFacebookPress, onGuestPress }: Pr
             <Text style={styles.h1Grad}>speed of light.</Text>
           </Text>
           <Text style={styles.sub}>
-            Tasks, notes, to-dos, and pure journal entries. Set repeating reminders
-            and countdown days. Ensure you never forget or miss a beat again.
+            Lumi Note is a next-generation color-aesthetic capsule notepad designed
+            for lightning-fast capture. Type a single sentence to instantly generate
+            beautifully-styled notes, fluid to-dos, and smart reminders.
           </Text>
 
           <TouchableOpacity style={styles.primaryCta} onPress={onEmailAuth}>
@@ -91,30 +91,6 @@ export function LandingScreen({ onEmailAuth, onFacebookPress, onGuestPress }: Pr
 
           <View style={styles.socialRow}>
             <GoogleSignInButton variant="dark" />
-            <TouchableOpacity style={styles.fbBtn} onPress={onFacebookPress}>
-              <Text style={styles.fbIcon}>f</Text>
-              <Text style={styles.fbTxt}>Facebook</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.sectionDivider}>
-            <Text style={styles.comingSoon}>COMING SOON ON MOBILE</Text>
-            <View style={styles.storeRow}>
-              <TouchableOpacity style={styles.storeCard} activeOpacity={0.85}>
-                <Apple size={26} color="#FFF" />
-                <View>
-                  <Text style={styles.storeSmall}>Download on the</Text>
-                  <Text style={styles.storeBig}>App Store</Text>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.storeCard} activeOpacity={0.85}>
-                <Play size={24} color="#FFF" fill="#FFF" />
-                <View>
-                  <Text style={styles.storeSmall}>GET IT ON</Text>
-                  <Text style={styles.storeBig}>Google Play</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
           </View>
 
           <Text style={styles.sectionTitle}>
@@ -122,7 +98,8 @@ export function LandingScreen({ onEmailAuth, onFacebookPress, onGuestPress }: Pr
             Flawlessly Beautiful.
           </Text>
           <Text style={styles.sectionSub}>
-            Use Idea Capsule as list or grid, on any device.
+            Experience the lightweight interface of Lumi Note — meticulously
+            optimized for lists, grids, and multi-device cloud synchronization.
           </Text>
 
           <View style={styles.mockBrowser}>
@@ -132,7 +109,7 @@ export function LandingScreen({ onEmailAuth, onFacebookPress, onGuestPress }: Pr
               <View style={[styles.dot, { backgroundColor: '#28CA42' }]} />
             </View>
             <View style={styles.mockCapture}>
-              <Text style={styles.mockPlaceholder}>Capture anything...</Text>
+              <Text style={styles.mockPlaceholder}>Record your thoughts...</Text>
             </View>
             <View style={[styles.mockCard, { backgroundColor: '#FFCA28' }]}>
               <View style={styles.mockTodo} />
@@ -165,10 +142,12 @@ export function LandingScreen({ onEmailAuth, onFacebookPress, onGuestPress }: Pr
             ))}
           </View>
 
-          <Text style={styles.craftTitle}>Let&apos;s craft the future.</Text>
+          <Text style={styles.craftTitle}>About Lumi Note</Text>
           <Text style={styles.craftBody}>
-            Idea Capsule is built with an obsession for speed, minimalism, and visual
-            emotion. Have feedback or want to reach out? Drop a line below.
+            Lumi Note is built for creators, thinkers, and makers who want a
+            faster, more beautiful way to capture ideas. We believe software
+            should be fast, quiet, and respect your attention. No bloated
+            features — just your mind, organized.
           </Text>
 
           <View style={styles.hqBox}>
@@ -177,7 +156,7 @@ export function LandingScreen({ onEmailAuth, onFacebookPress, onGuestPress }: Pr
             <Text style={styles.hqLine}>San Francisco, CA 94158</Text>
             <Text style={styles.hqLine}>United States</Text>
             <Text style={[styles.hqLbl, { marginTop: 14 }]}>DIRECT CONTACT</Text>
-            <Text style={styles.hqMail}>hello@ideacapsule.dev</Text>
+            <Text style={styles.hqMail}>hello@luminote.space</Text>
           </View>
 
           <View style={styles.formCard}>
@@ -212,7 +191,7 @@ export function LandingScreen({ onEmailAuth, onFacebookPress, onGuestPress }: Pr
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerBrand}>Idea Capsule</Text>
+            <Text style={styles.footerBrand}>Lumi Note</Text>
             <Text style={styles.footerCopy}>
               Designed for speed. Engineered for precision. ©{' '}
               {new Date().getFullYear()} All rights reserved.
@@ -236,7 +215,7 @@ const FEATURES = [
   },
   {
     title: 'Repeating Reminders',
-    desc: 'Daily, weekly, or monthly—set your routines on autopilot. Habits are formed effortlessly.',
+    desc: 'Daily, weekly, or monthly — set your routines on autopilot. Habits are formed effortlessly.',
   },
   {
     title: 'To-Dos & Checklists',
@@ -316,7 +295,7 @@ const styles = StyleSheet.create({
   h1Grad: { color: '#93B8FF' },
   sub: {
     color: 'rgba(255,255,255,0.58)',
-    fontSize: 17,
+    fontSize: 16,
     lineHeight: 26,
     textAlign: 'center',
     marginTop: 16,
@@ -346,48 +325,6 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 16,
   },
-  fbBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(24,119,242,0.35)',
-    backgroundColor: 'rgba(24,119,242,0.12)',
-  },
-  fbIcon: { color: '#1877F2', fontWeight: '900', fontSize: 16 },
-  fbTxt: { color: '#8EB7FF', fontWeight: '800', fontSize: 16 },
-  sectionDivider: {
-    marginTop: 40,
-    paddingTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-  },
-  comingSoon: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 2,
-    marginBottom: 16,
-  },
-  storeRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 },
-  storeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#1D1D1F',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    width: 176,
-  },
-  storeSmall: { color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: '600' },
-  storeBig: { color: '#FFF', fontSize: 14, fontWeight: '800', marginTop: 2 },
   sectionTitle: {
     color: '#FFF',
     fontSize: 24,
