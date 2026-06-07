@@ -1857,13 +1857,7 @@ export default function IdeaCapsuleApp() {
         ]}
         edges={['top']}
       >
-        {/* First Row: Brand Logo */}
-        <View style={s.brandHeaderRow}>
-          <View style={s.brandLeft}>
-            <AppLogo width={28} height={28} />
-            <Text style={s.brandTitle}>Lumi Note</Text>
-          </View>
-        </View>
+
 
         {/* Second Row: Actions & Search */}
         <View style={s.header}>
@@ -3573,7 +3567,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
     minHeight: 48,
     paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingTop: 10,
+    paddingBottom: 6,
     gap: 8,
     backgroundColor: '#FFF',
     borderBottomWidth: 1,
