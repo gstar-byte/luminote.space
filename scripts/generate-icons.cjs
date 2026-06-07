@@ -39,7 +39,7 @@ async function generate() {
       top: top,
       left: left
     }])
-    .png()
+    .png({ palette: true, quality: 85, compressionLevel: 9 })
     .toFile(outputPath);
 
     console.log(`Generated: ${outputPath} (${size}x${size}, logo scale ${svgSize}x${svgSize}, maskable: ${isMaskable})`);
