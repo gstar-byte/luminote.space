@@ -2758,10 +2758,10 @@ export default function App() {
             {isSidebarOpen && (
               isMobile ? (
                 <div className="flex flex-col justify-center select-none leading-none">
-                  <span className="font-extrabold text-[14px] tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#1D1D1F] to-[#434343] uppercase leading-none">
+                  <span className="font-extrabold text-[16px] tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#1D1D1F] to-[#434343] uppercase leading-none">
                     Lumi
                   </span>
-                  <span className="font-bold text-[11px] tracking-tight text-[#8E8E93] uppercase leading-none mt-0.5">
+                  <span className="font-bold text-[13px] tracking-tight text-[#8E8E93] uppercase leading-none mt-1">
                     Note
                   </span>
                 </div>
