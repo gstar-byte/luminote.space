@@ -1615,7 +1615,7 @@ export default function App() {
       // Use NLP router (DeepSeek -> Local fallback)
       const parsed = await categorizeThought(text);
       console.log('[handleCreate] parsed result:', JSON.stringify(parsed));
-      const { category, tags, refinedContent, isTodo, reminder, isStarred, isPinned } = parsed;
+      const { title, category, tags, refinedContent, isTodo, reminder, isStarred, isPinned } = parsed;
       
       // Select a color ensuring differentiation within last 8 notes
       const recent = recentColorsRef.current;
@@ -1636,8 +1636,8 @@ export default function App() {
 
       const newCapsuleData: Record<string, unknown> = {
         userId: user?.uid,
-        content: '',
-        subject: refinedContent,
+        content: refinedContent,
+        subject: title || '',
         createdAt: Date.now(),
         updatedAt: Date.now(),
         completed: false,
@@ -1668,8 +1668,8 @@ export default function App() {
       const createdCapsule: Capsule = {
         id: docRef.id,
         userId: user?.uid || '',
-        content: '',
-        subject: refinedContent,
+        content: refinedContent,
+        subject: title || '',
         createdAt: newCapsuleData.createdAt as number,
         updatedAt: newCapsuleData.updatedAt as number,
         completed: false,
@@ -1712,8 +1712,8 @@ export default function App() {
       const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
       const fallbackDoc = {
         userId: user?.uid,
-        content: '',
-        subject: text,
+        content: text,
+        subject: '',
         createdAt: Date.now(),
         updatedAt: Date.now(),
         completed: false,
@@ -2751,14 +2751,25 @@ export default function App() {
         className={`bg-white border-r border-[#E5E5EA] flex flex-col items-stretch shadow-xl md:shadow-none z-[100] fixed md:relative h-full ${!isSidebarOpen ? 'invisible border-none overflow-hidden' : 'visible'}`}
       >
         <div className="p-4 flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
+          <div className={cn("flex items-center", isMobile ? "gap-2" : "gap-3")}>
             <div className="flex-shrink-0 w-[56px] h-[56px] flex items-center justify-center drop-shadow-md">
               <AppLogo className="w-full h-full" />
             </div>
-            {isSidebarOpen && !isMobile && (
-              <span className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#1D1D1F] to-[#434343] whitespace-nowrap">
-                Lumi Note
-              </span>
+            {isSidebarOpen && (
+              isMobile ? (
+                <div className="flex flex-col justify-center select-none leading-none">
+                  <span className="font-extrabold text-[14px] tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#1D1D1F] to-[#434343] uppercase leading-none">
+                    Lumi
+                  </span>
+                  <span className="font-bold text-[11px] tracking-tight text-[#8E8E93] uppercase leading-none mt-0.5">
+                    Note
+                  </span>
+                </div>
+              ) : (
+                <span className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#1D1D1F] to-[#434343] whitespace-nowrap">
+                  Lumi Note
+                </span>
+              )
             )}
           </div>
           {isSidebarOpen && (
@@ -3364,10 +3375,15 @@ export default function App() {
           {pullY > 0 && (
             <div 
               style={{ height: `${pullY}px` }} 
-              className="w-full flex items-center justify-center overflow-hidden transition-all duration-75 text-xs text-[#8E8E93] dark:text-[#AEAEB2] font-bold gap-2 select-none"
+              className="w-full overflow-hidden transition-all duration-75 select-none relative"
             >
-              <RefreshCw size={14} className={pullY >= 50 ? "animate-spin text-[#007AFF]" : "text-[#8E8E93]"} />
-              <span>{pullY >= 50 ? "Release to sync notes..." : "Pull down to sync..."}</span>
+              <div 
+                style={{ height: '50px', position: 'absolute', bottom: 0, left: 0, right: 0 }}
+                className="w-full flex items-center justify-center text-xs text-[#8E8E93] dark:text-[#AEAEB2] font-bold gap-2"
+              >
+                <RefreshCw size={14} className={pullY >= 50 ? "animate-spin text-[#007AFF]" : "text-[#8E8E93]"} />
+                <span>{pullY >= 50 ? "Release to sync notes..." : "Pull down to sync..."}</span>
+              </div>
             </div>
           )}
           <div className={`w-full pb-36 transition-all duration-300 ${
@@ -4371,8 +4387,8 @@ const CapsuleItem = memo(function CapsuleItem({
   // 自定义颜色（HEX）：恢复「色板 + 自定义取色」能力。
   const [customColor, setCustomColor] = useState(capsule.color || '#FFD60A');
   // Which menu the portal renders: 'actions' (left-click ⋮ → per-note quick
-  // actions) or 'batch' (desktop right-click → multi-select / management).
-  const [menuMode, setMenuMode] = useState<'actions' | 'batch'>('actions');
+  // actions), 'batch' (multi-select / management), or 'context' (right-click / long-press).
+  const [menuMode, setMenuMode] = useState<'actions' | 'batch' | 'context'>('actions');
 
   const [tempCategory, setTempCategory] = useState(capsule.category || '');
   const [tempTags, setTempTags] = useState((capsule.tags || []).join(', '));
@@ -4414,7 +4430,7 @@ const CapsuleItem = memo(function CapsuleItem({
     setMenuPos(null);
   }, []);
 
-  const openMenuAt = useCallback((x: number, y: number, mode: 'actions' | 'batch' = 'actions') => {
+  const openMenuAt = useCallback((x: number, y: number, mode: 'actions' | 'batch' | 'context' = 'actions') => {
     // Reserve enough vertical room for the tallest panel (reminder picker) so
     // the menu flips above the anchor when near the bottom edge.
     const budgetH = 360;
@@ -4451,10 +4467,12 @@ const CapsuleItem = memo(function CapsuleItem({
     isHorizontalSwipe.current = null;
     setIsSwiping(true);
 
-    // 长按 ~480ms 进入多选模式（移动端「批量管理」入口，等价于桌面右键）。
+    // 长按 ~480ms 弹出就近操作菜单。
     clearLongPress();
     longPressTimer.current = setTimeout(() => {
-      onToggleSelection();
+      const x = touchStartPos.current?.x ?? (e.touches[0] ? e.touches[0].clientX : window.innerWidth / 2);
+      const y = touchStartPos.current?.y ?? (e.touches[0] ? e.touches[0].clientY : window.innerHeight / 2);
+      openMenuAt(x, y, 'context');
       // 吞掉长按后紧随的 click，避免立刻又被切回（取消选中）或打开详情。
       suppressNextClickRef.current = true;
       setIsSwiping(false);
@@ -4520,7 +4538,7 @@ const CapsuleItem = memo(function CapsuleItem({
     isHorizontalSwipe.current = null;
   };
 
-  // 桌面端：按住左键 ~480ms 进入多选（与右键等价）。移动超过阈值或提前松开则取消。
+  // 桌面端：按住左键 ~480ms 弹出就近操作菜单。移动超过阈值或提前松开则取消。
   const handleMouseDownCard = (e: React.MouseEvent) => {
     if (e.button !== 0) return;                 // 仅左键
     if (isSelectionMode) return;
@@ -4530,7 +4548,9 @@ const CapsuleItem = memo(function CapsuleItem({
     mouseDownPos.current = { x: e.clientX, y: e.clientY };
     clearLongPress();
     longPressTimer.current = setTimeout(() => {
-      onToggleSelection();
+      const x = mouseDownPos.current?.x ?? e.clientX;
+      const y = mouseDownPos.current?.y ?? e.clientY;
+      openMenuAt(x, y, 'context');
       suppressNextClickRef.current = true;
       mouseDownPos.current = null;
     }, 480);
@@ -4729,12 +4749,10 @@ const CapsuleItem = memo(function CapsuleItem({
             return;
           }
           // Always suppress the browser's native long-press / right-click menu.
-          // Desktop right-click enters multi-select for THIS note, surfacing the
-          // single consolidated batch toolbar (Select All / Archive / Delete /
-          // Category & Tag / Share) — same entry point as mobile long-press.
+          // Desktop right-click opens the per-note context menu at the click location.
           e.preventDefault();
           e.stopPropagation();
-          onToggleSelection();
+          openMenuAt(e.clientX, e.clientY, 'context');
           suppressNextClickRef.current = true;
         }}
         onClick={(e) => {
@@ -5043,13 +5061,15 @@ const CapsuleItem = memo(function CapsuleItem({
                   <Palette size={16} className="text-[#8E8E93]" />
                   Change Color
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); void onUpdate({ isArchived: true }); closeMenu(); }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
-                >
-                  <Archive size={16} className="text-[#8E8E93]" />
-                  Archive
-                </button>
+                {menuMode !== 'actions' && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); void onUpdate({ isArchived: !capsule.isArchived }); closeMenu(); }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
+                  >
+                    <Archive size={16} className="text-[#8E8E93]" />
+                    {capsule.isArchived ? 'Unarchive' : 'Archive'}
+                  </button>
+                )}
                 <button
                   onClick={(e) => { e.stopPropagation(); void onUpdate({ isStarred: !capsule.isStarred }); closeMenu(); }}
                   className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
@@ -5075,10 +5095,16 @@ const CapsuleItem = memo(function CapsuleItem({
                     }
                     closeMenu();
                   }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors border-b border-[#F2F2F7] pb-1.5"
                 >
                   <Share2 size={16} className="text-[#8E8E93]" />
                   Share
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); closeMenu(); }}
+                  className="w-full flex items-center justify-center gap-1.5 px-2.5 py-2 text-sm font-semibold text-[#FF3B30] hover:bg-[#F2F2F7] rounded-lg transition-colors mt-0.5"
+                >
+                  Cancel
                 </button>
               </div>
             ) : !isConfiguringCustom ? (

@@ -371,3 +371,37 @@
   background: rgba(0, 122, 255, 0.12);
   color: #007AFF;
 }
+
+/* ── Mobile layout overrides (Hammer Note style) ─────────────────────────── */
+@media (max-width: 768px) {
+  .capsule-editor-root {
+    padding-bottom: 44px; /* Space for sticky bottom toolbar */
+  }
+  .capsule-editor-toolbar {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    margin-bottom: 0 !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+    background: #FFFBE6 !important; /* Matches paper color */
+    padding: 6px 12px !important;
+    z-index: 1000 !important;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05) !important;
+  }
+  /* Push Heading popup upward instead of downward */
+  .capsule-heading-menu {
+    top: auto !important;
+    bottom: 100% !important;
+    margin-top: 0 !important;
+    margin-bottom: 4px !important;
+  }
+  /* Prevent content overlap */
+  .capsule-editor-content .ProseMirror {
+    padding-bottom: 60px !important;
+  }
+}

@@ -217,7 +217,6 @@ function markdownToHtml(md: string): string {
 // -----------------------------------------------------------------------------
 // HTML Template for WebView-in-Page contenteditable (WYSIWYG Mode)
 // -----------------------------------------------------------------------------
-
 const getHtmlTemplate = (placeholder: string) => `
 <!DOCTYPE html>
 <html>
@@ -236,100 +235,7 @@ const getHtmlTemplate = (placeholder: string) => `
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     
-    /* 固定的网页工具栏：与 Web 端设计对齐 */
-    #toolbar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 42px;
-      background-color: #FFFCEB;
-      border-bottom: 1px solid #F0E6C0;
-      display: flex;
-      align-items: center;
-      padding: 0 8px;
-      z-index: 1000;
-      overflow-x: auto;
-      white-space: nowrap;
-      -webkit-overflow-scrolling: touch;
-    }
-    #toolbar::-webkit-scrollbar {
-      display: none;
-    }
-    .tool-btn {
-      min-width: 34px;
-      height: 34px;
-      border-radius: 6px;
-      border: none;
-      background: transparent;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      margin-right: 4px;
-      cursor: pointer;
-      color: #4E4E50;
-      padding: 0 6px;
-    }
-    .tool-btn:active {
-      background-color: rgba(0, 122, 255, 0.08);
-    }
-    .tool-btn.active {
-      background-color: rgba(0, 122, 255, 0.08);
-      color: #007AFF;
-    }
-    .tool-btn svg {
-      width: 16px;
-      height: 16px;
-      stroke: currentColor;
-      fill: none;
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    /* Heading 气泡下拉菜单 */
-    #heading-dropdown {
-      position: relative;
-      display: inline-block;
-    }
-    #heading-menu {
-      display: none;
-      position: absolute;
-      top: 38px;
-      left: 0;
-      background-color: #FFFFFF;
-      border: 1px solid #E5E5EA;
-      border-radius: 12px;
-      padding: 4px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      z-index: 2000;
-    }
-    #heading-menu.show {
-      display: block;
-    }
-    .menu-option {
-      display: block;
-      width: 140px;
-      padding: 8px 12px;
-      text-align: left;
-      border: none;
-      background: transparent;
-      font-size: 13px;
-      color: #2C2C2E;
-      border-radius: 8px;
-    }
-    .menu-option:active {
-      background-color: #F2F2F7;
-    }
-    .menu-option.active {
-      background-color: rgba(0, 122, 255, 0.08);
-      color: #007AFF;
-      font-weight: 700;
-    }
-
-    /* 滚动容器 */
     #editor-container {
-      padding-top: 42px;
       height: 100%;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
@@ -337,11 +243,11 @@ const getHtmlTemplate = (placeholder: string) => `
     #editor {
       outline: none;
       min-height: calc(100% - 20px);
-      padding: 12px 16px 150px 16px; /* 底部预留足够滑动空间，方便键盘弹出后输入 */
+      padding: 12px 16px 150px 16px;
       background-image: linear-gradient(#F0E6C0 1px, transparent 1px);
       background-size: 100% 32px;
       line-height: 32px;
-      font-size: 16px;
+      font-size: 15px;
       color: #2C2C2E;
       white-space: pre-wrap;
       word-wrap: break-word;
@@ -384,62 +290,19 @@ const getHtmlTemplate = (placeholder: string) => `
   </style>
 </head>
 <body>
-  <!-- 内部网页工具栏，点击后不丢失编辑区焦点 -->
-  <div id="toolbar">
-    <button type="button" class="tool-btn" id="btn-bold" title="Bold">
-      <svg viewBox="0 0 24 24"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
-    </button>
-    <button type="button" class="tool-btn" id="btn-italic" title="Italic">
-      <svg viewBox="0 0 24 24"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
-    </button>
-    <button type="button" class="tool-btn" id="btn-strike" title="Strikethrough">
-      <svg viewBox="0 0 24 24"><path d="M16 4H9a4 4 0 0 0-4 4v1a4 4 0 0 0 4 4h6a4 4 0 0 1 4 4v1a4 4 0 0 1-4 4H6"/><line x1="4" y1="12" x2="20" y2="12"/></svg>
-    </button>
-    
-    <div id="heading-dropdown">
-      <button type="button" class="tool-btn" id="btn-heading" style="display: flex; align-items: center; gap: 2px;">
-        <span id="heading-label" style="font-size: 13px; font-weight: 700;">Heading</span>
-        <svg viewBox="0 0 24 24" style="width: 10px; height: 10px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
-      </button>
-      <div id="heading-menu">
-        <button type="button" class="menu-option" id="opt-p" style="font-weight: 600;">Normal Text</button>
-        <button type="button" class="menu-option" id="opt-h1" style="font-weight: 700;">Heading 1</button>
-        <button type="button" class="menu-option" id="opt-h2" style="font-weight: 600;">Heading 2</button>
-        <button type="button" class="menu-option" id="opt-h3" style="font-weight: 600;">Heading 3</button>
-      </div>
-    </div>
-
-    <button type="button" class="tool-btn" id="btn-quote" title="Quote">
-      <svg viewBox="0 0 24 24"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.97v6c0 1.25.75 2 2 2h3.777C7.777 15.5 7 17.5 3 19v2zM14 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-4c-1.25 0-2 .75-2 1.97v6c0 1.25.75 2 2 2h3.777C18.777 15.5 18 17.5 14 19v2z"/></svg>
-    </button>
-    <button type="button" class="tool-btn" id="btn-bullet" title="Bullet List">
-      <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-    </button>
-    <button type="button" class="tool-btn" id="btn-ordered" title="Ordered List">
-      <svg viewBox="0 0 24 24"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6H2v4h2M4 18H2M2 14h2v4"/></svg>
-    </button>
-    <button type="button" class="tool-btn" id="btn-image" title="Insert Image">
-      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-    </button>
-  </div>
-
   <div id="editor-container">
-    <div id="editor" contenteditable="true" placeholder="Placeholder..."></div>
+    <div id="editor" contenteditable="true" placeholder="${placeholder}"></div>
   </div>
 
   <script>
     const editor = document.getElementById('editor');
-    const headingMenu = document.getElementById('heading-menu');
-    const headingLabel = document.getElementById('heading-label');
 
-    // 彻底防止 iOS/Android WebView 键盘弹出时将 body 顶起，确保 fixed 工具栏永远贴顶
     window.addEventListener('scroll', () => {
       if (window.scrollY !== 0) {
         window.scrollTo(0, 0);
       }
     });
 
-    // 焦点回归末尾
     function focusAtEnd() {
       editor.focus();
       const range = document.createRange();
@@ -450,7 +313,6 @@ const getHtmlTemplate = (placeholder: string) => `
       sel.addRange(range);
     }
 
-    // 获取当前光标所在的块级父节点
     function getActiveBlockNode() {
       const selection = window.getSelection();
       if (!selection.rangeCount) return null;
@@ -468,15 +330,8 @@ const getHtmlTemplate = (placeholder: string) => `
       return null;
     }
 
-    // 格式状态监听，高亮网页工具栏
+    // 将格式和 Heading 状态打包发送回 React Native
     function updateToolbarState() {
-      document.getElementById('btn-bold').classList.toggle('active', document.queryCommandState('bold'));
-      document.getElementById('btn-italic').classList.toggle('active', document.queryCommandState('italic'));
-      document.getElementById('btn-strike').classList.toggle('active', document.queryCommandState('strikeThrough'));
-      document.getElementById('btn-bullet').classList.toggle('active', document.queryCommandState('insertUnorderedList'));
-      document.getElementById('btn-ordered').classList.toggle('active', document.queryCommandState('insertOrderedList'));
-
-      // 检查标题级别
       let blockNode = getActiveBlockNode();
       let heading = '';
       if (blockNode) {
@@ -486,84 +341,59 @@ const getHtmlTemplate = (placeholder: string) => `
         }
       }
       
-      if (heading) {
-        headingLabel.innerText = heading.toUpperCase();
-        document.getElementById('btn-heading').classList.add('active');
-      } else {
-        headingLabel.innerText = 'Heading';
-        document.getElementById('btn-heading').classList.remove('active');
-      }
-
-      // 高亮下拉菜单的选项
-      const optP = document.getElementById('opt-p');
-      const optH1 = document.getElementById('opt-h1');
-      const optH2 = document.getElementById('opt-h2');
-      const optH3 = document.getElementById('opt-h3');
-      if (optP) optP.classList.toggle('active', !heading);
-      if (optH1) optH1.classList.toggle('active', heading === 'h1');
-      if (optH2) optH2.classList.toggle('active', heading === 'h2');
-      if (optH3) optH3.classList.toggle('active', heading === 'h3');
-    }
-
-    function sendContent() {
-      const html = editor.innerHTML;
-      const text = editor.innerText;
       window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'change',
-        html: html,
-        text: text
+        type: 'state',
+        heading: heading,
+        bold: document.queryCommandState('bold'),
+        italic: document.queryCommandState('italic'),
+        strike: document.queryCommandState('strikeThrough'),
+        bullet: document.queryCommandState('insertUnorderedList'),
+        ordered: document.queryCommandState('insertOrderedList')
       }));
     }
 
-    // 绑定事件
-    editor.addEventListener('input', sendContent);
-    editor.addEventListener('blur', sendContent);
-    document.addEventListener('selectionchange', updateToolbarState);
-
-    // 执行网页命令
     function execFormat(command, value = null) {
       document.execCommand(command, false, value);
       sendContent();
       updateToolbarState();
     }
 
-    // 按钮按下绑定
-    const buttons = [
-      { id: 'btn-bold', cmd: 'bold' },
-      { id: 'btn-italic', cmd: 'italic' },
-      { id: 'btn-strike', cmd: 'strikeThrough' },
-      { id: 'btn-quote', cmd: 'formatBlock', val: 'blockquote' },
-      { id: 'btn-bullet', cmd: 'insertUnorderedList' },
-      { id: 'btn-ordered', cmd: 'insertOrderedList' }
-    ];
+    window.execFormat = execFormat;
 
-    buttons.forEach(btn => {
-      const el = document.getElementById(btn.id);
-      if (el) {
-        const handler = (e) => {
-          e.preventDefault();
-          execFormat(btn.cmd, btn.val);
-        };
-        el.addEventListener('touchstart', handler, { passive: false });
-        el.addEventListener('mousedown', handler);
-      }
-    });
-
-    // Heading 下拉浮层
-    const btnHeading = document.getElementById('btn-heading');
-    if (btnHeading) {
-      const toggleMenu = (e) => {
-        e.preventDefault();
-        headingMenu.classList.toggle('show');
-      };
-      btnHeading.addEventListener('touchstart', toggleMenu, { passive: false });
-      btnHeading.addEventListener('mousedown', toggleMenu);
+    function sendContent() {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'change',
+        html: editor.innerHTML,
+        text: editor.innerText || ''
+      }));
     }
 
-    function applyHeading(tag) {
-      headingMenu.classList.remove('show');
+    editor.addEventListener('input', sendContent);
+    editor.addEventListener('keyup', updateToolbarState);
+    editor.addEventListener('mouseup', updateToolbarState);
+    editor.addEventListener('touchend', updateToolbarState);
+    editor.addEventListener('focus', updateToolbarState);
+
+    // 单键循环标题切换 API，供 RN 端调用
+    window.applyHeadingToggle = function() {
+      let blockNode = getActiveBlockNode();
+      let currentTag = 'p';
+      if (blockNode) {
+        const tagName = blockNode.nodeName.toUpperCase();
+        if (['H1', 'H2', 'H3'].includes(tagName)) {
+          currentTag = tagName.toLowerCase();
+        }
+      }
       
-      // 黄金延时机制：将选区修改放入 setTimeout 队列，避开物理事件竞争，确保 Selection 光标稳定
+      let nextTag = 'h1';
+      if (currentTag === 'h1') nextTag = 'h2';
+      else if (currentTag === 'h2') nextTag = 'h3';
+      else if (currentTag === 'h3') nextTag = 'p';
+      
+      applyHeading(nextTag);
+    };
+
+    function applyHeading(tag) {
       setTimeout(() => {
         try {
           const selection = window.getSelection();
@@ -577,7 +407,6 @@ const getHtmlTemplate = (placeholder: string) => `
           
           let newTagName = tag.toLowerCase();
           
-          // 如果 blockNode 是直接挂在 editor 下的裸文本节点（nodeType === 3）
           if (blockNode.nodeType === 3) {
             const newBlock = document.createElement(newTagName);
             const parent = blockNode.parentNode;
@@ -597,10 +426,9 @@ const getHtmlTemplate = (placeholder: string) => `
             return;
           }
           
-          // 以下是元素节点的标签替换逻辑
           let oldTagName = blockNode.nodeName.toLowerCase();
           if (oldTagName === newTagName && newTagName !== 'p') {
-            newTagName = 'p'; // 已是此标题，则退回为普通段落
+            newTagName = 'p';
           }
           
           if (oldTagName === newTagName) return;
@@ -627,48 +455,27 @@ const getHtmlTemplate = (placeholder: string) => `
             updateToolbarState();
           }
         } catch (err) {
-          console.warn('Heading format error, falling back to basic command:', err);
-          // 发生任何异常，安全退回到基本 execCommand 执行段落/标题格式化
+          console.warn('Heading format error:', err);
           execFormat('formatBlock', tag === 'p' ? '<p>' : '<' + tag + '>');
         }
       }, 10);
     }
 
-    const bindHeadingOption = (id, tag) => {
-      const el = document.getElementById(id);
-      if (el) {
-        const handler = (e) => {
-          e.preventDefault();
-          applyHeading(tag);
-        };
-        el.addEventListener('touchstart', handler, { passive: false });
-        el.addEventListener('mousedown', handler);
-      }
+    window.setContent = function(html) {
+      editor.innerHTML = html;
+      sendContent();
     };
-    bindHeadingOption('opt-p', 'p');
-    bindHeadingOption('opt-h1', 'h1');
-    bindHeadingOption('opt-h2', 'h2');
-    bindHeadingOption('opt-h3', 'h3');
 
-    document.addEventListener('touchstart', (e) => {
-      if (!btnHeading.contains(e.target) && !headingMenu.contains(e.target)) {
-        headingMenu.classList.remove('show');
-      }
-    }, { passive: true });
-    
-    document.addEventListener('mousedown', (e) => {
-      if (!btnHeading.contains(e.target) && !headingMenu.contains(e.target)) {
-        headingMenu.classList.remove('show');
-      }
-    });
+    window.focusEditor = function() {
+      focusAtEnd();
+    };
 
-    // 选取图片发回 RN
-    const btnImage = document.getElementById('btn-image');
-    if (btnImage) {
-      const pickImgHandler = (e) => {
-        e.preventDefault();
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'pickImage'
+    window.insertImage = function(base64Url) {
+      execFormat('insertHTML', '<img src="' + base64Url + '" style="width: 100%; max-width: 100%; border-radius: 8px; display: block; margin: 8px 0;" />');
+    };
+  </script>
+</body>
+</html>mage'
         }));
       };
       btnImage.addEventListener('touchstart', pickImgHandler, { passive: false });
@@ -714,6 +521,14 @@ export function CapsuleEditorMobile({
 
   const [draft, setDraft] = useState(getInitialSource());
   const [selection, setSelection] = useState({ start: 0, end: 0 });
+  const [webviewState, setWebviewState] = useState({
+    heading: '',
+    bold: false,
+    italic: false,
+    strike: false,
+    bullet: false,
+    ordered: false,
+  });
 
   const inputRef = useRef<TextInput>(null);
   const webviewRef = useRef<WebView>(null);
@@ -726,7 +541,7 @@ export function CapsuleEditorMobile({
 
   const updateDraftAndNotify = (newText: string, newSelectionStart: number, newSelectionEnd?: number) => {
     setDraft(newText);
-    if (editMode === 'markdown') {
+    if (editMode === 'plain') {
       const compiledHtml = markdownToHtml(newText);
       onChange(compiledHtml, newText.replace(/[*#`~_\-+[\]()]/g, ''));
     } else {
@@ -738,6 +553,111 @@ export function CapsuleEditorMobile({
       inputRef.current?.focus();
       setSelection({ start: newSelectionStart, end: targetEnd });
     }, 50);
+  };
+
+  const handleNativeToolbarPress = async (type: 'bold' | 'italic' | 'strike' | 'quote' | 'bullet' | 'ordered' | 'image' | 'heading') => {
+    if (editMode === 'plain') {
+      if (type === 'heading') {
+        toggleHeadingMarkdown();
+      } else {
+        await insertMarkdown(type);
+      }
+    } else {
+      if (!isWebViewLoaded.current || !webviewRef.current) return;
+      
+      if (type === 'heading') {
+        webviewRef.current.injectJavaScript(`window.applyHeadingToggle();`);
+      } else if (type === 'bold') {
+        webviewRef.current.injectJavaScript(`execFormat('bold');`);
+      } else if (type === 'italic') {
+        webviewRef.current.injectJavaScript(`execFormat('italic');`);
+      } else if (type === 'strike') {
+        webviewRef.current.injectJavaScript(`execFormat('strikeThrough');`);
+      } else if (type === 'quote') {
+        webviewRef.current.injectJavaScript(`execFormat('formatBlock', '<blockquote>');`);
+      } else if (type === 'bullet') {
+        webviewRef.current.injectJavaScript(`execFormat('insertUnorderedList');`);
+      } else if (type === 'ordered') {
+        webviewRef.current.injectJavaScript(`execFormat('insertOrderedList');`);
+      } else if (type === 'image') {
+        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permissionResult.granted) {
+          Alert.alert('Permission required', 'We need access to your photos to insert images.');
+          return;
+        }
+        const pickerResult = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          quality: 0.8,
+          base64: true,
+        });
+        if (pickerResult.canceled || !pickerResult.assets?.[0]?.uri) {
+          return;
+        }
+        const base64Url = `data:image/jpeg;base64,${pickerResult.assets[0].base64 || ''}`;
+        webviewRef.current.injectJavaScript(`window.insertImage(${JSON.stringify(base64Url)});`);
+      }
+    }
+  };
+
+  const toggleHeadingMarkdown = () => {
+    const { start } = selection;
+    let lineStart = draft.lastIndexOf('\n', start - 1);
+    if (lineStart === -1) {
+      lineStart = 0;
+    } else {
+      lineStart += 1;
+    }
+
+    let lineEnd = draft.indexOf('\n', start);
+    if (lineEnd === -1) {
+      lineEnd = draft.length;
+    }
+
+    const currentLine = draft.substring(lineStart, lineEnd);
+    let newLine = currentLine;
+    let offset = 0;
+
+    if (currentLine.startsWith('### ')) {
+      newLine = currentLine.substring(4);
+      offset = -4;
+    } else if (currentLine.startsWith('## ')) {
+      newLine = '### ' + currentLine.substring(3);
+      offset = 1;
+    } else if (currentLine.startsWith('# ')) {
+      newLine = '## ' + currentLine.substring(2);
+      offset = 1;
+    } else {
+      newLine = '# ' + currentLine;
+      offset = 2;
+    }
+
+    const before = draft.substring(0, lineStart);
+    const after = draft.substring(lineEnd);
+    const nextText = before + newLine + after;
+
+    const newCursorPos = Math.max(lineStart, start + offset);
+    updateDraftAndNotify(nextText, newCursorPos);
+  };
+
+  const getHeadingButtonText = () => {
+    const { start } = selection;
+    let lineStart = draft.lastIndexOf('\n', start - 1);
+    if (lineStart === -1) {
+      lineStart = 0;
+    } else {
+      lineStart += 1;
+    }
+    let lineEnd = draft.indexOf('\n', start);
+    if (lineEnd === -1) {
+      lineEnd = draft.length;
+    }
+    const fullLine = draft.substring(lineStart, lineEnd);
+
+    if (fullLine.startsWith('### ')) return 'H3';
+    if (fullLine.startsWith('## ')) return 'H2';
+    if (fullLine.startsWith('# ')) return 'H1';
+    return 'H';
   };
 
   const insertMarkdown = async (type: 'bold' | 'italic' | 'strike' | 'h1' | 'h2' | 'h3' | 'quote' | 'bullet' | 'ordered' | 'image') => {
@@ -835,6 +755,16 @@ export function CapsuleEditorMobile({
         lastHtmlSent.current = msg.html;
         onChange(msg.html, msg.text);
       }
+      if (msg.type === 'state') {
+        setWebviewState({
+          heading: msg.heading || '',
+          bold: !!msg.bold,
+          italic: !!msg.italic,
+          strike: !!msg.strike,
+          bullet: !!msg.bullet,
+          ordered: !!msg.ordered,
+        });
+      }
       // 触发相册选图
       if (msg.type === 'pickImage') {
         void (async () => {
@@ -875,6 +805,23 @@ export function CapsuleEditorMobile({
     `);
   };
 
+  const isBtnActive = (type: string) => {
+    if (editMode === 'plain') return false;
+    if (type === 'bold') return webviewState.bold;
+    if (type === 'italic') return webviewState.italic;
+    if (type === 'strike') return webviewState.strike;
+    if (type === 'bullet') return webviewState.bullet;
+    if (type === 'ordered') return webviewState.ordered;
+    return false;
+  };
+
+  const getHeadingText = () => {
+    if (editMode === 'plain') {
+      return getHeadingButtonText();
+    }
+    return webviewState.heading ? webviewState.heading.toUpperCase() : 'H';
+  };
+
   return (
     <View style={styles.container}>
       {/* 笔记本背景横线：仅在原生 plain 模式渲染（WebView 内部已自绘横线，防止重叠） */}
@@ -898,37 +845,187 @@ export function CapsuleEditorMobile({
 
       {/* 编辑体 */}
       {editMode === 'plain' ? (
-        <TextInput
-          key="plain-native-text-input"
-          ref={inputRef}
-          style={styles.webInput}
-          multiline
-          scrollEnabled={false}
-          textAlignVertical="top"
-          placeholder={placeholder}
-          placeholderTextColor="#C7C7CC"
-          value={draft}
-          selection={selection}
-          onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
-          onChangeText={(t) => {
-            setDraft(t);
-            const compiledHtml = markdownToHtml(t);
-            onChange(compiledHtml, t.replace(/[*#`~_\-+[\]()]/g, ''));
-          }}
-          autoFocus={autoFocus}
-        />
+        <View style={{ flex: 1, position: 'relative' }}>
+          <ScrollView
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 42 }}
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <TextInput
+              key="plain-native-text-input"
+              ref={inputRef}
+              style={styles.webInput}
+              multiline
+              scrollEnabled={false}
+              textAlignVertical="top"
+              placeholder={placeholder}
+              placeholderTextColor="#C7C7CC"
+              value={draft}
+              selection={selection}
+              onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
+              onChangeText={(t) => {
+                setDraft(t);
+                const compiledHtml = markdownToHtml(t);
+                onChange(compiledHtml, t.replace(/[*#`~_\-+[\]()]/g, ''));
+              }}
+              autoFocus={autoFocus}
+            />
+          </ScrollView>
+
+          {/* 原生快捷工具栏：锤子便签风格 */}
+          <View style={styles.nativeToolbar}>
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('heading')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.nativeToolText}>{getHeadingText()}</Text>
+            </TouchableOpacity>
+            
+            <View style={styles.nativeToolbarDivider} />
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('bold')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <Bold size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('italic')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <Italic size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('strike')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <Strikethrough size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('quote')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <Quote size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('bullet')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <List size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('ordered')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <ListOrdered size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('image')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <ImageIcon size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+          </View>
+        </View>
       ) : (
-        <View key="markdown-webview-container" style={styles.webviewContainer}>
-          <WebView
-            ref={webviewRef}
-            source={{ html: getHtmlTemplate(placeholder) }}
-            onMessage={handleMessage}
-            onLoadEnd={handleWebViewLoadEnd}
-            style={{ backgroundColor: '#FFFBE6', flex: 1 }}
-            originWhitelist={['*']}
-            keyboardDisplayRequiresUserAction={false}
-            scrollEnabled={true} // 启用 WebView 原生滚动
-          />
+        <View style={{ flex: 1, position: 'relative' }}>
+          <View key="markdown-webview-container" style={styles.webviewContainer}>
+            <WebView
+              ref={webviewRef}
+              source={{ html: getHtmlTemplate(placeholder) }}
+              onMessage={handleMessage}
+              onLoadEnd={handleWebViewLoadEnd}
+              style={{ backgroundColor: '#FFFBE6', flex: 1 }}
+              originWhitelist={['*']}
+              keyboardDisplayRequiresUserAction={false}
+              scrollEnabled={true}
+            />
+          </View>
+
+          {/* 原生快捷工具栏：在 Markdown 模式下也展现，解决被键盘遮挡的 WebView 工具栏问题 */}
+          <View style={styles.nativeToolbar}>
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('heading')}
+              style={[styles.nativeToolBtn, (webviewState.heading !== '') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.nativeToolText, { color: (webviewState.heading !== '') ? '#007AFF' : '#4E4E50' }]}>
+                {getHeadingText()}
+              </Text>
+            </TouchableOpacity>
+            
+            <View style={styles.nativeToolbarDivider} />
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('bold')}
+              style={[styles.nativeToolBtn, isBtnActive('bold') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+              activeOpacity={0.7}
+            >
+              <Bold size={16} color={isBtnActive('bold') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('italic')}
+              style={[styles.nativeToolBtn, isBtnActive('italic') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+              activeOpacity={0.7}
+            >
+              <Italic size={16} color={isBtnActive('italic') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('strike')}
+              style={[styles.nativeToolBtn, isBtnActive('strike') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+              activeOpacity={0.7}
+            >
+              <Strikethrough size={16} color={isBtnActive('strike') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('quote')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <Quote size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('bullet')}
+              style={[styles.nativeToolBtn, isBtnActive('bullet') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+              activeOpacity={0.7}
+            >
+              <List size={16} color={isBtnActive('bullet') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('ordered')}
+              style={[styles.nativeToolBtn, isBtnActive('ordered') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+              activeOpacity={0.7}
+            >
+              <ListOrdered size={16} color={isBtnActive('ordered') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('image')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <ImageIcon size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </View>
@@ -961,30 +1058,40 @@ const styles = StyleSheet.create({
     }),
   },
   webviewContainer: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 42,
     backgroundColor: '#FFFBE6',
   },
-  headingBubbleMenu: {
-    position: 'absolute',
-    top: 44,
-    left: 80,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    padding: 6,
-    zIndex: 1000,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 6,
+  nativeToolbar: {
+    height: 42,
+    backgroundColor: '#FFFCEB',
+    borderTopWidth: 1,
+    borderTopColor: '#F0E6C0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
   },
-  headingBubbleBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+  nativeToolBtn: {
+    minWidth: 34,
+    height: 34,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
   },
-  headingBubbleTxt: {
-    color: '#2C2C2E',
+  nativeToolText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#4E4E50',
+    letterSpacing: 0.5,
+  },
+  nativeToolbarDivider: {
+    width: 1,
+    height: 18,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    marginHorizontal: 6,
   },
 });

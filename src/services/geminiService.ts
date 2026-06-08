@@ -5,7 +5,7 @@ import { SYSTEM_PROMPT } from "../constants";
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? (process.env.GEMINI_API_KEY || "") : "") || "";
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
-export async function categorizeThought(text: string): Promise<{ category?: string; tags?: string[]; refinedContent: string; isTodo?: boolean; reminder?: any; isAmbiguous?: boolean; clarificationPrompt?: string | null }> {
+export async function categorizeThought(text: string): Promise<{ title?: string | null; category?: string; tags?: string[]; refinedContent: string; isTodo?: boolean; reminder?: any; isAmbiguous?: boolean; clarificationPrompt?: string | null }> {
   if (!ai) {
     console.warn("Lumi Note Gemini AI Client: GoogleGenAI is not initialized because API Key is missing. Falling back to plain text note.");
     return { refinedContent: text };
@@ -70,6 +70,7 @@ export async function categorizeThought(text: string): Promise<{ category?: stri
     }
 
     return {
+      title: result.title || null,
       category: result.category || undefined,
       tags: Array.isArray(result.tags) ? result.tags : undefined,
       refinedContent: result.refinedContent || text,
