@@ -1140,6 +1140,14 @@ export default function IdeaCapsuleApp() {
       }
 
       if (requireAuth()) return;
+      // 乐观更新本地 capsules（与 demo 路径一致），避免关弹窗后 Firestore 回调未到导致卡片显示旧数据
+      setCapsules((prev) =>
+        prev.map((c) => {
+          if (c.id !== id) return c;
+          const merged = mergeCapsuleUpdates(c, updates);
+          return bump ? { ...merged, updatedAt: now } : merged;
+        }),
+      );
       if (editingCapsule?.id === id) {
         setEditingCapsule((prev) => {
           if (!prev) return null;
