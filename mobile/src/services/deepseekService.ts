@@ -1,18 +1,18 @@
-import { SYSTEM_PROMPT } from "../constants";
+import { SYSTEM_PROMPT } from '../constants';
 
-// @ts-ignore
-const apiKey = (() => {
-  try {
-    return import.meta.env.VITE_DEEPSEEK_API_KEY;
-  } catch {
-    return (typeof process !== 'undefined' ? (process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY || "") : "");
-  }
-})();
+const getDeepSeekKey = (): string => {
+  return (
+    process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY ||
+    process.env.EXPO_PUBLIC_DEEPSEEK_KEY ||
+    process.env.VITE_DEEPSEEK_API_KEY ||
+    ''
+  );
+};
 
-const API_URL = "https://api.deepseek.com/chat/completions";
-const MODEL = "deepseek-chat"; // DeepSeek-V3 (rebuild trigger)
+const API_URL = 'https://api.deepseek.com/chat/completions';
+const MODEL = 'deepseek-chat';
 
-export async function categorizeThoughtDeepSeek(text: string): Promise<{
+export type DeepSeekResult = {
   title?: string | null;
   category?: string;
   tags?: string[];
@@ -23,45 +23,49 @@ export async function categorizeThoughtDeepSeek(text: string): Promise<{
   clarificationPrompt?: string | null;
   isStarred?: boolean;
   isPinned?: boolean;
-}> {
+};
+
+export async function categorizeThoughtDeepSeek(text: string): Promise<DeepSeekResult> {
+  const apiKey = getDeepSeekKey();
   if (!apiKey) {
-    console.warn("[DeepSeek] API Key missing.");
-    throw new Error("DeepSeek API Key not configured");
+    console.warn('[DeepSeek] Mobile API Key missing.');
+    throw new Error('DeepSeek API Key not configured');
   }
 
   const now = new Date();
-  const prompt = SYSTEM_PROMPT.replace(
-    '{{CURRENT_TIME_ZH}}',
-    now.toLocaleString('zh-CN', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }),
-  ).replace('{{CURRENT_TIME_ISO}}', now.toISOString()) +
+  const prompt =
+    SYSTEM_PROMPT.replace(
+      '{{CURRENT_TIME_ZH}}',
+      now.toLocaleString('zh-CN', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }),
+    ).replace('{{CURRENT_TIME_ISO}}', now.toISOString()) +
     '\n\nInput text: ' +
     text;
 
   const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("DeepSeek API timeout")), 2000)
+    setTimeout(() => reject(new Error('DeepSeek API timeout')), 5000),
   );
 
   const fetchPromise = fetch(API_URL, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model: MODEL,
       messages: [
-        { role: "system", content: prompt },
-        { role: "user", content: text },
+        { role: 'system', content: prompt },
+        { role: 'user', content: text },
       ],
-      response_format: { type: "json_object" },
+      response_format: { type: 'json_object' },
       max_tokens: 1024,
       temperature: 0.2,
     }),
@@ -75,8 +79,8 @@ export async function categorizeThoughtDeepSeek(text: string): Promise<{
 
   const data = await Promise.race([fetchPromise, timeoutPromise]);
 
-  const raw = data.choices?.[0]?.message?.content || "{}";
-  const result = typeof raw === "string" ? JSON.parse(raw) : raw;
+  const raw = data.choices?.[0]?.message?.content || '{}';
+  const result = typeof raw === 'string' ? JSON.parse(raw) : raw;
 
   let finalReminder = result.reminder || undefined;
   if (finalReminder && typeof finalReminder === 'object') {

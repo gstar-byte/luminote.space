@@ -26,9 +26,11 @@ CORE RESPONSIBILITIES:
 4. CATEGORIES: Choose ONE concise label. Prefer: Work, Personal, Ideas, Finance, Health, Social, Learning, Errands (跑腿/快递/取件 → often Errands or Personal). If the input is Chinese, the category string may be in Chinese (e.g. 个人, 工作) OR English — pick one language and stay consistent with tags.
 5. TAGS: 1–3 short keywords. May be Chinese or English; match the language of refinedContent when possible.
 6. LANGUAGE OF refinedContent: Match the user's language. Chinese input → Chinese title; English → English. Do not paste the full reminder sentence back verbatim; extract the core task name only.
+7. TITLE GENERATION: Generate a short, premium, title (max 5-6 words) for the note as "title" in the user's language based on the core topic. If the input is extremely short (e.g. 1-3 words) and lacks context, or if no meaningful title can be inferred, set "title" to null.
 
 Output ONLY valid JSON, no markdown:
 {
+  "title": string | null,
   "category": string,
   "tags": string[],
   "refinedContent": string,

@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { SYSTEM_PROMPT } from '../constants';
 import { categorizeThoughtLocal } from './localNlpService';
+import { categorizeThoughtDeepSeek } from './deepseekService';
 
 function getGeminiKey(): string {
   return (
@@ -10,7 +11,17 @@ function getGeminiKey(): string {
   );
 }
 
+function getDeepSeekKey(): string {
+  return (
+    process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY ||
+    process.env.EXPO_PUBLIC_DEEPSEEK_KEY ||
+    process.env.VITE_DEEPSEEK_API_KEY ||
+    ''
+  );
+}
+
 export type CategorizeThoughtResult = {
+  title?: string | null;
   category?: string;
   tags?: string[];
   refinedContent: string;
@@ -66,6 +77,7 @@ export async function categorizeThoughtFromAudio(
     const parsed = JSON.parse(raw || '{}');
 
     return {
+      title: typeof parsed.title === 'string' ? parsed.title : null,
       category: typeof parsed.category === 'string' ? parsed.category : undefined,
       tags: Array.isArray(parsed.tags) ? parsed.tags : undefined,
       refinedContent:
@@ -86,6 +98,7 @@ export async function categorizeThought(text: string): Promise<CategorizeThought
     if (localResult.reminder && !localResult.isAmbiguous) {
       console.log('[Mobile NLP Router] Fast-path hit: Local NLP resolved definitive reminder.', localResult);
       return {
+        title: null,
         category: localResult.category,
         tags: localResult.tags,
         refinedContent: localResult.refinedContent,
@@ -97,9 +110,31 @@ export async function categorizeThought(text: string): Promise<CategorizeThought
     console.warn('[Mobile NLP Router] Local NLP fast-path error:', e);
   }
 
+  // 2. Try DeepSeek (if API key is available)
+  const dsKey = getDeepSeekKey();
+  if (dsKey) {
+    try {
+      console.log('[Mobile NLP Router] Trying DeepSeek...');
+      const dsResult = await categorizeThoughtDeepSeek(text);
+      console.log('[Mobile NLP Router] DeepSeek succeeded:', dsResult);
+      return dsResult;
+    } catch (err) {
+      console.warn('[Mobile NLP Router] DeepSeek failed, falling back to Gemini:', err);
+    }
+  }
+
+  // 3. Fallback to Gemini
   const apiKey = getGeminiKey();
   if (!apiKey) {
-    return { refinedContent: text };
+    const localRes = await categorizeThoughtLocal(text);
+    return {
+      title: null,
+      category: localRes.category,
+      tags: localRes.tags,
+      refinedContent: text,
+      isTodo: localRes.isTodo,
+      reminder: localRes.reminder,
+    };
   }
 
   try {
@@ -137,6 +172,7 @@ export async function categorizeThought(text: string): Promise<CategorizeThought
     const parsed = JSON.parse(raw || '{}');
 
     return {
+      title: typeof parsed.title === 'string' ? parsed.title : null,
       category: typeof parsed.category === 'string' ? parsed.category : undefined,
       tags: Array.isArray(parsed.tags) ? parsed.tags : undefined,
       refinedContent:
@@ -146,6 +182,14 @@ export async function categorizeThought(text: string): Promise<CategorizeThought
     };
   } catch (error) {
     console.error('Failed to categorize thought:', error);
-    return { refinedContent: text };
+    const localRes = await categorizeThoughtLocal(text);
+    return {
+      title: null,
+      category: localRes.category,
+      tags: localRes.tags,
+      refinedContent: text,
+      isTodo: localRes.isTodo,
+      reminder: localRes.reminder,
+    };
   }
 }

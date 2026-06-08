@@ -4,6 +4,7 @@ import { categorizeThought as categorizeThoughtGemini } from "./geminiService";
 import { categorizeThoughtLocal } from "./localNlpService";
 
 export async function categorizeThought(text: string): Promise<{
+  title?: string | null;
   category?: string;
   tags?: string[];
   refinedContent: string;
@@ -19,7 +20,10 @@ export async function categorizeThought(text: string): Promise<{
     const localResult = await categorizeThoughtLocal(text);
     if (localResult.reminder && !localResult.isAmbiguous) {
       console.log("[NLP Router] Fast-path hit: Local NLP resolved definitive reminder.", localResult);
-      return localResult;
+      return {
+        ...localResult,
+        title: null,
+      };
     }
   } catch (e) {
     console.error("[NLP Router] Local NLP fast-path error:", e);
@@ -51,11 +55,13 @@ export async function categorizeThought(text: string): Promise<{
       console.warn("[NLP Router] Gemini failed:", err);
       if (USE_LOCAL_NLP_FALLBACK) {
         console.log("[NLP Router] Falling back to local NLP...");
-        return categorizeThoughtLocal(text);
+        const localRes = await categorizeThoughtLocal(text);
+        return { ...localRes, title: null };
       }
       throw err;
     }
   }
 
-  return categorizeThoughtLocal(text);
+  const localRes = await categorizeThoughtLocal(text);
+  return { ...localRes, title: null };
 }

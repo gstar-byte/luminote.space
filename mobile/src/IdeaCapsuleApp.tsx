@@ -252,9 +252,12 @@ function capsuleMenuMeta(c: Capsule) {
 
 function plainTextFromContent(raw: string): string {
   if (!raw) return '';
+  let result = '';
   try {
     const parsed = JSON.parse(raw);
-    if (parsed?.type !== 'doc' || !Array.isArray(parsed.content)) return raw;
+    if (parsed?.type !== 'doc' || !Array.isArray(parsed.content)) {
+      throw new Error('Not tiptap JSON');
+    }
     const lines: string[] = [];
     const walk = (nodes: any[]) => {
       for (const node of nodes) {
@@ -265,8 +268,35 @@ function plainTextFromContent(raw: string): string {
       }
     };
     walk(parsed.content);
-    return lines.join('').trim();
-  } catch { return raw; }
+    result = lines.join('').trim();
+  } catch {
+    result = raw.trim();
+  }
+
+  // 强力清洗 HTML 标签，保证绝无源码残留
+  result = result
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(p|div|h[1-6]|li|blockquote)>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\s+/g, ' ');
+
+  // 剥除 Markdown 格式语法标记以呈现最纯净的列表预览文字
+  result = result
+    .replace(/^#{1,6}\s+/gm, '')          // headings
+    .replace(/\*\*(.+?)\*\*/g, '$1')      // bold
+    .replace(/\*(.+?)\*/g, '$1')          // italic
+    .replace(/~~(.+?)~~/g, '$1')          // strikethrough
+    .replace(/^>\s+/gm, '')               // blockquote
+    .replace(/^[-*+]\s+/gm, '')           // list items
+    .replace(/^\d+\.\s+/gm, '')           // ordered list
+    .replace(/`([^`]+)`/g, '$1')          // inline code
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1'); // links
+
+  return result.trim();
 }
 
 function alertCaptureEmpty() {
@@ -1184,7 +1214,7 @@ export default function IdeaCapsuleApp() {
     setIsProcessing(true);
     setInputText('');
     try {
-      const { category, tags, refinedContent, isTodo, reminder } =
+      const { title, category, tags, refinedContent, isTodo, reminder } =
         await categorizeThought(text);
       const randomColor =
         PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
@@ -1194,6 +1224,7 @@ export default function IdeaCapsuleApp() {
       await addDoc(collection(db, 'capsules'), {
         userId: user.uid,
         content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: refinedContent }] }] }),
+        subject: title || undefined,
         category: category || undefined,
         tags: tags && tags.length > 0 ? tags : undefined,
         createdAt: Date.now(),
@@ -1211,6 +1242,7 @@ export default function IdeaCapsuleApp() {
       await addDoc(collection(db, 'capsules'), {
         userId: user.uid,
         content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: text }] }] }),
+        subject: undefined,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         completed: false,
@@ -1533,6 +1565,7 @@ export default function IdeaCapsuleApp() {
               },
             ],
           }),
+          subject: meta.title || undefined,
           category: meta.category || undefined,
           tags: meta.tags && meta.tags.length > 0 ? meta.tags : undefined,
           createdAt: Date.now(),
@@ -3456,22 +3489,24 @@ export default function IdeaCapsuleApp() {
                 </View>
 
                 {/* Plain / Markdown switcher — Aligned with Web */}
-                <View style={s.editModeTabWrap}>
-                  <View style={s.editModeTabs}>
-                    <TouchableOpacity
-                      style={[s.editModeTab, editMode === 'plain' && s.editModeTabActive]}
-                      onPress={() => setEditMode('plain')}
-                    >
-                      <Text style={[s.editModeTabTxt, editMode === 'plain' && s.editModeTabTxtActive]}>Plain</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[s.editModeTab, editMode === 'markdown' && s.editModeTabActive]}
-                      onPress={() => setEditMode('markdown')}
-                    >
-                      <Text style={[s.editModeTabTxt, editMode === 'markdown' && s.editModeTabTxtActive]}>Markdown</Text>
-                    </TouchableOpacity>
+                {!isKeyboardActive && (
+                  <View style={s.editModeTabWrap}>
+                    <View style={s.editModeTabs}>
+                      <TouchableOpacity
+                        style={[s.editModeTab, editMode === 'plain' && s.editModeTabActive]}
+                        onPress={() => setEditMode('plain')}
+                      >
+                        <Text style={[s.editModeTabTxt, editMode === 'plain' && s.editModeTabTxtActive]}>Plain</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[s.editModeTab, editMode === 'markdown' && s.editModeTabActive]}
+                        onPress={() => setEditMode('markdown')}
+                      >
+                        <Text style={[s.editModeTabTxt, editMode === 'markdown' && s.editModeTabTxtActive]}>Markdown</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
+                )}
 
                 {editMode === 'plain' ? (
                   <ScrollView
@@ -3548,82 +3583,86 @@ export default function IdeaCapsuleApp() {
                 )}
 
                 {/* 并排紧凑的 Category & Tags —— 紧靠在 Done 按钮之上，背景保持一致的纯白色以形成悬浮纸卡质感 */}
-                <View style={{
-                  flexDirection: 'row',
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  backgroundColor: '#FFF',
-                  gap: 12,
-                }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Category</Text>
-                    <TextInput
-                      style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
-                      placeholder="Category"
-                      placeholderTextColor="#8E8E93"
-                      value={editCategoryDraft}
-                      onChangeText={setEditCategoryDraft}
-                      onBlur={saveEditSilent}
-                    />
-                  </View>
-                  <View style={{ flex: 1.5 }}>
-                    <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Tags (comma separated)</Text>
-                    <TextInput
-                      style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
-                      placeholder="e.g. design, slide, coding"
-                      placeholderTextColor="#8E8E93"
-                      value={editTagsDraft}
-                      onChangeText={setEditTagsDraft}
-                      onBlur={saveEditSilent}
-                    />
-                  </View>
-                </View>
-                <View style={[s.editFooter, { backgroundColor: '#FFF' }]}>
-                  <TouchableOpacity
-                    onPress={() => editingCapsule && pickImageForCapsule(editingCapsule)}
-                    style={{ padding: 8 }}
-                  >
-                    <ImageIcon size={22} color="#8E8E93" />
-                  </TouchableOpacity>
-
-                  <View style={{ flex: 1, paddingHorizontal: 12, gap: 4 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Clock size={10} color="#AEAEB2" />
-                      <Text
-                        style={{
-                          fontSize: 10,
-                          fontWeight: '700',
-                          color: '#AEAEB2',
-                          textTransform: 'uppercase',
-                          letterSpacing: 0.3,
-                        }}
-                      >
-                        Created: {editingCapsule ? formatNoteDateTime(editingCapsule.createdAt) : ''}
-                      </Text>
+                {!isKeyboardActive && (
+                  <View style={{
+                    flexDirection: 'row',
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    backgroundColor: '#FFF',
+                    gap: 12,
+                  }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Category</Text>
+                      <TextInput
+                        style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
+                        placeholder="Category"
+                        placeholderTextColor="#8E8E93"
+                        value={editCategoryDraft}
+                        onChangeText={setEditCategoryDraft}
+                        onBlur={saveEditSilent}
+                      />
                     </View>
-                    {editingCapsule?.reminder && editingCapsule.reminder.type !== 'none' && (
+                    <View style={{ flex: 1.5 }}>
+                      <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Tags (comma separated)</Text>
+                      <TextInput
+                        style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
+                        placeholder="e.g. design, slide, coding"
+                        placeholderTextColor="#8E8E93"
+                        value={editTagsDraft}
+                        onChangeText={setEditTagsDraft}
+                        onBlur={saveEditSilent}
+                      />
+                    </View>
+                  </View>
+                )}
+                {!isKeyboardActive && (
+                  <View style={[s.editFooter, { backgroundColor: '#FFF' }]}>
+                    <TouchableOpacity
+                      onPress={() => editingCapsule && pickImageForCapsule(editingCapsule)}
+                      style={{ padding: 8 }}
+                    >
+                      <ImageIcon size={22} color="#8E8E93" />
+                    </TouchableOpacity>
+
+                    <View style={{ flex: 1, paddingHorizontal: 12, gap: 4 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Bell size={10} color="#007AFF" strokeWidth={2.5} />
+                        <Clock size={10} color="#AEAEB2" />
                         <Text
                           style={{
                             fontSize: 10,
-                            fontWeight: '800',
-                            color: '#007AFF',
+                            fontWeight: '700',
+                            color: '#AEAEB2',
                             textTransform: 'uppercase',
                             letterSpacing: 0.3,
                           }}
                         >
-                          Reminder: {formatNoteDateTime(editingCapsule.reminder.date)} (
-                          {repeatLabelForMenu(editingCapsule.reminder)})
+                          Created: {editingCapsule ? formatNoteDateTime(editingCapsule.createdAt) : ''}
                         </Text>
                       </View>
-                    )}
-                  </View>
+                      {editingCapsule?.reminder && editingCapsule.reminder.type !== 'none' && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Bell size={10} color="#007AFF" strokeWidth={2.5} />
+                          <Text
+                            style={{
+                              fontSize: 10,
+                              fontWeight: '800',
+                              color: '#007AFF',
+                              textTransform: 'uppercase',
+                              letterSpacing: 0.3,
+                            }}
+                          >
+                            Reminder: {formatNoteDateTime(editingCapsule.reminder.date)} (
+                            {repeatLabelForMenu(editingCapsule.reminder)})
+                          </Text>
+                        </View>
+                      )}
+                    </View>
 
-                  <TouchableOpacity style={[s.doneBtnBlack, { borderRadius: 18, paddingHorizontal: 22 }]} onPress={saveEdit}>
-                    <Text style={{ color: '#FFF', fontWeight: '800' }}>Done</Text>
-                  </TouchableOpacity>
-                </View>
+                    <TouchableOpacity style={[s.doneBtnBlack, { borderRadius: 18, paddingHorizontal: 22 }]} onPress={saveEdit}>
+                      <Text style={{ color: '#FFF', fontWeight: '800' }}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             </View>
           </KeyboardAvoidingView>

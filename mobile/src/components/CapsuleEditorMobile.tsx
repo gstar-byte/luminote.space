@@ -236,15 +236,15 @@ const getHtmlTemplate = (placeholder: string) => `
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     
-    /* 固定的网页工具栏：与 Web 端设计对齐 */
+    /* 固定的网页工具栏：与 Web 端设计对齐，移到屏幕底部（键盘上方） */
     #toolbar {
       position: fixed;
-      top: 0;
+      bottom: 0;
       left: 0;
       right: 0;
       height: 42px;
       background-color: #FFFCEB;
-      border-bottom: 1px solid #F0E6C0;
+      border-top: 1px solid #F0E6C0;
       display: flex;
       align-items: center;
       padding: 0 8px;
@@ -287,49 +287,10 @@ const getHtmlTemplate = (placeholder: string) => `
       stroke-linejoin: round;
     }
 
-    /* Heading 气泡下拉菜单 */
-    #heading-dropdown {
-      position: relative;
-      display: inline-block;
-    }
-    #heading-menu {
-      display: none;
-      position: absolute;
-      top: 38px;
-      left: 0;
-      background-color: #FFFFFF;
-      border: 1px solid #E5E5EA;
-      border-radius: 12px;
-      padding: 4px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      z-index: 2000;
-    }
-    #heading-menu.show {
-      display: block;
-    }
-    .menu-option {
-      display: block;
-      width: 140px;
-      padding: 8px 12px;
-      text-align: left;
-      border: none;
-      background: transparent;
-      font-size: 13px;
-      color: #2C2C2E;
-      border-radius: 8px;
-    }
-    .menu-option:active {
-      background-color: #F2F2F7;
-    }
-    .menu-option.active {
-      background-color: rgba(0, 122, 255, 0.08);
-      color: #007AFF;
-      font-weight: 700;
-    }
-
     /* 滚动容器 */
     #editor-container {
-      padding-top: 42px;
+      padding-top: 0px;
+      padding-bottom: 42px; /* 给底部固定工具栏预留空间 */
       height: 100%;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
@@ -341,7 +302,7 @@ const getHtmlTemplate = (placeholder: string) => `
       background-image: linear-gradient(#F0E6C0 1px, transparent 1px);
       background-size: 100% 32px;
       line-height: 32px;
-      font-size: 16px;
+      font-size: 15px;
       color: #2C2C2E;
       white-space: pre-wrap;
       word-wrap: break-word;
@@ -386,6 +347,12 @@ const getHtmlTemplate = (placeholder: string) => `
 <body>
   <!-- 内部网页工具栏，点击后不丢失编辑区焦点 -->
   <div id="toolbar">
+    <!-- H 按钮：无弹出，单键循环修改标题，解决溢出截断问题 -->
+    <button type="button" class="tool-btn" id="btn-heading" style="font-weight: 800; font-size: 13px; width: 38px;">
+      H
+    </button>
+    <div style="width: 1px; height: 18px; background-color: rgba(0,0,0,0.1); margin: 0 6px;" />
+    
     <button type="button" class="tool-btn" id="btn-bold" title="Bold">
       <svg viewBox="0 0 24 24"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
     </button>
@@ -395,20 +362,6 @@ const getHtmlTemplate = (placeholder: string) => `
     <button type="button" class="tool-btn" id="btn-strike" title="Strikethrough">
       <svg viewBox="0 0 24 24"><path d="M16 4H9a4 4 0 0 0-4 4v1a4 4 0 0 0 4 4h6a4 4 0 0 1 4 4v1a4 4 0 0 1-4 4H6"/><line x1="4" y1="12" x2="20" y2="12"/></svg>
     </button>
-    
-    <div id="heading-dropdown">
-      <button type="button" class="tool-btn" id="btn-heading" style="display: flex; align-items: center; gap: 2px;">
-        <span id="heading-label" style="font-size: 13px; font-weight: 700;">Heading</span>
-        <svg viewBox="0 0 24 24" style="width: 10px; height: 10px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
-      </button>
-      <div id="heading-menu">
-        <button type="button" class="menu-option" id="opt-p" style="font-weight: 600;">Normal Text</button>
-        <button type="button" class="menu-option" id="opt-h1" style="font-weight: 700;">Heading 1</button>
-        <button type="button" class="menu-option" id="opt-h2" style="font-weight: 600;">Heading 2</button>
-        <button type="button" class="menu-option" id="opt-h3" style="font-weight: 600;">Heading 3</button>
-      </div>
-    </div>
-
     <button type="button" class="tool-btn" id="btn-quote" title="Quote">
       <svg viewBox="0 0 24 24"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.97v6c0 1.25.75 2 2 2h3.777C7.777 15.5 7 17.5 3 19v2zM14 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-4c-1.25 0-2 .75-2 1.97v6c0 1.25.75 2 2 2h3.777C18.777 15.5 18 17.5 14 19v2z"/></svg>
     </button>
@@ -424,15 +377,13 @@ const getHtmlTemplate = (placeholder: string) => `
   </div>
 
   <div id="editor-container">
-    <div id="editor" contenteditable="true" placeholder="Placeholder..."></div>
+    <div id="editor" contenteditable="true" placeholder="${placeholder}"></div>
   </div>
 
   <script>
     const editor = document.getElementById('editor');
-    const headingMenu = document.getElementById('heading-menu');
-    const headingLabel = document.getElementById('heading-label');
 
-    // 彻底防止 iOS/Android WebView 键盘弹出时将 body 顶起，确保 fixed 工具栏永远贴顶
+    // 彻底防止 iOS/Android WebView 键盘弹出时将 body 顶起，确保 fixed 工具栏永远贴底
     window.addEventListener('scroll', () => {
       if (window.scrollY !== 0) {
         window.scrollTo(0, 0);
@@ -476,7 +427,7 @@ const getHtmlTemplate = (placeholder: string) => `
       document.getElementById('btn-bullet').classList.toggle('active', document.queryCommandState('insertUnorderedList'));
       document.getElementById('btn-ordered').classList.toggle('active', document.queryCommandState('insertOrderedList'));
 
-      // 检查标题级别
+      // 检查标题级别以更新 H 按钮上的文字
       let blockNode = getActiveBlockNode();
       let heading = '';
       if (blockNode) {
@@ -486,83 +437,62 @@ const getHtmlTemplate = (placeholder: string) => `
         }
       }
       
+      const btnHeading = document.getElementById('btn-heading');
       if (heading) {
-        headingLabel.innerText = heading.toUpperCase();
-        document.getElementById('btn-heading').classList.add('active');
+        btnHeading.innerText = heading.toUpperCase();
+        btnHeading.classList.add('active');
       } else {
-        headingLabel.innerText = 'Heading';
-        document.getElementById('btn-heading').classList.remove('active');
+        btnHeading.innerText = 'H';
+        btnHeading.classList.remove('active');
       }
-
-      // 高亮下拉菜单的选项
-      const optP = document.getElementById('opt-p');
-      const optH1 = document.getElementById('opt-h1');
-      const optH2 = document.getElementById('opt-h2');
-      const optH3 = document.getElementById('opt-h3');
-      if (optP) optP.classList.toggle('active', !heading);
-      if (optH1) optH1.classList.toggle('active', heading === 'h1');
-      if (optH2) optH2.classList.toggle('active', heading === 'h2');
-      if (optH3) optH3.classList.toggle('active', heading === 'h3');
     }
 
-    function sendContent() {
-      const html = editor.innerHTML;
-      const text = editor.innerText;
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'change',
-        html: html,
-        text: text
-      }));
-    }
-
-    // 绑定事件
-    editor.addEventListener('input', sendContent);
-    editor.addEventListener('blur', sendContent);
-    document.addEventListener('selectionchange', updateToolbarState);
-
-    // 执行网页命令
+    // 执行富文本格式化指令
     function execFormat(command, value = null) {
       document.execCommand(command, false, value);
       sendContent();
       updateToolbarState();
+      focusAtEnd();
     }
 
-    // 按钮按下绑定
-    const buttons = [
-      { id: 'btn-bold', cmd: 'bold' },
-      { id: 'btn-italic', cmd: 'italic' },
-      { id: 'btn-strike', cmd: 'strikeThrough' },
-      { id: 'btn-quote', cmd: 'formatBlock', val: 'blockquote' },
-      { id: 'btn-bullet', cmd: 'insertUnorderedList' },
-      { id: 'btn-ordered', cmd: 'insertOrderedList' }
-    ];
+    // 内容发生改变，发回 React Native 主体
+    function sendContent() {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'change',
+        html: editor.innerHTML,
+        text: editor.innerText || ''
+      }));
+    }
 
-    buttons.forEach(btn => {
-      const el = document.getElementById(btn.id);
+    editor.addEventListener('input', sendContent);
+    
+    // 输入事件和按键监听
+    editor.addEventListener('keyup', updateToolbarState);
+    editor.addEventListener('mouseup', updateToolbarState);
+    editor.addEventListener('touchend', updateToolbarState);
+    editor.addEventListener('focus', updateToolbarState);
+
+    // 网页工具栏各按钮点击事件处理，防止丢失焦点
+    const bindBtn = (id, command, value = null) => {
+      const el = document.getElementById(id);
       if (el) {
         const handler = (e) => {
           e.preventDefault();
-          execFormat(btn.cmd, btn.val);
+          execFormat(command, value);
         };
         el.addEventListener('touchstart', handler, { passive: false });
         el.addEventListener('mousedown', handler);
       }
-    });
+    };
 
-    // Heading 下拉浮层
-    const btnHeading = document.getElementById('btn-heading');
-    if (btnHeading) {
-      const toggleMenu = (e) => {
-        e.preventDefault();
-        headingMenu.classList.toggle('show');
-      };
-      btnHeading.addEventListener('touchstart', toggleMenu, { passive: false });
-      btnHeading.addEventListener('mousedown', toggleMenu);
-    }
+    bindBtn('btn-bold', 'bold');
+    bindBtn('btn-italic', 'italic');
+    bindBtn('btn-strike', 'strikeThrough');
+    bindBtn('btn-quote', 'formatBlock', '<blockquote>');
+    bindBtn('btn-bullet', 'insertUnorderedList');
+    bindBtn('btn-ordered', 'insertOrderedList');
 
     function applyHeading(tag) {
-      headingMenu.classList.remove('show');
-      
       // 黄金延时机制：将选区修改放入 setTimeout 队列，避开物理事件竞争，确保 Selection 光标稳定
       setTimeout(() => {
         try {
@@ -597,7 +527,7 @@ const getHtmlTemplate = (placeholder: string) => `
             return;
           }
           
-          // 以下是元素节点的标签替换逻辑
+          // 元素节点的标签替换逻辑
           let oldTagName = blockNode.nodeName.toLowerCase();
           if (oldTagName === newTagName && newTagName !== 'p') {
             newTagName = 'p'; // 已是此标题，则退回为普通段落
@@ -628,39 +558,34 @@ const getHtmlTemplate = (placeholder: string) => `
           }
         } catch (err) {
           console.warn('Heading format error, falling back to basic command:', err);
-          // 发生任何异常，安全退回到基本 execCommand 执行段落/标题格式化
           execFormat('formatBlock', tag === 'p' ? '<p>' : '<' + tag + '>');
         }
       }, 10);
     }
 
-    const bindHeadingOption = (id, tag) => {
-      const el = document.getElementById(id);
-      if (el) {
-        const handler = (e) => {
-          e.preventDefault();
-          applyHeading(tag);
-        };
-        el.addEventListener('touchstart', handler, { passive: false });
-        el.addEventListener('mousedown', handler);
-      }
-    };
-    bindHeadingOption('opt-p', 'p');
-    bindHeadingOption('opt-h1', 'h1');
-    bindHeadingOption('opt-h2', 'h2');
-    bindHeadingOption('opt-h3', 'h3');
-
-    document.addEventListener('touchstart', (e) => {
-      if (!btnHeading.contains(e.target) && !headingMenu.contains(e.target)) {
-        headingMenu.classList.remove('show');
-      }
-    }, { passive: true });
-    
-    document.addEventListener('mousedown', (e) => {
-      if (!btnHeading.contains(e.target) && !headingMenu.contains(e.target)) {
-        headingMenu.classList.remove('show');
-      }
-    });
+    const btnHeading = document.getElementById('btn-heading');
+    if (btnHeading) {
+      const headingHandler = (e) => {
+        e.preventDefault();
+        let blockNode = getActiveBlockNode();
+        let currentTag = 'p';
+        if (blockNode) {
+          const tagName = blockNode.nodeName.toUpperCase();
+          if (['H1', 'H2', 'H3'].includes(tagName)) {
+            currentTag = tagName.toLowerCase();
+          }
+        }
+        
+        let nextTag = 'h1';
+        if (currentTag === 'h1') nextTag = 'h2';
+        else if (currentTag === 'h2') nextTag = 'h3';
+        else if (currentTag === 'h3') nextTag = 'p';
+        
+        applyHeading(nextTag);
+      };
+      btnHeading.addEventListener('touchstart', headingHandler, { passive: false });
+      btnHeading.addEventListener('mousedown', headingHandler);
+    }
 
     // 选取图片发回 RN
     const btnImage = document.getElementById('btn-image');
@@ -726,7 +651,7 @@ export function CapsuleEditorMobile({
 
   const updateDraftAndNotify = (newText: string, newSelectionStart: number, newSelectionEnd?: number) => {
     setDraft(newText);
-    if (editMode === 'markdown') {
+    if (editMode === 'plain') {
       const compiledHtml = markdownToHtml(newText);
       onChange(compiledHtml, newText.replace(/[*#`~_\-+[\]()]/g, ''));
     } else {
@@ -738,6 +663,66 @@ export function CapsuleEditorMobile({
       inputRef.current?.focus();
       setSelection({ start: newSelectionStart, end: targetEnd });
     }, 50);
+  };
+
+  const toggleHeadingMarkdown = () => {
+    const { start } = selection;
+    let lineStart = draft.lastIndexOf('\n', start - 1);
+    if (lineStart === -1) {
+      lineStart = 0;
+    } else {
+      lineStart += 1;
+    }
+
+    let lineEnd = draft.indexOf('\n', start);
+    if (lineEnd === -1) {
+      lineEnd = draft.length;
+    }
+
+    const currentLine = draft.substring(lineStart, lineEnd);
+    let newLine = currentLine;
+    let offset = 0;
+
+    if (currentLine.startsWith('### ')) {
+      newLine = currentLine.substring(4);
+      offset = -4;
+    } else if (currentLine.startsWith('## ')) {
+      newLine = '### ' + currentLine.substring(3);
+      offset = 1;
+    } else if (currentLine.startsWith('# ')) {
+      newLine = '## ' + currentLine.substring(2);
+      offset = 1;
+    } else {
+      newLine = '# ' + currentLine;
+      offset = 2;
+    }
+
+    const before = draft.substring(0, lineStart);
+    const after = draft.substring(lineEnd);
+    const nextText = before + newLine + after;
+
+    const newCursorPos = Math.max(lineStart, start + offset);
+    updateDraftAndNotify(nextText, newCursorPos);
+  };
+
+  const getHeadingButtonText = () => {
+    const { start } = selection;
+    let lineStart = draft.lastIndexOf('\n', start - 1);
+    if (lineStart === -1) {
+      lineStart = 0;
+    } else {
+      lineStart += 1;
+    }
+    let lineEnd = draft.indexOf('\n', start);
+    if (lineEnd === -1) {
+      lineEnd = draft.length;
+    }
+    const fullLine = draft.substring(lineStart, lineEnd);
+
+    if (fullLine.startsWith('### ')) return 'H3';
+    if (fullLine.startsWith('## ')) return 'H2';
+    if (fullLine.startsWith('# ')) return 'H1';
+    return 'H';
   };
 
   const insertMarkdown = async (type: 'bold' | 'italic' | 'strike' | 'h1' | 'h2' | 'h3' | 'quote' | 'bullet' | 'ordered' | 'image') => {
@@ -898,25 +883,102 @@ export function CapsuleEditorMobile({
 
       {/* 编辑体 */}
       {editMode === 'plain' ? (
-        <TextInput
-          key="plain-native-text-input"
-          ref={inputRef}
-          style={styles.webInput}
-          multiline
-          scrollEnabled={false}
-          textAlignVertical="top"
-          placeholder={placeholder}
-          placeholderTextColor="#C7C7CC"
-          value={draft}
-          selection={selection}
-          onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
-          onChangeText={(t) => {
-            setDraft(t);
-            const compiledHtml = markdownToHtml(t);
-            onChange(compiledHtml, t.replace(/[*#`~_\-+[\]()]/g, ''));
-          }}
-          autoFocus={autoFocus}
-        />
+        <View style={{ flex: 1, justifyContent: 'space-between' }}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <TextInput
+              key="plain-native-text-input"
+              ref={inputRef}
+              style={styles.webInput}
+              multiline
+              scrollEnabled={false}
+              textAlignVertical="top"
+              placeholder={placeholder}
+              placeholderTextColor="#C7C7CC"
+              value={draft}
+              selection={selection}
+              onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
+              onChangeText={(t) => {
+                setDraft(t);
+                const compiledHtml = markdownToHtml(t);
+                onChange(compiledHtml, t.replace(/[*#`~_\-+[\]()]/g, ''));
+              }}
+              autoFocus={autoFocus}
+            />
+          </ScrollView>
+
+          {/* 原生快捷工具栏：锤子便签风格 */}
+          <View style={styles.nativeToolbar}>
+            <TouchableOpacity
+              onPress={() => toggleHeadingMarkdown()}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.nativeToolText}>{getHeadingButtonText()}</Text>
+            </TouchableOpacity>
+            
+            <View style={styles.nativeToolbarDivider} />
+
+            <TouchableOpacity
+              onPress={() => insertMarkdown('bold')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <Bold size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => insertMarkdown('italic')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <Italic size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => insertMarkdown('strike')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <Strikethrough size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => insertMarkdown('quote')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <Quote size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => insertMarkdown('bullet')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <List size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => insertMarkdown('ordered')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <ListOrdered size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => insertMarkdown('image')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <ImageIcon size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+          </View>
+        </View>
       ) : (
         <View key="markdown-webview-container" style={styles.webviewContainer}>
           <WebView
@@ -964,27 +1026,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFBE6',
   },
-  headingBubbleMenu: {
-    position: 'absolute',
-    top: 44,
-    left: 80,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    padding: 6,
-    zIndex: 1000,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 6,
+  nativeToolbar: {
+    height: 42,
+    backgroundColor: '#FFFCEB',
+    borderTopWidth: 1,
+    borderTopColor: '#F0E6C0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
   },
-  headingBubbleBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+  nativeToolBtn: {
+    minWidth: 34,
+    height: 34,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
   },
-  headingBubbleTxt: {
-    color: '#2C2C2E',
+  nativeToolText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#4E4E50',
+    letterSpacing: 0.5,
+  },
+  nativeToolbarDivider: {
+    width: 1,
+    height: 18,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    marginHorizontal: 6,
   },
 });
