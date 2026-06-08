@@ -10,15 +10,24 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowRight, Sparkles } from 'lucide-react-native';
+import {
+  ArrowRight,
+  Sparkles,
+  CalendarDays,
+  Repeat,
+  CheckSquare,
+  Palette,
+  Tablet,
+  Monitor,
+} from 'lucide-react-native';
 import { GoogleSignInButton } from './GoogleSignInButton';
+import { AppLogo } from './AppLogo';
 
 type Props = {
   onEmailAuth: () => void;
   onGuestPress?: () => void;
 };
 
-/** Aligned with PC Web LandingPage — brand "Lumi Note", no Facebook */
 export function LandingScreen({ onEmailAuth, onGuestPress }: Props) {
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -42,8 +51,12 @@ export function LandingScreen({ onEmailAuth, onGuestPress }: Props) {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
+          {/* Navbar */}
           <View style={styles.nav}>
-            <Text style={styles.brand}>Lumi Note</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <AppLogo width={40} height={40} />
+              <Text style={styles.brand}>Lumi Note</Text>
+            </View>
             <View style={styles.navActions}>
               <TouchableOpacity onPress={onEmailAuth}>
                 <Text style={styles.navLink}>Log in</Text>
@@ -54,6 +67,7 @@ export function LandingScreen({ onEmailAuth, onGuestPress }: Props) {
             </View>
           </View>
 
+          {/* Hero glow */}
           <View style={styles.heroGlow}>
             <LinearGradient
               colors={['rgba(0,122,255,0.35)', 'rgba(175,82,222,0.2)', 'transparent']}
@@ -63,23 +77,24 @@ export function LandingScreen({ onEmailAuth, onGuestPress }: Props) {
             />
           </View>
 
+          {/* Sparkles badge */}
           <View style={styles.badge}>
-            <Sparkles size={14} color="#007AFF" />
-            <Text style={styles.badgeTxt}>LIGHTNING-FAST INSPIRATION CAPTURE</Text>
+            <Sparkles size={14} color="#FF2D55" />
+            <Text style={styles.badgeTxt}>THE NEXT-GEN COLOR AESTHETIC NOTEBOOK</Text>
           </View>
 
+          {/* Main Title */}
           <Text style={styles.h1}>
-            Capture at the{'\n'}
-            <Text style={styles.h1Grad}>speed of light.</Text>
+            Create high-aesthetic notes,{'\n'}
+            <Text style={styles.h1Highlight}>todos & reminders in a single breath.</Text>
           </Text>
           <Text style={styles.sub}>
-            Lumi Note is a next-generation color-aesthetic capsule notepad designed
-            for lightning-fast capture. Type a single sentence to instantly generate
-            beautifully-styled notes, fluid to-dos, and smart reminders.
+            Lumi Note is a next-generation color-aesthetic capsule notepad designed for lightning-fast capture. Type a single sentence to instantly generate beautifully-styled notes, fluid to-dos, and smart reminders. Bring harmony to your daily flow—where rapid organization meets premium design.
           </Text>
 
+          {/* CTA Buttons */}
           <TouchableOpacity style={styles.primaryCta} onPress={onEmailAuth}>
-            <Text style={styles.primaryCtaTxt}>Get Started for Free</Text>
+            <Text style={styles.primaryCtaTxt}>Start Free Capture</Text>
             <ArrowRight size={20} color="#000" />
           </TouchableOpacity>
 
@@ -93,61 +108,95 @@ export function LandingScreen({ onEmailAuth, onGuestPress }: Props) {
             <GoogleSignInButton variant="dark" />
           </View>
 
+          {/* Brand Philosophy Section */}
           <Text style={styles.sectionTitle}>
-            Seamlessly Integrated.{'\n'}
-            Flawlessly Beautiful.
+            Color + Mindflow{'\n'}
+            = Lumi Note
           </Text>
+          <Text style={styles.sectionSubTheme}>
+            Why color-coded note-taking works
+          </Text>
+          <View style={styles.philosophyContainer}>
+            <Text style={styles.philosophyText}>
+              Monochrome lists make all your thoughts look identical. But a fleeting inspiration shouldn't look exactly like a grocery list. Your brain naturally prioritizes by color, and your notes should do the same.
+            </Text>
+            <Text style={[styles.philosophyText, { marginTop: 12 }]}>
+              Lumi Note combines minimalist card layouts with intuitive color keys. Categorize and prioritize instantly with beautiful chromative cues, keeping your daily capture fast, natural, and highly visual.
+            </Text>
+          </View>
+
+          {/* Device Mockup section */}
+          <Text style={styles.sectionTitle}>Sleek layout. Fluid sync.</Text>
           <Text style={styles.sectionSub}>
-            Experience the lightweight interface of Lumi Note — meticulously
-            optimized for lists, grids, and multi-device cloud synchronization.
+            Experience the lightweight interface of Lumi Note—meticulously optimized for lists, grids, and multi-device cloud synchronization.
           </Text>
 
-          <View style={styles.mockBrowser}>
-            <View style={styles.mockTraffic}>
-              <View style={[styles.dot, { backgroundColor: '#FF5F57' }]} />
-              <View style={[styles.dot, { backgroundColor: '#FFBD2E' }]} />
-              <View style={[styles.dot, { backgroundColor: '#28CA42' }]} />
-            </View>
-            <View style={styles.mockCapture}>
-              <Text style={styles.mockPlaceholder}>Record your thoughts...</Text>
-            </View>
-            <View style={[styles.mockCard, { backgroundColor: '#FFCA28' }]}>
-              <View style={styles.mockTodo} />
-              <View style={styles.mockLine} />
-              <View style={styles.mockTag}>
-                <Text style={styles.mockTagTxt}>IDEA</Text>
+          {/* Mock App Cards */}
+          <View style={styles.mockAppContainer}>
+            {/* Card 1: yellow note with countdown */}
+            <View style={[styles.mockCard, { backgroundColor: '#FF9500' }]}>
+              <View style={styles.mockCardHeader}>
+                <View style={styles.mockTodoCheckbox} />
+                <View style={styles.mockCardBadge}>
+                  <Text style={styles.mockBadgeText}>5 DAYS LEFT</Text>
+                </View>
               </View>
+              <View style={[styles.mockCardLine, { width: '85%' }]} />
+              <View style={[styles.mockCardLine, { width: '50%' }]} />
             </View>
-            <View style={[styles.mockCard, { backgroundColor: '#AF52DE' }]}>
-              <View style={styles.mockTodo} />
-              <View style={[styles.mockLine, { width: '66%' }]} />
-            </View>
+
+            {/* Card 2: blue note with checked todo and repeating tag */}
             <View style={[styles.mockCard, { backgroundColor: '#007AFF' }]}>
-              <Text style={styles.mockCheck}>✔</Text>
-              <View style={[styles.mockLine, { width: '40%', opacity: 0.6 }]} />
+              <View style={styles.mockCardHeader}>
+                <View style={styles.mockTodoChecked}>
+                  <Text style={styles.mockCheckIcon}>✔</Text>
+                </View>
+                <View style={[styles.mockCardBadge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                  <Text style={styles.mockBadgeText}>REPEAT</Text>
+                </View>
+              </View>
+              <View style={[styles.mockCardLine, { width: '70%', opacity: 0.6 }]} />
+            </View>
+
+            {/* Card 3: purple custom reminder card */}
+            <View style={[styles.mockCard, { backgroundColor: '#AF52DE' }]}>
+              <View style={styles.mockCardHeader}>
+                <View style={styles.mockTodoCheckbox} />
+                <View style={[styles.mockCardBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                  <Text style={styles.mockBadgeText}>REMINDER</Text>
+                </View>
+              </View>
+              <View style={[styles.mockCardLine, { width: '90%' }]} />
+              <View style={[styles.mockCardLine, { width: '60%' }]} />
             </View>
           </View>
 
-          <Text style={styles.featureSanctuary}>The ultimate productivity sanctuary.</Text>
+          {/* Feature Sanctuary */}
+          <Text style={styles.featureSanctuary}>Built for fast minds.</Text>
           <Text style={styles.featureSanctuarySub}>
-            Features built deeply into the core experience.
+            Clean, friction-free features to help you capture and organize without breaking your flow.
           </Text>
 
+          {/* Feature Grid */}
           <View style={styles.featureGrid}>
-            {FEATURES.map((f) => (
-              <View key={f.title} style={styles.featureCard}>
-                <Text style={styles.featureTitle}>{f.title}</Text>
-                <Text style={styles.featureDesc}>{f.desc}</Text>
-              </View>
-            ))}
+            {FEATURES.map((f) => {
+              const IconComp = f.icon;
+              return (
+                <View key={f.title} style={styles.featureCard}>
+                  <View style={styles.featureIconContainer}>
+                    <IconComp size={24} color="#FFF" />
+                  </View>
+                  <Text style={styles.featureTitle}>{f.title}</Text>
+                  <Text style={styles.featureDesc}>{f.desc}</Text>
+                </View>
+              );
+            })}
           </View>
 
+          {/* About & HQ */}
           <Text style={styles.craftTitle}>About Lumi Note</Text>
           <Text style={styles.craftBody}>
-            Lumi Note is built for creators, thinkers, and makers who want a
-            faster, more beautiful way to capture ideas. We believe software
-            should be fast, quiet, and respect your attention. No bloated
-            features — just your mind, organized.
+            Lumi Note is built for creators, thinkers, and makers who want a faster, more beautiful way to capture ideas. We believe software should be fast, quiet, and respect your attention. No bloated features—just your mind, organized.
           </Text>
 
           <View style={styles.hqBox}>
@@ -159,6 +208,7 @@ export function LandingScreen({ onEmailAuth, onGuestPress }: Props) {
             <Text style={styles.hqMail}>hello@luminote.space</Text>
           </View>
 
+          {/* Contact Form */}
           <View style={styles.formCard}>
             <Text style={styles.formTitle}>Send a Message</Text>
             <TextInput
@@ -186,19 +236,21 @@ export function LandingScreen({ onEmailAuth, onGuestPress }: Props) {
               onChangeText={setContactMsg}
             />
             <TouchableOpacity style={styles.sendBtn} onPress={sendDemo}>
-              <Text style={styles.sendBtnTxt}>Send Transmission</Text>
+              <Text style={styles.sendBtnTxt}>Send Message</Text>
             </TouchableOpacity>
           </View>
 
+          {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerBrand}>Lumi Note</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <AppLogo width={48} height={48} />
+              <Text style={styles.footerBrand}>Lumi Note</Text>
+            </View>
             <Text style={styles.footerCopy}>
-              Designed for speed. Engineered for precision. ©{' '}
+              Capture thoughts in full color. ©{' '}
               {new Date().getFullYear()} All rights reserved.
             </Text>
             <View style={styles.footerLinks}>
-              <Text style={styles.footerLink}>Terms</Text>
-              <Text style={styles.footerDot}>·</Text>
               <Text style={styles.footerLink}>Privacy</Text>
             </View>
           </View>
@@ -210,28 +262,34 @@ export function LandingScreen({ onEmailAuth, onGuestPress }: Props) {
 
 const FEATURES = [
   {
-    title: 'Countdown & Deadlines',
-    desc: 'Set specific dates and see exactly how many days are left. Always stay ahead of schedule.',
+    title: 'Countdowns & Deadlines',
+    desc: 'Keep track of high-priority tasks. See exactly how many days are left to execute.',
+    icon: CalendarDays,
   },
   {
-    title: 'Repeating Reminders',
-    desc: 'Daily, weekly, or monthly — set your routines on autopilot. Habits are formed effortlessly.',
+    title: 'Smart Recurrence',
+    desc: 'Set notes to repeat daily, weekly, or monthly. Perfect for keeping track of your routines.',
+    icon: Repeat,
   },
   {
-    title: 'To-Dos & Checklists',
-    desc: 'Seamlessly transition any thought into a concrete to-do item. Track progress instantly.',
+    title: 'Task Checklists',
+    desc: 'Turn text into actionable check-boxes instantly. Clear tasks with zero friction.',
+    icon: CheckSquare,
   },
   {
-    title: 'Color Aesthetics',
-    desc: 'Group by vibrant colors or strict categories. Visual organization that feels purely natural.',
+    title: 'Color-Coded Library',
+    desc: 'Organize thoughts using custom color keys. Navigate your notes visually instead of reading through endless text.',
+    icon: Palette,
   },
   {
-    title: 'Adaptive Views',
-    desc: 'Toggle between dynamic lists or dense grids depending on your desired scope of view.',
+    title: 'List & Grid Layouts',
+    desc: 'Switch instantly between a minimal chronological stream and an expansive visual grid.',
+    icon: Tablet,
   },
   {
-    title: 'Universal Sync',
-    desc: 'Secure real-time cloud sync ensures your data perfectly mirrors across PC, tablet, and mobile.',
+    title: 'Real-Time Cloud Sync',
+    desc: 'Securely sync your notes across all devices instantly. Your ideas are always up to date.',
+    icon: Monitor,
   },
 ];
 
@@ -286,17 +344,17 @@ const styles = StyleSheet.create({
   },
   h1: {
     color: '#FFF',
-    fontSize: 36,
+    fontSize: 34,
     fontWeight: '900',
-    lineHeight: 42,
+    lineHeight: 40,
     marginTop: 28,
     textAlign: 'center',
   },
-  h1Grad: { color: '#93B8FF' },
+  h1Highlight: { color: '#FF2D55' },
   sub: {
     color: 'rgba(255,255,255,0.58)',
-    fontSize: 16,
-    lineHeight: 26,
+    fontSize: 15,
+    lineHeight: 24,
     textAlign: 'center',
     marginTop: 16,
     paddingHorizontal: 4,
@@ -335,64 +393,95 @@ const styles = StyleSheet.create({
   },
   sectionSub: {
     color: 'rgba(255,255,255,0.55)',
-    fontSize: 16,
+    fontSize: 15,
     textAlign: 'center',
     marginTop: 10,
     marginBottom: 20,
+    lineHeight: 22,
   },
-  mockBrowser: {
-    backgroundColor: '#FAFAFC',
-    borderRadius: 20,
-    padding: 14,
+  sectionSubTheme: {
+    color: '#007AFF',
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    textAlign: 'center',
+    marginTop: 6,
+  },
+  philosophyContainer: {
+    marginTop: 16,
+    paddingHorizontal: 10,
+  },
+  philosophyText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  mockAppContainer: {
+    backgroundColor: '#111',
+    borderRadius: 24,
+    padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255,255,255,0.08)',
+    gap: 12,
   },
-  mockTraffic: { flexDirection: 'row', gap: 6, marginBottom: 12 },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  mockCapture: {
-    height: 40,
-    borderRadius: 999,
-    backgroundColor: '#F2F2F7',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  mockPlaceholder: { color: 'rgba(0,0,0,0.28)', fontSize: 13, fontWeight: '600' },
   mockCard: {
-    height: 56,
     borderRadius: 16,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
+    padding: 12,
     position: 'relative',
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  mockTodo: {
-    width: 16,
-    height: 16,
+  mockCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 10,
+  },
+  mockTodoCheckbox: {
+    width: 14,
+    height: 14,
     borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.25)',
-    marginRight: 12,
+    borderWidth: 1.2,
+    borderColor: 'rgba(255,255,255,0.5)',
   },
-  mockLine: { width: '50%', height: 10, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.2)' },
-  mockTag: {
-    position: 'absolute',
-    right: 14,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+  mockTodoChecked: {
+    width: 14,
+    height: 14,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  mockTagTxt: { fontSize: 9, fontWeight: '900', color: 'rgba(0,0,0,0.5)' },
-  mockCheck: {
+  mockCheckIcon: {
     color: '#FFF',
+    fontSize: 9,
     fontWeight: '900',
-    fontSize: 12,
-    marginRight: 12,
-    width: 20,
-    textAlign: 'center',
+  },
+  mockCardBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  mockBadgeText: {
+    fontSize: 8,
+    fontWeight: '900',
+    color: '#FFF',
+    letterSpacing: 0.5,
+  },
+  mockCardLine: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    marginBottom: 4,
   },
   featureSanctuary: {
     color: '#FFF',
@@ -404,7 +493,7 @@ const styles = StyleSheet.create({
   },
   featureSanctuarySub: {
     color: 'rgba(255,255,255,0.55)',
-    fontSize: 17,
+    fontSize: 16,
     textAlign: 'center',
     marginTop: 10,
     marginBottom: 8,
@@ -416,6 +505,15 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
+  },
+  featureIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   featureTitle: { color: '#FFF', fontWeight: '800', fontSize: 17, marginBottom: 8 },
   featureDesc: { color: 'rgba(255,255,255,0.48)', fontSize: 14, lineHeight: 22 },

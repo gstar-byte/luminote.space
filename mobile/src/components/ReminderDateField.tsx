@@ -8,34 +8,63 @@ type Props = {
 };
 
 /**
- * iOS：内联 spinner。Android：点按打开系统日历/时间对话框（inline default 在部分机型上不可见）。
+ * iOS：内联 spinner。Android：分步式选择（date -> time）以防 mode="datetime" 闪退。
  */
 export function ReminderDateField({ value, onChange }: Props) {
-  const [show, setShow] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'none' | 'date' | 'time'>('none');
+  const [tempDate, setTempDate] = useState<Date | null>(null);
 
   if (Platform.OS === 'android') {
     return (
       <View style={styles.androidWrap}>
         <TouchableOpacity
           style={styles.androidBtn}
-          onPress={() => setShow(true)}
+          onPress={() => setPickerMode('date')}
           activeOpacity={0.85}
         >
           <Text style={styles.androidBtnTxt}>{value.toLocaleString()}</Text>
           <Text style={styles.androidHint}>Tap to pick date and time</Text>
         </TouchableOpacity>
-        {show ? (
+        
+        {pickerMode === 'date' && (
           <DateTimePicker
             value={value}
-            mode="datetime"
+            mode="date"
             display="default"
             onChange={(event, d) => {
-              setShow(false);
-              if (event.type === 'dismissed') return;
-              if (d) onChange(d);
+              if (event.type === 'dismissed') {
+                setPickerMode('none');
+                return;
+              }
+              if (d) {
+                setTempDate(d);
+                setPickerMode('time'); // 自动进入时间拾取器
+              } else {
+                setPickerMode('none');
+              }
             }}
           />
-        ) : null}
+        )}
+
+        {pickerMode === 'time' && (
+          <DateTimePicker
+            value={tempDate || value}
+            mode="time"
+            display="default"
+            onChange={(event, d) => {
+              setPickerMode('none');
+              if (event.type === 'dismissed') return;
+              if (d && tempDate) {
+                const combined = new Date(tempDate);
+                combined.setHours(d.getHours());
+                combined.setMinutes(d.getMinutes());
+                combined.setSeconds(0);
+                combined.setMilliseconds(0);
+                onChange(combined);
+              }
+            }}
+          />
+        )}
       </View>
     );
   }
