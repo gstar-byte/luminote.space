@@ -315,8 +315,8 @@ function alertCaptureEmpty() {
 }
 
 /** Maps a partial capsule update to Firestore `update()` / batch fields (incl. deleteField). */
-function capsulePartialToFirestoreData(updates: Partial<Capsule>): Record<string, unknown> {
-  const clean: Record<string, unknown> = {};
+function capsulePartialToFirestoreData(updates: Partial<Capsule>): Record<string, any> {
+  const clean: Record<string, any> = {};
   Object.entries(updates).forEach(([k, v]) => {
     if (k === 'category') {
       if (v === undefined || v === null || (typeof v === 'string' && v.trim() === '')) {
@@ -1356,7 +1356,7 @@ export default function IdeaCapsuleApp() {
           clean.updatedAt = now;
         }
         realIds.forEach((id) => {
-          batch.update(doc(db, 'capsules', id), { ...clean } as Record<string, unknown>);
+          batch.update(doc(db, 'capsules', id), clean as any);
         });
         await batch.commit();
       } catch (e) {
