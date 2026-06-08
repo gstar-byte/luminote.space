@@ -115,7 +115,7 @@ export async function scheduleCapsuleNotification(capsule: Capsule) {
       },
       trigger: {
         type: 'date',
-        date: reminderTime,
+        date: new Date(reminderTime),
       } as any,
       identifier: capsule.id,
     });

@@ -41,12 +41,12 @@ export default defineConfig(({mode}) => {
         },
         registerType: 'autoUpdate',
         includeAssets: [
-          'favicon-48-v16.png', 
-          'favicon-192-v16.png', 
-          'favicon-512-v16.png', 
-          'favicon-maskable-192-v16.png', 
-          'favicon-maskable-512-v16.png', 
-          'apple-touch-icon-v16.png', 
+          'favicon-48-v17.png', 
+          'favicon-192-v17.png', 
+          'favicon-512-v17.png', 
+          'favicon-maskable-192-v17.png', 
+          'favicon-maskable-512-v17.png', 
+          'apple-touch-icon-v17.png', 
           'app-logo.svg',
           'favicon.svg'
         ],
