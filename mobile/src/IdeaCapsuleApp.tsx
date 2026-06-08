@@ -67,6 +67,7 @@ import {
   Zap,
   Settings as SettingsIcon,
   Keyboard,
+  Clock,
 } from 'lucide-react-native';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import type { Capsule, FilterType, ReminderConfig, ReminderType, UserProfile, AppSettings } from './types';
@@ -3527,7 +3528,7 @@ export default function IdeaCapsuleApp() {
                     </View>
                   </ScrollView>
                 ) : (
-                  <View style={{ flex: 1, backgroundColor: '#FFFBE6' }}>
+                  <View style={{ flex: 1, backgroundColor: '#FFF', paddingBottom: 8 }}>
                     <CapsuleEditorMobile
                       key="markdown-editor"
                       content={editContent}
@@ -3539,20 +3540,18 @@ export default function IdeaCapsuleApp() {
                   </View>
                 )}
 
-                {/* 并排紧凑的 Category & Tags —— 紧靠在 Done 按钮之上，背景保持一致的淡黄色 */}
+                {/* 并排紧凑的 Category & Tags —— 紧靠在 Done 按钮之上，背景保持一致的纯白色以形成悬浮纸卡质感 */}
                 <View style={{
                   flexDirection: 'row',
                   paddingHorizontal: 16,
                   paddingVertical: 10,
-                  backgroundColor: '#FFFBE6',
-                  borderTopWidth: 1,
-                  borderTopColor: '#F0E6C0',
+                  backgroundColor: '#FFF',
                   gap: 12,
                 }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.editFieldLbl}>Category</Text>
+                    <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Category</Text>
                     <TextInput
-                      style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#FFF' }]}
+                      style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
                       placeholder="Category"
                       placeholderTextColor="#8E8E93"
                       value={editCategoryDraft}
@@ -3561,10 +3560,10 @@ export default function IdeaCapsuleApp() {
                     />
                   </View>
                   <View style={{ flex: 1.5 }}>
-                    <Text style={s.editFieldLbl}>Tags</Text>
+                    <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Tags (comma separated)</Text>
                     <TextInput
-                      style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#FFF' }]}
-                      placeholder="Tags (comma separated)"
+                      style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
+                      placeholder="e.g. design, slide, coding"
                       placeholderTextColor="#8E8E93"
                       value={editTagsDraft}
                       onChangeText={setEditTagsDraft}
@@ -3572,7 +3571,7 @@ export default function IdeaCapsuleApp() {
                     />
                   </View>
                 </View>
-                <View style={s.editFooter}>
+                <View style={[s.editFooter, { backgroundColor: '#FFF' }]}>
                   <TouchableOpacity
                     onPress={() => editingCapsule && pickImageForCapsule(editingCapsule)}
                     style={{ padding: 8 }}
@@ -3580,34 +3579,41 @@ export default function IdeaCapsuleApp() {
                     <ImageIcon size={22} color="#8E8E93" />
                   </TouchableOpacity>
 
-                  <View style={{ flex: 1, paddingHorizontal: 12 }}>
-                    <Text
-                      style={{
-                        fontSize: 10,
-                        fontWeight: '700',
-                        color: '#AEAEB2',
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      Created: {editingCapsule ? formatNoteDateTime(editingCapsule.createdAt) : ''}
-                    </Text>
-                    {editingCapsule?.reminder && editingCapsule.reminder.type !== 'none' && (
+                  <View style={{ flex: 1, paddingHorizontal: 12, gap: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Clock size={10} color="#AEAEB2" />
                       <Text
                         style={{
                           fontSize: 10,
-                          fontWeight: '800',
-                          color: '#007AFF',
+                          fontWeight: '700',
+                          color: '#AEAEB2',
                           textTransform: 'uppercase',
-                          marginTop: 1,
+                          letterSpacing: 0.3,
                         }}
                       >
-                        Reminder: {formatNoteDateTime(editingCapsule.reminder.date)} (
-                        {repeatLabelForMenu(editingCapsule.reminder)})
+                        Created: {editingCapsule ? formatNoteDateTime(editingCapsule.createdAt) : ''}
                       </Text>
+                    </View>
+                    {editingCapsule?.reminder && editingCapsule.reminder.type !== 'none' && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Bell size={10} color="#007AFF" strokeWidth={2.5} />
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            fontWeight: '800',
+                            color: '#007AFF',
+                            textTransform: 'uppercase',
+                            letterSpacing: 0.3,
+                          }}
+                        >
+                          Reminder: {formatNoteDateTime(editingCapsule.reminder.date)} (
+                          {repeatLabelForMenu(editingCapsule.reminder)})
+                        </Text>
+                      </View>
                     )}
                   </View>
 
-                  <TouchableOpacity style={s.doneBtnBlack} onPress={saveEdit}>
+                  <TouchableOpacity style={[s.doneBtnBlack, { borderRadius: 18, paddingHorizontal: 22 }]} onPress={saveEdit}>
                     <Text style={{ color: '#FFF', fontWeight: '800' }}>Done</Text>
                   </TouchableOpacity>
                 </View>
@@ -3806,6 +3812,7 @@ function CapsuleCard({
             style={[
               s.cardText,
               item.isTodo && item.completed ? s.cardTextDone : null,
+              { fontWeight: '700', fontSize: 14 },
             ]}
             numberOfLines={isGrid ? 3 : 1}
             ellipsizeMode="tail"
@@ -3813,6 +3820,46 @@ function CapsuleCard({
             {item.subject ? item.subject : plainTextFromContent(item.content)}
           </Text>
         </View>
+
+        {/* Category & Tags Row */}
+        {(item.category || (item.tags && item.tags.length > 0)) ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginTop: 5 }}>
+            {item.category ? (
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 }}>
+                  {item.category.toUpperCase()}
+                </Text>
+              </View>
+            ) : null}
+            {item.tags && item.tags.slice(0, 3).map((tag) => (
+              <View key={tag} style={{ backgroundColor: 'rgba(0,0,0,0.1)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: '900' }}>
+                  #{tag}
+                </Text>
+              </View>
+            ))}
+            {item.tags && item.tags.length > 3 ? (
+              <View style={{ backgroundColor: 'rgba(0,0,0,0.15)', paddingHorizontal: 4, paddingVertical: 1.5, borderRadius: 5 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 9, fontWeight: '900' }}>
+                  +{item.tags.length - 3}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* Date Row */}
+        {item.createdAt ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5, opacity: 0.65 }}>
+            <Clock size={9} color="#FFF" />
+            <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '700', letterSpacing: 0.3, textTransform: 'uppercase' }}>
+              {new Date(item.createdAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+              })}
+            </Text>
+          </View>
+        ) : null}
       </View>
       {/* Star & Pin badges — top-right, aligned with PC Web */}
       {(item.isStarred || item.isPinned) && (

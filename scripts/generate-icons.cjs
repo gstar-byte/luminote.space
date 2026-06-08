@@ -52,16 +52,16 @@ async function generate() {
   };
 
   // 1. 生成标准的透明底最大化图标 (PC端及移动端 standard favicon 使用)
-  await generatePng('favicon-48-v17.png', 48, 48, false);
-  await generatePng('favicon-192-v17.png', 192, 192, false);
-  await generatePng('favicon-512-v17.png', 512, 512, false);
+  await generatePng('favicon-48-v18.png', 48, 48, false);
+  await generatePng('favicon-192-v18.png', 192, 192, false);
+  await generatePng('favicon-512-v18.png', 512, 512, false);
 
   // 2. 生成专用的 Apple Touch Icon (为 iOS 手机添加主屏幕适配，留出一定呼吸安全区，并使用淡黄底)
-  await generatePng('apple-touch-icon-v17.png', 180, 140, false);
+  await generatePng('apple-touch-icon-v18.png', 180, 140, false);
 
   // 3. 生成专用的手机端白底安全区 PWA Maskable 图标 (防止手机圆形剪裁溢出)
-  await generatePng('favicon-maskable-192-v17.png', 192, 150, true);
-  await generatePng('favicon-maskable-512-v17.png', 512, 400, true);
+  await generatePng('favicon-maskable-192-v18.png', 192, 150, true);
+  await generatePng('favicon-maskable-512-v18.png', 512, 400, true);
 
   console.log('All icons generated successfully for dual profiles (PC transparent & Mobile solid-yellow)!');
 }
