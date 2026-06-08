@@ -244,9 +244,10 @@ const getHtmlTemplate = (placeholder: string) => `
     #editor {
       outline: none;
       min-height: calc(100% - 20px);
-      padding: 12px 16px 150px 16px;
+      padding: 8px 16px 150px 16px;
       background-image: linear-gradient(#F0E6C0 1px, transparent 1px);
       background-size: 100% 32px;
+      background-position-y: 40px;
       line-height: 32px;
       font-size: 15px;
       color: #2C2C2E;
@@ -361,6 +362,7 @@ const getHtmlTemplate = (placeholder: string) => `
 
   <script>
     const editor = document.getElementById('editor');
+    let hasBeenEdited = false;
 
     window.addEventListener('scroll', () => {
       if (window.scrollY !== 0) {
@@ -433,7 +435,10 @@ const getHtmlTemplate = (placeholder: string) => `
       }));
     }
 
-    editor.addEventListener('input', sendContent);
+    editor.addEventListener('input', () => {
+      hasBeenEdited = true;
+      sendContent();
+    });
     editor.addEventListener('keyup', updateToolbarState);
     editor.addEventListener('mouseup', updateToolbarState);
     editor.addEventListener('touchend', updateToolbarState);
@@ -528,6 +533,9 @@ const getHtmlTemplate = (placeholder: string) => `
 
     // 全局接口
     window.setContent = function(html) {
+      if (hasBeenEdited) {
+        return;
+      }
       editor.innerHTML = html;
       sendContent();
     };
@@ -966,7 +974,7 @@ export function CapsuleEditorMobile({
               key={i}
               style={{
                 position: 'absolute',
-                top: i * 32 + 32,
+                top: i * 32 + 40,
                 left: 0,
                 right: 0,
                 height: 1,
