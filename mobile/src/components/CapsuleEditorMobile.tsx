@@ -845,9 +845,9 @@ export function CapsuleEditorMobile({
 
       {/* 编辑体 */}
       {editMode === 'plain' ? (
-        <View style={{ flex: 1, justifyContent: 'space-between' }}>
+        <View style={{ flex: 1, position: 'relative' }}>
           <ScrollView
-            style={{ flex: 1 }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 42 }}
             contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}
             keyboardShouldPersistTaps="handled"
           >
@@ -942,7 +942,7 @@ export function CapsuleEditorMobile({
           </View>
         </View>
       ) : (
-        <View style={{ flex: 1, justifyContent: 'space-between' }}>
+        <View style={{ flex: 1, position: 'relative' }}>
           <View key="markdown-webview-container" style={styles.webviewContainer}>
             <WebView
               ref={webviewRef}
@@ -1058,7 +1058,11 @@ const styles = StyleSheet.create({
     }),
   },
   webviewContainer: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 42,
     backgroundColor: '#FFFBE6',
   },
   nativeToolbar: {

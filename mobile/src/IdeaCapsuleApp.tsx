@@ -651,11 +651,17 @@ export default function IdeaCapsuleApp() {
     }
   };
 
+  const [showSyncComplete, setShowSyncComplete] = useState(false);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setRefreshTitle('Syncing…');
     try {
       await syncCapsules();
+      setShowSyncComplete(true);
+      setTimeout(() => {
+        setShowSyncComplete(false);
+      }, 1500);
     } finally {
       setRefreshing(false);
       setRefreshTitle('Pull to sync');
@@ -2121,7 +2127,7 @@ export default function IdeaCapsuleApp() {
 
         <View style={{ flex: 1, position: 'relative' }}>
           {/* 下拉刷新文字提示：以绝对定位漂浮在最顶层，不遮挡手势，绝对防止滚动抖动 */}
-          {(mobilePullY > 0 || refreshing || isSyncing) && (
+          {(mobilePullY > 0 || refreshing || isSyncing || showSyncComplete) && (
             <View
               pointerEvents="none"
               style={{
@@ -2136,7 +2142,7 @@ export default function IdeaCapsuleApp() {
               }}
             >
               <Text style={{
-                color: '#8E8E93',
+                color: showSyncComplete ? '#34C759' : '#8E8E93',
                 fontSize: 10,
                 fontWeight: '900',
                 letterSpacing: 0.5,
@@ -2151,7 +2157,9 @@ export default function IdeaCapsuleApp() {
                 shadowRadius: 2,
                 elevation: 1,
               }}>
-                {refreshing || isSyncing
+                {showSyncComplete
+                  ? 'Sync complete'
+                  : refreshing || isSyncing
                   ? 'Syncing…'
                   : mobilePullY >= 75
                   ? 'Release to sync notes…'
@@ -2162,21 +2170,26 @@ export default function IdeaCapsuleApp() {
 
           <ScrollView
             style={s.scrollFill}
-            contentContainerStyle={[s.scrollBody, { paddingBottom: listBottomPad }]}
+            contentContainerStyle={[
+              s.scrollBody, 
+              { 
+                paddingBottom: listBottomPad, 
+                paddingTop: (refreshing || isSyncing || showSyncComplete) ? 42 : 0 
+              }
+            ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             removeClippedSubviews={Platform.OS === 'android'}
             onScroll={handleScroll}
             scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing || isSyncing}
-              onRefresh={onRefresh}
-              tintColor="#007AFF"
-              title={refreshTitle}
-              titleColor="#8E8E93"
-            />
-          }
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing || isSyncing}
+                onRefresh={onRefresh}
+                tintColor="transparent"
+                colors={['transparent']}
+              />
+            }
         >
           <View style={viewMode === 'grid' ? s.gridRow : s.listCol}>
             {filteredCapsules.map((item) => {
