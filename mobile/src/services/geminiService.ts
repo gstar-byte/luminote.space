@@ -21,10 +21,10 @@ export type CategorizeThoughtResult = {
 export async function categorizeThoughtFromAudio(
   audioBase64: string,
   mimeType: string,
-): Promise<CategorizeThoughtResult> {
+): Promise<CategorizeThoughtResult & { error?: string }> {
   const apiKey = getGeminiKey();
   if (!apiKey) {
-    return { refinedContent: '' };
+    return { refinedContent: '', error: 'NO_KEY' };
   }
 
   try {
@@ -75,7 +75,7 @@ export async function categorizeThoughtFromAudio(
     };
   } catch (error) {
     console.error('Failed to categorize from audio:', error);
-    return { refinedContent: '' };
+    return { refinedContent: '', error: 'API_ERROR' };
   }
 }
 

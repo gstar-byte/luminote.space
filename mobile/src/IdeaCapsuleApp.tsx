@@ -1501,11 +1501,18 @@ export default function IdeaCapsuleApp() {
       setIsProcessing(true);
       try {
         const meta = await categorizeThoughtFromAudio(base64, 'audio/mp4');
+        if (meta.error === 'NO_KEY') {
+          Alert.alert(
+            'Gemini API Key Missing',
+            'Please configure EXPO_PUBLIC_GEMINI_API_KEY in your mobile/.env file to enable voice transcription.'
+          );
+          return;
+        }
         const refined = meta.refinedContent?.trim() || '';
         if (!refined) {
           Alert.alert(
             'Voice',
-            'Could not transcribe audio. Check your network and Gemini API key.',
+            'Could not transcribe audio. Check your network connection and Gemini API key.',
           );
           return;
         }

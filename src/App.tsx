@@ -219,12 +219,7 @@ function hasFinishedOneShotReminder(c: Capsule): boolean {
 
 /** Toggling to-do done alone must not change list order (no updatedAt bump). */
 function shouldBumpUpdatedAt(updates: Partial<Capsule>): boolean {
-  const keys = (Object.keys(updates) as (keyof Capsule)[]).filter(
-    (k) => updates[k] !== undefined,
-  );
-  if (keys.length === 1 && keys[0] === 'completed') return false;
-  if (keys.length === 1 && keys[0] === 'isPinned') return false;
-  return true;
+  return 'subject' in updates || 'content' in updates || 'attachments' in updates;
 }
 
 /** Merge updates into a capsule and drop `category` / `tags` / `attachments` when cleared (Firestore deleteField). */
@@ -2116,11 +2111,6 @@ export default function App() {
   };
 
   const startListening = () => {
-    if (!hasPremiumAccess(user)) {
-       alert("Unlimited Voice Transcription requires Lumi Note Pro.");
-       setShowPremiumModal(true);
-       return;
-    }
     if (recognition.current) {
       try {
         transcriptRef.current = '';
@@ -3491,7 +3481,8 @@ export default function App() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98, y: 20 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="relative w-full max-w-3xl bg-white rounded-3xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden flex flex-col h-[90vh] md:h-[85vh]"
+                className="relative bg-white rounded-3xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden flex flex-col h-[90vh] md:h-[85vh]"
+                style={{ resize: 'horizontal', minWidth: '460px', maxWidth: '95vw', width: '768px' }}
               >
                 <div 
                   className="h-14 w-full flex items-center justify-between px-5 md:px-6 gap-3"
@@ -3968,11 +3959,6 @@ export default function App() {
                     title="Quick voice capture"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (!hasPremiumAccess(user)) {
-                        alert("Unlimited Voice Transcription requires Lumi Note Pro.");
-                        setShowPremiumModal(true);
-                        return;
-                      }
                       setQuickCaptureMode('voice');
                       startListening();
                     }}
