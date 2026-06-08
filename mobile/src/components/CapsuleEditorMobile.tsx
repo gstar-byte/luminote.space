@@ -239,6 +239,7 @@ const getHtmlTemplate = (placeholder: string) => `
       height: 100%;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
+      position: relative;
     }
     #editor {
       outline: none;
@@ -280,6 +281,12 @@ const getHtmlTemplate = (placeholder: string) => `
       border-radius: 8px;
       display: block;
       margin: 6px 0;
+      cursor: pointer;
+      transition: outline 0.1s;
+    }
+    img.selected-img {
+      outline: 3px solid #007AFF;
+      outline-offset: 2px;
     }
     #editor:empty::before {
       content: attr(placeholder);
@@ -287,11 +294,69 @@ const getHtmlTemplate = (placeholder: string) => `
       pointer-events: none;
       display: block;
     }
+
+    /* Image bubble menu style */
+    #image-bubble {
+      position: absolute;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: rgba(29, 29, 31, 0.95);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      z-index: 10000;
+    }
+    .bubble-divider {
+      width: 1px;
+      height: 14px;
+      background: rgba(255, 255, 255, 0.2);
+      margin: 0 2px;
+    }
+    .bubble-btn {
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.1s;
+    }
+    .bubble-btn:active {
+      background: rgba(255, 255, 255, 0.15);
+      color: #FFF;
+    }
+    .bubble-btn.del-btn {
+      background: #FF3B30;
+      color: #FFF;
+      padding: 4px 8px;
+    }
+    .bubble-btn.del-btn:active {
+      background: #FF453A;
+    }
   </style>
 </head>
 <body>
   <div id="editor-container">
     <div id="editor" contenteditable="true" placeholder="${placeholder}"></div>
+    
+    <!-- Image bubble markup -->
+    <div id="image-bubble">
+      <button type="button" id="btn-del-img" class="bubble-btn del-btn" title="Delete image">DEL</button>
+      <div class="bubble-divider"></div>
+      <button type="button" class="bubble-btn" data-width="25%">25%</button>
+      <button type="button" class="bubble-btn" data-width="50%">50%</button>
+      <button type="button" class="bubble-btn" data-width="75%">75%</button>
+      <button type="button" class="bubble-btn" data-width="100%">100%</button>
+    </div>
   </div>
 
   <script>
@@ -461,27 +526,6 @@ const getHtmlTemplate = (placeholder: string) => `
       }, 10);
     }
 
-    window.setContent = function(html) {
-      editor.innerHTML = html;
-      sendContent();
-    };
-
-    window.focusEditor = function() {
-      focusAtEnd();
-    };
-
-    window.insertImage = function(base64Url) {
-      execFormat('insertHTML', '<img src="' + base64Url + '" style="width: 100%; max-width: 100%; border-radius: 8px; display: block; margin: 8px 0;" />');
-    };
-  </script>
-</body>
-</html>mage'
-        }));
-      };
-      btnImage.addEventListener('touchstart', pickImgHandler, { passive: false });
-      btnImage.addEventListener('mousedown', pickImgHandler);
-    }
-
     // 全局接口
     window.setContent = function(html) {
       editor.innerHTML = html;
@@ -495,6 +539,96 @@ const getHtmlTemplate = (placeholder: string) => `
     window.insertImage = function(base64Url) {
       execFormat('insertHTML', '<img src="' + base64Url + '" style="width: 100%; max-width: 100%; border-radius: 8px; display: block; margin: 8px 0;" />');
     };
+
+    // 图片气泡与大小缩放功能对齐 Web 端
+    let activeImg = null;
+    const imageBubble = document.getElementById('image-bubble');
+
+    function hideImageBubble() {
+      if (activeImg) {
+        activeImg.classList.remove('selected-img');
+        activeImg = null;
+      }
+      imageBubble.style.display = 'none';
+    }
+
+    document.addEventListener('click', (e) => {
+      if (e.target.tagName === 'IMG' && editor.contains(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (activeImg) {
+          activeImg.classList.remove('selected-img');
+        }
+        
+        activeImg = e.target;
+        activeImg.classList.add('selected-img');
+        
+        const rect = activeImg.getBoundingClientRect();
+        const scrollContainer = document.getElementById('editor-container');
+        
+        imageBubble.style.display = 'flex';
+        const bubbleWidth = 220;
+        const left = rect.left + (rect.width - bubbleWidth) / 2;
+        const top = rect.top + scrollContainer.scrollTop - 38;
+        
+        imageBubble.style.left = Math.max(10, Math.min(window.innerWidth - bubbleWidth - 10, left)) + 'px';
+        imageBubble.style.top = Math.max(10, top) + 'px';
+        
+        const currentWidth = activeImg.style.width || '100%';
+        const buttons = imageBubble.querySelectorAll('.bubble-btn');
+        buttons.forEach(btn => {
+          if (btn.getAttribute('data-width') === currentWidth) {
+            btn.style.backgroundColor = '#007AFF';
+            btn.style.color = '#FFF';
+          } else {
+            btn.style.backgroundColor = 'transparent';
+            btn.style.color = 'rgba(255,255,255,0.8)';
+          }
+        });
+        return;
+      }
+
+      if (imageBubble.contains(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const width = e.target.getAttribute('data-width');
+        if (width && activeImg) {
+          activeImg.style.width = width;
+          sendContent();
+          
+          const buttons = imageBubble.querySelectorAll('.bubble-btn');
+          buttons.forEach(btn => {
+            if (btn.getAttribute('data-width') === width) {
+              btn.style.backgroundColor = '#007AFF';
+              btn.style.color = '#FFF';
+            } else {
+              btn.style.backgroundColor = 'transparent';
+              btn.style.color = 'rgba(255,255,255,0.8)';
+            }
+          });
+        }
+        return;
+      }
+
+      hideImageBubble();
+    });
+
+    const btnDelImg = document.getElementById('btn-del-img');
+    if (btnDelImg) {
+      btnDelImg.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (activeImg) {
+          activeImg.remove();
+          sendContent();
+          hideImageBubble();
+        }
+      });
+    }
+
+    document.getElementById('editor-container').addEventListener('scroll', hideImageBubble);
   </script>
 </body>
 </html>
@@ -847,7 +981,7 @@ export function CapsuleEditorMobile({
       {editMode === 'plain' ? (
         <View style={{ flex: 1, position: 'relative' }}>
           <ScrollView
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 42 }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}
             keyboardShouldPersistTaps="handled"
           >
@@ -871,75 +1005,6 @@ export function CapsuleEditorMobile({
               autoFocus={autoFocus}
             />
           </ScrollView>
-
-          {/* 原生快捷工具栏：锤子便签风格 */}
-          <View style={styles.nativeToolbar}>
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('heading')}
-              style={styles.nativeToolBtn}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.nativeToolText}>{getHeadingText()}</Text>
-            </TouchableOpacity>
-            
-            <View style={styles.nativeToolbarDivider} />
-
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('bold')}
-              style={styles.nativeToolBtn}
-              activeOpacity={0.7}
-            >
-              <Bold size={16} color="#4E4E50" strokeWidth={2.5} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('italic')}
-              style={styles.nativeToolBtn}
-              activeOpacity={0.7}
-            >
-              <Italic size={16} color="#4E4E50" strokeWidth={2.5} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('strike')}
-              style={styles.nativeToolBtn}
-              activeOpacity={0.7}
-            >
-              <Strikethrough size={16} color="#4E4E50" strokeWidth={2.5} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('quote')}
-              style={styles.nativeToolBtn}
-              activeOpacity={0.7}
-            >
-              <Quote size={16} color="#4E4E50" strokeWidth={2.5} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('bullet')}
-              style={styles.nativeToolBtn}
-              activeOpacity={0.7}
-            >
-              <List size={16} color="#4E4E50" strokeWidth={2.5} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('ordered')}
-              style={styles.nativeToolBtn}
-              activeOpacity={0.7}
-            >
-              <ListOrdered size={16} color="#4E4E50" strokeWidth={2.5} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('image')}
-              style={styles.nativeToolBtn}
-              activeOpacity={0.7}
-            >
-              <ImageIcon size={16} color="#4E4E50" strokeWidth={2.5} />
-            </TouchableOpacity>
-          </View>
         </View>
       ) : (
         <View style={{ flex: 1, position: 'relative' }}>
