@@ -3632,7 +3632,7 @@ export default function IdeaCapsuleApp() {
                     </View>
                   </ScrollView>
                 ) : (
-                  <View style={{ flex: 1, backgroundColor: '#FFFBE6', paddingBottom: 8 }}>
+                  <View style={{ flex: 1, backgroundColor: '#FFFBE6' }}>
                     <CapsuleEditorMobile
                       key="markdown-editor"
                       content={editContent}
@@ -4837,6 +4837,7 @@ const s = StyleSheet.create({
     width: '94%', 
     backgroundColor: '#FFF', 
     borderRadius: 24, 
+    flex: 1,
     maxHeight: '92%',
     minHeight: '75%',
     overflow: 'hidden',

@@ -363,6 +363,7 @@ const getHtmlTemplate = (placeholder: string) => `
   <script>
     const editor = document.getElementById('editor');
     let hasBeenEdited = false;
+    let isFirstLoad = true;
 
     window.addEventListener('scroll', () => {
       if (window.scrollY !== 0) {
@@ -533,11 +534,12 @@ const getHtmlTemplate = (placeholder: string) => `
 
     // 全局接口
     window.setContent = function(html) {
-      if (hasBeenEdited) {
+      if (!isFirstLoad && hasBeenEdited) {
         return;
       }
       editor.innerHTML = html;
       sendContent();
+      isFirstLoad = false;
     };
 
     window.focusEditor = function() {
@@ -676,6 +678,20 @@ export function CapsuleEditorMobile({
   const webviewRef = useRef<WebView>(null);
   const isWebViewLoaded = useRef(false);
   const lastHtmlSent = useRef('');
+
+  const latestContentRef = useRef<{ html: string; text: string } | null>(null);
+  const debounceTimeout = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+        if (latestContentRef.current) {
+          onChange(latestContentRef.current.html, latestContentRef.current.text);
+        }
+      }
+    };
+  }, [onChange]);
 
   useEffect(() => {
     setDraft(getInitialSource());
@@ -895,7 +911,14 @@ export function CapsuleEditorMobile({
       const msg = JSON.parse(event.nativeEvent.data);
       if (msg.type === 'change') {
         lastHtmlSent.current = msg.html;
-        onChange(msg.html, msg.text);
+        latestContentRef.current = { html: msg.html, text: msg.text };
+
+        if (debounceTimeout.current) {
+          clearTimeout(debounceTimeout.current);
+        }
+        debounceTimeout.current = setTimeout(() => {
+          onChange(msg.html, msg.text);
+        }, 250);
       }
       if (msg.type === 'state') {
         setWebviewState({
@@ -1112,7 +1135,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
     flex: 1, // Markdown 模式满高拉伸，Plain 模式由外部 ScrollView 承载
-    minHeight: 400,
     marginTop: 6,
     marginBottom: 8,
     marginHorizontal: 16, // 加上左右外边距以形成圆角便签纸卡悬浮的视觉对齐
