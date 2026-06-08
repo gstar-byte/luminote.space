@@ -198,7 +198,7 @@
   color: #007AFF;
 }
 
-/* ── Inline visual toolbar (top) ───────────────────────────────────────────── */
+/* ── Inline visual toolbar (top on desktop, bottom on mobile) ───────────────── */
 .capsule-editor-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -212,6 +212,26 @@
   position: sticky;
   top: 0;
   z-index: 5;
+}
+
+/* ── Mobile: move toolbar to the bottom ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .capsule-editor-toolbar {
+    order: 3;          /* push after content (default order: 0) */
+    position: sticky;
+    top: auto;
+    bottom: 0;
+    margin-bottom: 0 !important;
+    margin-top: 2px;
+    border-radius: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.07);
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    background: rgba(249, 249, 251, 0.97);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
 }
 
 .capsule-toolbar-divider {
