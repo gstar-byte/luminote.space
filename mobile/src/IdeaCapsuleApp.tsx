@@ -624,10 +624,17 @@ export default function IdeaCapsuleApp() {
   }, []);
 
   const [refreshTitle, setRefreshTitle] = useState('Pull to sync');
+  const [mobilePullY, setMobilePullY] = useState(0);
   const pullReachedRef = useRef(false);
 
   const handleScroll = (event: any) => {
     const y = event.nativeEvent.contentOffset.y;
+    if (y < 0) {
+      setMobilePullY(-y);
+    } else {
+      setMobilePullY(0);
+    }
+
     if (y < -75) {
       if (!pullReachedRef.current && !refreshing && !isSyncing) {
         pullReachedRef.current = true;
@@ -2112,14 +2119,55 @@ export default function IdeaCapsuleApp() {
           </View>
         </View>
 
-        <ScrollView
-          style={s.scrollFill}
-          contentContainerStyle={[s.scrollBody, { paddingBottom: listBottomPad }]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          removeClippedSubviews={Platform.OS === 'android'}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
+        <View style={{ flex: 1, position: 'relative' }}>
+          {/* 下拉刷新文字提示：以绝对定位漂浮在最顶层，不遮挡手势，绝对防止滚动抖动 */}
+          {(mobilePullY > 0 || refreshing || isSyncing) && (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                top: 10,
+                left: 0,
+                right: 0,
+                height: 40,
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 999,
+              }}
+            >
+              <Text style={{
+                color: '#8E8E93',
+                fontSize: 10,
+                fontWeight: '900',
+                letterSpacing: 0.5,
+                textTransform: 'uppercase',
+                backgroundColor: '#FFFBE6', // 保持和纸张背景底色一致
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 4,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 2,
+                elevation: 1,
+              }}>
+                {refreshing || isSyncing
+                  ? 'Syncing…'
+                  : mobilePullY >= 75
+                  ? 'Release to sync notes…'
+                  : 'Pull down to sync…'}
+              </Text>
+            </View>
+          )}
+
+          <ScrollView
+            style={s.scrollFill}
+            contentContainerStyle={[s.scrollBody, { paddingBottom: listBottomPad }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            removeClippedSubviews={Platform.OS === 'android'}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
               refreshing={refreshing || isSyncing}
@@ -2350,6 +2398,7 @@ export default function IdeaCapsuleApp() {
             )}
           </View>
         </ScrollView>
+      </View>
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
@@ -3570,7 +3619,7 @@ export default function IdeaCapsuleApp() {
                     </View>
                   </ScrollView>
                 ) : (
-                  <View style={{ flex: 1, backgroundColor: '#FFF', paddingBottom: 8 }}>
+                  <View style={{ flex: 1, backgroundColor: '#FFFBE6', paddingBottom: 8 }}>
                     <CapsuleEditorMobile
                       key="markdown-editor"
                       content={editContent}

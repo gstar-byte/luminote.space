@@ -217,7 +217,6 @@ function markdownToHtml(md: string): string {
 // -----------------------------------------------------------------------------
 // HTML Template for WebView-in-Page contenteditable (WYSIWYG Mode)
 // -----------------------------------------------------------------------------
-
 const getHtmlTemplate = (placeholder: string) => `
 <!DOCTYPE html>
 <html>
@@ -236,61 +235,7 @@ const getHtmlTemplate = (placeholder: string) => `
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     
-    /* 固定的网页工具栏：与 Web 端设计对齐，移到屏幕底部（键盘上方） */
-    #toolbar {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 42px;
-      background-color: #FFFCEB;
-      border-top: 1px solid #F0E6C0;
-      display: flex;
-      align-items: center;
-      padding: 0 8px;
-      z-index: 1000;
-      overflow-x: auto;
-      white-space: nowrap;
-      -webkit-overflow-scrolling: touch;
-    }
-    #toolbar::-webkit-scrollbar {
-      display: none;
-    }
-    .tool-btn {
-      min-width: 34px;
-      height: 34px;
-      border-radius: 6px;
-      border: none;
-      background: transparent;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      margin-right: 4px;
-      cursor: pointer;
-      color: #4E4E50;
-      padding: 0 6px;
-    }
-    .tool-btn:active {
-      background-color: rgba(0, 122, 255, 0.08);
-    }
-    .tool-btn.active {
-      background-color: rgba(0, 122, 255, 0.08);
-      color: #007AFF;
-    }
-    .tool-btn svg {
-      width: 16px;
-      height: 16px;
-      stroke: currentColor;
-      fill: none;
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    /* 滚动容器 */
     #editor-container {
-      padding-top: 0px;
-      padding-bottom: 42px; /* 给底部固定工具栏预留空间 */
       height: 100%;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
@@ -298,7 +243,7 @@ const getHtmlTemplate = (placeholder: string) => `
     #editor {
       outline: none;
       min-height: calc(100% - 20px);
-      padding: 12px 16px 150px 16px; /* 底部预留足够滑动空间，方便键盘弹出后输入 */
+      padding: 12px 16px 150px 16px;
       background-image: linear-gradient(#F0E6C0 1px, transparent 1px);
       background-size: 100% 32px;
       line-height: 32px;
@@ -345,37 +290,6 @@ const getHtmlTemplate = (placeholder: string) => `
   </style>
 </head>
 <body>
-  <!-- 内部网页工具栏，点击后不丢失编辑区焦点 -->
-  <div id="toolbar">
-    <!-- H 按钮：无弹出，单键循环修改标题，解决溢出截断问题 -->
-    <button type="button" class="tool-btn" id="btn-heading" style="font-weight: 800; font-size: 13px; width: 38px;">
-      H
-    </button>
-    <div style="width: 1px; height: 18px; background-color: rgba(0,0,0,0.1); margin: 0 6px;" />
-    
-    <button type="button" class="tool-btn" id="btn-bold" title="Bold">
-      <svg viewBox="0 0 24 24"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
-    </button>
-    <button type="button" class="tool-btn" id="btn-italic" title="Italic">
-      <svg viewBox="0 0 24 24"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
-    </button>
-    <button type="button" class="tool-btn" id="btn-strike" title="Strikethrough">
-      <svg viewBox="0 0 24 24"><path d="M16 4H9a4 4 0 0 0-4 4v1a4 4 0 0 0 4 4h6a4 4 0 0 1 4 4v1a4 4 0 0 1-4 4H6"/><line x1="4" y1="12" x2="20" y2="12"/></svg>
-    </button>
-    <button type="button" class="tool-btn" id="btn-quote" title="Quote">
-      <svg viewBox="0 0 24 24"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.97v6c0 1.25.75 2 2 2h3.777C7.777 15.5 7 17.5 3 19v2zM14 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-4c-1.25 0-2 .75-2 1.97v6c0 1.25.75 2 2 2h3.777C18.777 15.5 18 17.5 14 19v2z"/></svg>
-    </button>
-    <button type="button" class="tool-btn" id="btn-bullet" title="Bullet List">
-      <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-    </button>
-    <button type="button" class="tool-btn" id="btn-ordered" title="Ordered List">
-      <svg viewBox="0 0 24 24"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6H2v4h2M4 18H2M2 14h2v4"/></svg>
-    </button>
-    <button type="button" class="tool-btn" id="btn-image" title="Insert Image">
-      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-    </button>
-  </div>
-
   <div id="editor-container">
     <div id="editor" contenteditable="true" placeholder="${placeholder}"></div>
   </div>
@@ -383,14 +297,12 @@ const getHtmlTemplate = (placeholder: string) => `
   <script>
     const editor = document.getElementById('editor');
 
-    // 彻底防止 iOS/Android WebView 键盘弹出时将 body 顶起，确保 fixed 工具栏永远贴底
     window.addEventListener('scroll', () => {
       if (window.scrollY !== 0) {
         window.scrollTo(0, 0);
       }
     });
 
-    // 焦点回归末尾
     function focusAtEnd() {
       editor.focus();
       const range = document.createRange();
@@ -401,7 +313,6 @@ const getHtmlTemplate = (placeholder: string) => `
       sel.addRange(range);
     }
 
-    // 获取当前光标所在的块级父节点
     function getActiveBlockNode() {
       const selection = window.getSelection();
       if (!selection.rangeCount) return null;
@@ -419,15 +330,8 @@ const getHtmlTemplate = (placeholder: string) => `
       return null;
     }
 
-    // 格式状态监听，高亮网页工具栏
+    // 将格式和 Heading 状态打包发送回 React Native
     function updateToolbarState() {
-      document.getElementById('btn-bold').classList.toggle('active', document.queryCommandState('bold'));
-      document.getElementById('btn-italic').classList.toggle('active', document.queryCommandState('italic'));
-      document.getElementById('btn-strike').classList.toggle('active', document.queryCommandState('strikeThrough'));
-      document.getElementById('btn-bullet').classList.toggle('active', document.queryCommandState('insertUnorderedList'));
-      document.getElementById('btn-ordered').classList.toggle('active', document.queryCommandState('insertOrderedList'));
-
-      // 检查标题级别以更新 H 按钮上的文字
       let blockNode = getActiveBlockNode();
       let heading = '';
       if (blockNode) {
@@ -437,25 +341,25 @@ const getHtmlTemplate = (placeholder: string) => `
         }
       }
       
-      const btnHeading = document.getElementById('btn-heading');
-      if (heading) {
-        btnHeading.innerText = heading.toUpperCase();
-        btnHeading.classList.add('active');
-      } else {
-        btnHeading.innerText = 'H';
-        btnHeading.classList.remove('active');
-      }
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'state',
+        heading: heading,
+        bold: document.queryCommandState('bold'),
+        italic: document.queryCommandState('italic'),
+        strike: document.queryCommandState('strikeThrough'),
+        bullet: document.queryCommandState('insertUnorderedList'),
+        ordered: document.queryCommandState('insertOrderedList')
+      }));
     }
 
-    // 执行富文本格式化指令
     function execFormat(command, value = null) {
       document.execCommand(command, false, value);
       sendContent();
       updateToolbarState();
-      focusAtEnd();
     }
 
-    // 内容发生改变，发回 React Native 主体
+    window.execFormat = execFormat;
+
     function sendContent() {
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'change',
@@ -465,35 +369,31 @@ const getHtmlTemplate = (placeholder: string) => `
     }
 
     editor.addEventListener('input', sendContent);
-    
-    // 输入事件和按键监听
     editor.addEventListener('keyup', updateToolbarState);
     editor.addEventListener('mouseup', updateToolbarState);
     editor.addEventListener('touchend', updateToolbarState);
     editor.addEventListener('focus', updateToolbarState);
 
-    // 网页工具栏各按钮点击事件处理，防止丢失焦点
-    const bindBtn = (id, command, value = null) => {
-      const el = document.getElementById(id);
-      if (el) {
-        const handler = (e) => {
-          e.preventDefault();
-          execFormat(command, value);
-        };
-        el.addEventListener('touchstart', handler, { passive: false });
-        el.addEventListener('mousedown', handler);
+    // 单键循环标题切换 API，供 RN 端调用
+    window.applyHeadingToggle = function() {
+      let blockNode = getActiveBlockNode();
+      let currentTag = 'p';
+      if (blockNode) {
+        const tagName = blockNode.nodeName.toUpperCase();
+        if (['H1', 'H2', 'H3'].includes(tagName)) {
+          currentTag = tagName.toLowerCase();
+        }
       }
+      
+      let nextTag = 'h1';
+      if (currentTag === 'h1') nextTag = 'h2';
+      else if (currentTag === 'h2') nextTag = 'h3';
+      else if (currentTag === 'h3') nextTag = 'p';
+      
+      applyHeading(nextTag);
     };
 
-    bindBtn('btn-bold', 'bold');
-    bindBtn('btn-italic', 'italic');
-    bindBtn('btn-strike', 'strikeThrough');
-    bindBtn('btn-quote', 'formatBlock', '<blockquote>');
-    bindBtn('btn-bullet', 'insertUnorderedList');
-    bindBtn('btn-ordered', 'insertOrderedList');
-
     function applyHeading(tag) {
-      // 黄金延时机制：将选区修改放入 setTimeout 队列，避开物理事件竞争，确保 Selection 光标稳定
       setTimeout(() => {
         try {
           const selection = window.getSelection();
@@ -507,7 +407,6 @@ const getHtmlTemplate = (placeholder: string) => `
           
           let newTagName = tag.toLowerCase();
           
-          // 如果 blockNode 是直接挂在 editor 下的裸文本节点（nodeType === 3）
           if (blockNode.nodeType === 3) {
             const newBlock = document.createElement(newTagName);
             const parent = blockNode.parentNode;
@@ -527,10 +426,9 @@ const getHtmlTemplate = (placeholder: string) => `
             return;
           }
           
-          // 元素节点的标签替换逻辑
           let oldTagName = blockNode.nodeName.toLowerCase();
           if (oldTagName === newTagName && newTagName !== 'p') {
-            newTagName = 'p'; // 已是此标题，则退回为普通段落
+            newTagName = 'p';
           }
           
           if (oldTagName === newTagName) return;
@@ -557,43 +455,27 @@ const getHtmlTemplate = (placeholder: string) => `
             updateToolbarState();
           }
         } catch (err) {
-          console.warn('Heading format error, falling back to basic command:', err);
+          console.warn('Heading format error:', err);
           execFormat('formatBlock', tag === 'p' ? '<p>' : '<' + tag + '>');
         }
       }, 10);
     }
 
-    const btnHeading = document.getElementById('btn-heading');
-    if (btnHeading) {
-      const headingHandler = (e) => {
-        e.preventDefault();
-        let blockNode = getActiveBlockNode();
-        let currentTag = 'p';
-        if (blockNode) {
-          const tagName = blockNode.nodeName.toUpperCase();
-          if (['H1', 'H2', 'H3'].includes(tagName)) {
-            currentTag = tagName.toLowerCase();
-          }
-        }
-        
-        let nextTag = 'h1';
-        if (currentTag === 'h1') nextTag = 'h2';
-        else if (currentTag === 'h2') nextTag = 'h3';
-        else if (currentTag === 'h3') nextTag = 'p';
-        
-        applyHeading(nextTag);
-      };
-      btnHeading.addEventListener('touchstart', headingHandler, { passive: false });
-      btnHeading.addEventListener('mousedown', headingHandler);
-    }
+    window.setContent = function(html) {
+      editor.innerHTML = html;
+      sendContent();
+    };
 
-    // 选取图片发回 RN
-    const btnImage = document.getElementById('btn-image');
-    if (btnImage) {
-      const pickImgHandler = (e) => {
-        e.preventDefault();
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'pickImage'
+    window.focusEditor = function() {
+      focusAtEnd();
+    };
+
+    window.insertImage = function(base64Url) {
+      execFormat('insertHTML', '<img src="' + base64Url + '" style="width: 100%; max-width: 100%; border-radius: 8px; display: block; margin: 8px 0;" />');
+    };
+  </script>
+</body>
+</html>mage'
         }));
       };
       btnImage.addEventListener('touchstart', pickImgHandler, { passive: false });
@@ -639,6 +521,14 @@ export function CapsuleEditorMobile({
 
   const [draft, setDraft] = useState(getInitialSource());
   const [selection, setSelection] = useState({ start: 0, end: 0 });
+  const [webviewState, setWebviewState] = useState({
+    heading: '',
+    bold: false,
+    italic: false,
+    strike: false,
+    bullet: false,
+    ordered: false,
+  });
 
   const inputRef = useRef<TextInput>(null);
   const webviewRef = useRef<WebView>(null);
@@ -663,6 +553,51 @@ export function CapsuleEditorMobile({
       inputRef.current?.focus();
       setSelection({ start: newSelectionStart, end: targetEnd });
     }, 50);
+  };
+
+  const handleNativeToolbarPress = async (type: 'bold' | 'italic' | 'strike' | 'quote' | 'bullet' | 'ordered' | 'image' | 'heading') => {
+    if (editMode === 'plain') {
+      if (type === 'heading') {
+        toggleHeadingMarkdown();
+      } else {
+        await insertMarkdown(type);
+      }
+    } else {
+      if (!isWebViewLoaded.current || !webviewRef.current) return;
+      
+      if (type === 'heading') {
+        webviewRef.current.injectJavaScript(`window.applyHeadingToggle();`);
+      } else if (type === 'bold') {
+        webviewRef.current.injectJavaScript(`execFormat('bold');`);
+      } else if (type === 'italic') {
+        webviewRef.current.injectJavaScript(`execFormat('italic');`);
+      } else if (type === 'strike') {
+        webviewRef.current.injectJavaScript(`execFormat('strikeThrough');`);
+      } else if (type === 'quote') {
+        webviewRef.current.injectJavaScript(`execFormat('formatBlock', '<blockquote>');`);
+      } else if (type === 'bullet') {
+        webviewRef.current.injectJavaScript(`execFormat('insertUnorderedList');`);
+      } else if (type === 'ordered') {
+        webviewRef.current.injectJavaScript(`execFormat('insertOrderedList');`);
+      } else if (type === 'image') {
+        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permissionResult.granted) {
+          Alert.alert('Permission required', 'We need access to your photos to insert images.');
+          return;
+        }
+        const pickerResult = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          quality: 0.8,
+          base64: true,
+        });
+        if (pickerResult.canceled || !pickerResult.assets?.[0]?.uri) {
+          return;
+        }
+        const base64Url = `data:image/jpeg;base64,${pickerResult.assets[0].base64 || ''}`;
+        webviewRef.current.injectJavaScript(`window.insertImage(${JSON.stringify(base64Url)});`);
+      }
+    }
   };
 
   const toggleHeadingMarkdown = () => {
@@ -820,6 +755,16 @@ export function CapsuleEditorMobile({
         lastHtmlSent.current = msg.html;
         onChange(msg.html, msg.text);
       }
+      if (msg.type === 'state') {
+        setWebviewState({
+          heading: msg.heading || '',
+          bold: !!msg.bold,
+          italic: !!msg.italic,
+          strike: !!msg.strike,
+          bullet: !!msg.bullet,
+          ordered: !!msg.ordered,
+        });
+      }
       // 触发相册选图
       if (msg.type === 'pickImage') {
         void (async () => {
@@ -858,6 +803,23 @@ export function CapsuleEditorMobile({
         window.focusEditor();
       }
     `);
+  };
+
+  const isBtnActive = (type: string) => {
+    if (editMode === 'plain') return false;
+    if (type === 'bold') return webviewState.bold;
+    if (type === 'italic') return webviewState.italic;
+    if (type === 'strike') return webviewState.strike;
+    if (type === 'bullet') return webviewState.bullet;
+    if (type === 'ordered') return webviewState.ordered;
+    return false;
+  };
+
+  const getHeadingText = () => {
+    if (editMode === 'plain') {
+      return getHeadingButtonText();
+    }
+    return webviewState.heading ? webviewState.heading.toUpperCase() : 'H';
   };
 
   return (
@@ -913,17 +875,17 @@ export function CapsuleEditorMobile({
           {/* 原生快捷工具栏：锤子便签风格 */}
           <View style={styles.nativeToolbar}>
             <TouchableOpacity
-              onPress={() => toggleHeadingMarkdown()}
+              onPress={() => handleNativeToolbarPress('heading')}
               style={styles.nativeToolBtn}
               activeOpacity={0.7}
             >
-              <Text style={styles.nativeToolText}>{getHeadingButtonText()}</Text>
+              <Text style={styles.nativeToolText}>{getHeadingText()}</Text>
             </TouchableOpacity>
             
             <View style={styles.nativeToolbarDivider} />
 
             <TouchableOpacity
-              onPress={() => insertMarkdown('bold')}
+              onPress={() => handleNativeToolbarPress('bold')}
               style={styles.nativeToolBtn}
               activeOpacity={0.7}
             >
@@ -931,7 +893,7 @@ export function CapsuleEditorMobile({
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => insertMarkdown('italic')}
+              onPress={() => handleNativeToolbarPress('italic')}
               style={styles.nativeToolBtn}
               activeOpacity={0.7}
             >
@@ -939,7 +901,7 @@ export function CapsuleEditorMobile({
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => insertMarkdown('strike')}
+              onPress={() => handleNativeToolbarPress('strike')}
               style={styles.nativeToolBtn}
               activeOpacity={0.7}
             >
@@ -947,7 +909,7 @@ export function CapsuleEditorMobile({
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => insertMarkdown('quote')}
+              onPress={() => handleNativeToolbarPress('quote')}
               style={styles.nativeToolBtn}
               activeOpacity={0.7}
             >
@@ -955,7 +917,7 @@ export function CapsuleEditorMobile({
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => insertMarkdown('bullet')}
+              onPress={() => handleNativeToolbarPress('bullet')}
               style={styles.nativeToolBtn}
               activeOpacity={0.7}
             >
@@ -963,7 +925,7 @@ export function CapsuleEditorMobile({
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => insertMarkdown('ordered')}
+              onPress={() => handleNativeToolbarPress('ordered')}
               style={styles.nativeToolBtn}
               activeOpacity={0.7}
             >
@@ -971,7 +933,7 @@ export function CapsuleEditorMobile({
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => insertMarkdown('image')}
+              onPress={() => handleNativeToolbarPress('image')}
               style={styles.nativeToolBtn}
               activeOpacity={0.7}
             >
@@ -980,17 +942,90 @@ export function CapsuleEditorMobile({
           </View>
         </View>
       ) : (
-        <View key="markdown-webview-container" style={styles.webviewContainer}>
-          <WebView
-            ref={webviewRef}
-            source={{ html: getHtmlTemplate(placeholder) }}
-            onMessage={handleMessage}
-            onLoadEnd={handleWebViewLoadEnd}
-            style={{ backgroundColor: '#FFFBE6', flex: 1 }}
-            originWhitelist={['*']}
-            keyboardDisplayRequiresUserAction={false}
-            scrollEnabled={true} // 启用 WebView 原生滚动
-          />
+        <View style={{ flex: 1, justifyContent: 'space-between' }}>
+          <View key="markdown-webview-container" style={styles.webviewContainer}>
+            <WebView
+              ref={webviewRef}
+              source={{ html: getHtmlTemplate(placeholder) }}
+              onMessage={handleMessage}
+              onLoadEnd={handleWebViewLoadEnd}
+              style={{ backgroundColor: '#FFFBE6', flex: 1 }}
+              originWhitelist={['*']}
+              keyboardDisplayRequiresUserAction={false}
+              scrollEnabled={true}
+            />
+          </View>
+
+          {/* 原生快捷工具栏：在 Markdown 模式下也展现，解决被键盘遮挡的 WebView 工具栏问题 */}
+          <View style={styles.nativeToolbar}>
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('heading')}
+              style={[styles.nativeToolBtn, (webviewState.heading !== '') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.nativeToolText, { color: (webviewState.heading !== '') ? '#007AFF' : '#4E4E50' }]}>
+                {getHeadingText()}
+              </Text>
+            </TouchableOpacity>
+            
+            <View style={styles.nativeToolbarDivider} />
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('bold')}
+              style={[styles.nativeToolBtn, isBtnActive('bold') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+              activeOpacity={0.7}
+            >
+              <Bold size={16} color={isBtnActive('bold') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('italic')}
+              style={[styles.nativeToolBtn, isBtnActive('italic') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+              activeOpacity={0.7}
+            >
+              <Italic size={16} color={isBtnActive('italic') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('strike')}
+              style={[styles.nativeToolBtn, isBtnActive('strike') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+              activeOpacity={0.7}
+            >
+              <Strikethrough size={16} color={isBtnActive('strike') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('quote')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <Quote size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('bullet')}
+              style={[styles.nativeToolBtn, isBtnActive('bullet') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+              activeOpacity={0.7}
+            >
+              <List size={16} color={isBtnActive('bullet') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('ordered')}
+              style={[styles.nativeToolBtn, isBtnActive('ordered') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+              activeOpacity={0.7}
+            >
+              <ListOrdered size={16} color={isBtnActive('ordered') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleNativeToolbarPress('image')}
+              style={styles.nativeToolBtn}
+              activeOpacity={0.7}
+            >
+              <ImageIcon size={16} color="#4E4E50" strokeWidth={2.5} />
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </View>

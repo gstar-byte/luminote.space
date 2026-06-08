@@ -3375,10 +3375,15 @@ export default function App() {
           {pullY > 0 && (
             <div 
               style={{ height: `${pullY}px` }} 
-              className="w-full flex items-center justify-center overflow-hidden transition-all duration-75 text-xs text-[#8E8E93] dark:text-[#AEAEB2] font-bold gap-2 select-none"
+              className="w-full overflow-hidden transition-all duration-75 select-none relative"
             >
-              <RefreshCw size={14} className={pullY >= 50 ? "animate-spin text-[#007AFF]" : "text-[#8E8E93]"} />
-              <span>{pullY >= 50 ? "Release to sync notes..." : "Pull down to sync..."}</span>
+              <div 
+                style={{ height: '50px', position: 'absolute', bottom: 0, left: 0, right: 0 }}
+                className="w-full flex items-center justify-center text-xs text-[#8E8E93] dark:text-[#AEAEB2] font-bold gap-2"
+              >
+                <RefreshCw size={14} className={pullY >= 50 ? "animate-spin text-[#007AFF]" : "text-[#8E8E93]"} />
+                <span>{pullY >= 50 ? "Release to sync notes..." : "Pull down to sync..."}</span>
+              </div>
             </div>
           )}
           <div className={`w-full pb-36 transition-all duration-300 ${
