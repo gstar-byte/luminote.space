@@ -1139,6 +1139,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFBE6',
   },
   nativeToolbar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     height: 42,
     backgroundColor: '#FFFCEB',
     borderTopWidth: 1,
