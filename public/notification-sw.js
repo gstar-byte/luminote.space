@@ -19,8 +19,8 @@ async function scheduleReminder(reminder) {
   const options = {
     body: reminder.body || '',
     tag: reminder.id,
-    icon: '/favicon-192-v17.png',
-    badge: '/favicon-48-v17.png',
+    icon: '/favicon-192-v18.png',
+    badge: '/favicon-48-v18.png',
     data: { id: reminder.id },
     requireInteraction: true // Keep the notification visible until user clicks it
   };

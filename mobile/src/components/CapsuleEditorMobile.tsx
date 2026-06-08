@@ -945,6 +945,7 @@ const styles = StyleSheet.create({
     minHeight: 400,
     marginTop: 6,
     marginBottom: 8,
+    marginHorizontal: 16, // 加上左右外边距以形成圆角便签纸卡悬浮的视觉对齐
   },
   webInput: {
     minHeight: 750, // 原生 Plain 输入框高度调大 30%
