@@ -1015,7 +1015,7 @@ export function CapsuleEditorMobile({
           </ScrollView>
         </View>
       ) : (
-        <View style={{ flex: 1, position: 'relative' }}>
+        <>
           <View key="markdown-webview-container" style={styles.webviewContainer}>
             <WebView
               ref={webviewRef}
@@ -1099,7 +1099,7 @@ export function CapsuleEditorMobile({
               <ImageIcon size={16} color="#4E4E50" strokeWidth={2.5} />
             </TouchableOpacity>
           </View>
-        </View>
+        </>
       )}
     </View>
   );

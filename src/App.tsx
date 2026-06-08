@@ -3498,7 +3498,7 @@ export default function App() {
                 exit={{ opacity: 0, scale: 0.98, y: 20 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                 className="relative bg-white rounded-3xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden flex flex-col h-[90vh] md:h-[85vh]"
-                style={{ resize: 'horizontal', minWidth: '460px', maxWidth: '95vw', width: '768px' }}
+                style={{ resize: isMobile ? 'none' : 'horizontal', minWidth: isMobile ? 'auto' : '460px', maxWidth: '95vw', width: isMobile ? '100%' : '768px' }}
               >
                 <div 
                   className="h-14 w-full flex items-center justify-between px-5 md:px-6 gap-3"
