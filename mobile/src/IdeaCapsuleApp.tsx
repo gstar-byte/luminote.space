@@ -4036,10 +4036,10 @@ function CapsuleCard({
         </View>
 
         {/* 底部：一整行，包含左下角待办和底部的 category、tag、时间 */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 'auto', width: '100%', minHeight: 32 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'flex-start', marginTop: 'auto', width: '100%', minHeight: 32, paddingRight: 32 }}>
           {/* 左下角待办方块 */}
           {item.isTodo ? (
-            <View style={{ paddingBottom: 2 }}>
+            <View style={{ paddingBottom: 2, marginRight: 8 }}>
               <TouchableOpacity
                 style={[s.checkOuter, item.completed && s.checkOuterDone]}
                 onPress={(e) => {
@@ -4050,13 +4050,13 @@ function CapsuleCard({
                 {item.completed ? <Check size={11} color="rgba(0,0,0,0.62)" strokeWidth={3} /> : null}
               </TouchableOpacity>
             </View>
-          ) : <View style={{ width: 0 }} />}
+          ) : null}
 
-          {/* 右下角/底部：Category, Tag 以及创建时间 */}
-          <View style={{ alignItems: 'flex-end', gap: 3, flex: 1, marginLeft: item.isTodo ? 8 : 0 }}>
+          {/* 待办方块右边：Category, Tag 以及创建时间 */}
+          <View style={{ alignItems: 'flex-start', gap: 3, flex: 1 }}>
             {/* Category & Tag Row */}
             {(item.category || currentTag) ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-start' }}>
                 {item.category ? (
                   <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
                     <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 8, fontWeight: '900', letterSpacing: 0.2 }}>
@@ -5448,7 +5448,7 @@ const s = StyleSheet.create({
   },
   toastWrapper: {
     position: 'absolute',
-    bottom: 90,
+    top: 100,
     left: 0,
     right: 0,
     alignItems: 'center',
