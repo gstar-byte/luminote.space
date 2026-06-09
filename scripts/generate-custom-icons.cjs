@@ -24,6 +24,7 @@ async function main() {
   const makeTransparentIcon = async (destDir, filename, size) => {
     const outputPath = path.join(destDir, filename);
     await sharp(sourcePath)
+      .trim() // 物理切除源图外部多余的透明留边，压榨最大显示空间
       .resize(size, size, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
       .png({ palette: true, quality: 90, compressionLevel: 9 })
       .toFile(outputPath);
@@ -36,6 +37,7 @@ async function main() {
     
     // 缩放图标
     const resizedIconBuf = await sharp(sourcePath)
+      .trim() // 物理切除源图外部多余的透明留边，保证高占比
       .resize(iconSize, iconSize, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
       .toBuffer();
 
