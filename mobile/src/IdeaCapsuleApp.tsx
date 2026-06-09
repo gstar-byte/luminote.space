@@ -385,6 +385,30 @@ export default function IdeaCapsuleApp() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
 
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'info' | 'success' | 'error'>('info');
+  const toastTimerRef = useRef<any>(null);
+
+  const showToast = useCallback((msg: string, type: 'info' | 'success' | 'error' = 'info') => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setToastMessage(msg);
+    setToastType(type);
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimerRef.current = null;
+    }, 3000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
@@ -656,9 +680,11 @@ export default function IdeaCapsuleApp() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setRefreshTitle('Syncing…');
+    showToast('Syncing notes...', 'info');
     try {
       await syncCapsules();
       setShowSyncComplete(true);
+      showToast('Sync complete!', 'success');
       setTimeout(() => {
         setShowSyncComplete(false);
       }, 1500);
@@ -667,7 +693,7 @@ export default function IdeaCapsuleApp() {
       setRefreshTitle('Pull to sync');
       pullReachedRef.current = false;
     }
-  }, [syncCapsules]);
+  }, [syncCapsules, showToast]);
 
   const [editingCapsule, setEditingCapsule] = useState<Capsule | null>(null);
   const [editContent, setEditContent] = useState('');
@@ -2336,9 +2362,11 @@ export default function IdeaCapsuleApp() {
                   if (direction === 'left') {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     void updateCapsule(item.id, { isArchived: false });
+                    showToast('Note restored!', 'success');
                   } else {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                     void updateCapsule(item.id, { isDeleted: true });
+                    showToast('Note deleted!', 'success');
                   }
                   return;
                 }
@@ -2347,6 +2375,7 @@ export default function IdeaCapsuleApp() {
                   if (direction === 'left') {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     void updateCapsule(item.id, { isDeleted: false });
+                    showToast('Note restored!', 'success');
                   } else {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                     Alert.alert(
@@ -2359,6 +2388,7 @@ export default function IdeaCapsuleApp() {
                           style: 'destructive',
                           onPress: () => {
                             void removeCapsuleForever(item.id);
+                            showToast('Note deleted forever!', 'success');
                           },
                         },
                       ],
@@ -2371,20 +2401,27 @@ export default function IdeaCapsuleApp() {
                   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                   // 右滑状态机递进：Note -> Active Todo -> Completed Todo -> Active Todo...
                   let updates: Partial<Capsule> = {};
+                  let toastMsg = '';
                   if (!item.isTodo) {
                     updates = { isTodo: true, completed: false };
+                    toastMsg = 'Task created!';
                   } else if (!item.completed) {
                     updates = { completed: true };
+                    toastMsg = 'Task completed!';
                   } else {
                     updates = { completed: false };
+                    toastMsg = 'Task activated!';
                   }
                   void updateCapsule(item.id, updates);
+                  showToast(toastMsg, 'success');
                 } else if (direction === 'right') {
                   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                   if (settings.swipeRightAction === 'archive') {
                     void updateCapsule(item.id, { isArchived: true });
+                    showToast('Note archived!', 'success');
                   } else {
                     void updateCapsule(item.id, { isDeleted: true });
+                    showToast('Note deleted!', 'success');
                   }
                 }
               };
@@ -3909,6 +3946,21 @@ export default function IdeaCapsuleApp() {
             limit={settings.quickCaptureLimit}
           />
         )}
+
+        {/* Floating Toast Notification */}
+        {toastMessage && (
+          <View style={s.toastWrapper} pointerEvents="none">
+            <View style={s.toastContainer}>
+              {toastType === 'info' && (
+                <ActivityIndicator size="small" color="#007AFF" style={{ marginRight: 6 }} />
+              )}
+              {toastType === 'success' && (
+                <Check size={14} color="#34C759" style={{ marginRight: 6 }} />
+              )}
+              <Text style={s.toastText}>{toastMessage}</Text>
+            </View>
+          </View>
+        )}
       </SafeAreaView>
     </View>
   );
@@ -5304,5 +5356,33 @@ const s = StyleSheet.create({
     height: 12,
     borderRadius: 2,
     backgroundColor: '#FFF',
+  },
+  toastWrapper: {
+    position: 'absolute',
+    bottom: 90,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+  },
+  toastContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(29, 29, 31, 0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
+    maxWidth: '85%',
+  },
+  toastText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
