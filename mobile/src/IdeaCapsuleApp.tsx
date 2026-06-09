@@ -1242,7 +1242,11 @@ export default function IdeaCapsuleApp() {
       const norm = normalizeReminder(reminder);
       const isTodoResolved = Boolean(isTodo || (norm != null && norm.type !== 'none'));
 
-      await addDoc(collection(db, 'capsules'), {
+      // 同步生成唯一的文档 ID，不阻塞 UI 线程
+      const docRef = doc(collection(db, 'capsules'));
+      
+      const newNote = {
+        id: docRef.id,
         userId: user.uid,
         content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: refinedContent }] }] }),
         subject: title || undefined,
@@ -1256,11 +1260,26 @@ export default function IdeaCapsuleApp() {
         isDeleted: false,
         reminder: norm,
         color: randomColor,
+      };
+
+      // 1. 同步执行本地状态乐观更新（瞬时展现，不管断网与否卡片立刻出现在首页）
+      setCapsules(prev => {
+        if (prev.some(c => c.id === docRef.id)) return prev;
+        return [newNote, ...prev];
       });
+
+      // 2. 后台静默发送（即使离线，Firestore offline cache 也会保存并会在设备重连时自动推送）
+      setDoc(docRef, newNote).catch(e => {
+        console.error("EAS setDoc failed:", e);
+      });
+
     } catch {
       const randomColor =
         PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
-      await addDoc(collection(db, 'capsules'), {
+      
+      const docRef = doc(collection(db, 'capsules'));
+      const fallbackNote = {
+        id: docRef.id,
         userId: user.uid,
         content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: text }] }] }),
         subject: undefined,
@@ -1271,6 +1290,17 @@ export default function IdeaCapsuleApp() {
         isArchived: false,
         isDeleted: false,
         color: randomColor,
+      };
+
+      // 乐观更新 fallback 流程
+      setCapsules(prev => {
+        if (prev.some(c => c.id === docRef.id)) return prev;
+        return [fallbackNote, ...prev];
+      });
+
+      // 后台静默发送 fallback
+      setDoc(docRef, fallbackNote).catch(e => {
+        console.error("EAS fallback setDoc failed:", e);
       });
     } finally {
       setIsProcessing(false);

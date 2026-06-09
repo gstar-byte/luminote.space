@@ -30,11 +30,9 @@ export async function ensureFirebaseReady() {
     app = firebaseAppModule.initializeApp(firebaseConfig);
   }
   if (!dbInstance) {
-    dbInstance = firebaseFirestoreModule.getFirestore(app, firebaseConfig.firestoreDatabaseId);
-    // 启用 IndexedDB 离线持久化
-    firebaseFirestoreModule.enableIndexedDbPersistence(dbInstance).catch((err: any) => {
-      console.warn("Firestore persistence failed to enable:", err.code);
-    });
+    dbInstance = firebaseFirestoreModule.initializeFirestore(app, {
+      localCache: firebaseFirestoreModule.persistentLocalCache({})
+    }, firebaseConfig.firestoreDatabaseId);
   }
   if (!authInstance) {
     authInstance = firebaseAuthModule.getAuth(app);

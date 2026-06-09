@@ -1662,8 +1662,8 @@ export default function App() {
       
       console.log('[handleCreate] saving to Firestore:', JSON.stringify({ content: newCapsuleData.content, subject: newCapsuleData.subject, isTodo: newCapsuleData.isTodo, hasReminder: !!newCapsuleData.reminder, isAmbiguous: newCapsuleData.isAmbiguous }));
       
-      const docRef = await addDoc(collection(getDb(), 'capsules'), newCapsuleData);
-      console.log('[handleCreate] saved doc id:', docRef.id);
+      // 同步生成唯一的文档 ID，消除 addDoc 的异步挂起阻塞
+      const docRef = doc(collection(getDb(), 'capsules'));
       
       const createdCapsule: Capsule = {
         id: docRef.id,
@@ -1686,10 +1686,17 @@ export default function App() {
         isPinned: (newCapsuleData.isPinned || undefined) as boolean
       };
 
-      // Optimistic local state update (Instant Response)
+      // 立即在本地状态中加入此笔记（瞬时响应，避免断网时 UI 卡死或延迟）
       setCapsules(prev => {
         if (prev.some(c => c.id === docRef.id)) return prev;
         return [createdCapsule, ...prev];
+      });
+
+      // 在后台静默运行保存，即使离线，Firestore localCache 也会安全接管数据并在重连时自动推送
+      setDoc(docRef, newCapsuleData).then(() => {
+        console.log('[handleCreate] saved successfully to Firestore:', docRef.id);
+      }).catch(err => {
+        console.error('[handleCreate] Firestore setDoc failed:', err);
       });
       
       // Manage ClarificationPill state
@@ -1697,7 +1704,6 @@ export default function App() {
         wasCaptureCollapsedBeforeClarification.current = isCaptureCollapsed;
         setTemporaryPendingCapsule(createdCapsule);
         setPendingClarificationCapsuleId(docRef.id);
-        // ClarificationPill 已改为 portal 浮层，无需展开 footer
       } else {
         setTemporaryPendingCapsule(null);
         setPendingClarificationCapsuleId(null);
@@ -1711,7 +1717,7 @@ export default function App() {
       console.error('[handleCreate] ERROR in try block:', error);
       const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
       const fallbackDoc = {
-        userId: user?.uid,
+        userId: user?.uid || '',
         content: text,
         subject: '',
         createdAt: Date.now(),
@@ -1722,27 +1728,28 @@ export default function App() {
         isDeleted: false,
         color: randomColor
       };
-      try {
-        const docRef = await addDoc(collection(getDb(), 'capsules'), fallbackDoc);
-        console.log('[handleCreate] fallback saved (raw text)');
-        
-        // Optimistic local state update for fallback flow
-        setCapsules(prev => {
-          if (prev.some(c => c.id === docRef.id)) return prev;
-          return [{ id: docRef.id, ...fallbackDoc } as Capsule, ...prev];
-        });
-        
-        if (user) {
-          safeLocalStorageSet(`luminote_has_notes_seeded_${user.uid}`, 'true');
-          updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
-        }
-      } catch (innerError) {
-        console.error('[handleCreate] fallback ERROR:', innerError);
+
+      // 同步生成 ID 并乐观更新 fallback 流程
+      const docRef = doc(collection(getDb(), 'capsules'));
+      setCapsules(prev => {
+        if (prev.some(c => c.id === docRef.id)) return prev;
+        return [{ id: docRef.id, ...fallbackDoc } as Capsule, ...prev];
+      });
+
+      // 后台静默发送 fallback
+      setDoc(docRef, fallbackDoc).then(() => {
+        console.log('[handleCreate] fallback saved successfully');
+      }).catch(innerError => {
+        console.error('[handleCreate] fallback setDoc ERROR:', innerError);
         handleFirestoreError(innerError, OperationType.CREATE, 'capsules');
+      });
+
+      if (user) {
+        safeLocalStorageSet(`luminote_has_notes_seeded_${user.uid}`, 'true');
+        updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
       }
     } finally {
       setIsProcessing(false);
-      // Ensure focus again just in case
       setTimeout(() => inputRef.current?.focus(), 10);
     }
   };
