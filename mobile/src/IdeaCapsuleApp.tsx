@@ -2228,61 +2228,105 @@ export default function IdeaCapsuleApp() {
                 colors={['transparent']}
               />
             }
-        >
-          <View style={viewMode === 'grid' ? s.gridRow : s.listCol}>
-            {filteredCapsules.map((item) => {
-              const renderLeftActions = () => {
+          >
+            <View style={viewMode === 'grid' ? s.gridRow : s.listCol}>
+              {filteredCapsules.map((item) => {
+                const renderLeftActions = (
+                progress: Animated.AnimatedInterpolation<number>,
+                dragX: Animated.AnimatedInterpolation<number>
+              ) => {
+                const transX = dragX.interpolate({
+                  inputRange: [0, 50, 100],
+                  outputRange: [-30, 0, 10],
+                  extrapolate: 'clamp',
+                });
+                const opacity = dragX.interpolate({
+                  inputRange: [0, 30, 100],
+                  outputRange: [0, 0.5, 1],
+                  extrapolate: 'clamp',
+                });
+                const scale = dragX.interpolate({
+                  inputRange: [0, 100, 150],
+                  outputRange: [0.9, 1, 1.15],
+                  extrapolate: 'clamp',
+                });
+
                 if (filter === 'archived' || filter === 'trash') {
                   return (
                     <View style={s.swipeLeftAction}>
-                      <RotateCcw size={18} color="#FFF" />
-                      <Text style={s.swipeActionTxt}>Restore</Text>
+                      <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
+                        <RotateCcw size={18} color="#FFF" />
+                        <Text style={s.swipeActionTxt}>Restore</Text>
+                      </Animated.View>
                     </View>
                   );
                 }
+
+                // 根据状态机决定展现的文字和图标：Note -> Todo, Active -> Complete, Completed -> Activate
+                const label = !item.isTodo ? 'Todo' : item.completed ? 'Activate' : 'Complete';
+                const Icon = item.completed ? RotateCcw : Check;
+
                 return (
                   <View style={s.swipeLeftAction}>
-                    {item.completed ? (
-                      <>
-                        <RotateCcw size={18} color="#FFF" />
-                        <Text style={s.swipeActionTxt}>Activate</Text>
-                      </>
-                    ) : (
-                      <>
-                        <Check size={18} color="#FFF" />
-                        <Text style={s.swipeActionTxt}>Done</Text>
-                      </>
-                    )}
+                    <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
+                      <Icon size={18} color="#FFF" />
+                      <Text style={s.swipeActionTxt}>{label}</Text>
+                    </Animated.View>
                   </View>
                 );
               };
 
-              const renderRightActions = () => {
+              const renderRightActions = (
+                progress: Animated.AnimatedInterpolation<number>,
+                dragX: Animated.AnimatedInterpolation<number>
+              ) => {
+                // dragX 在向左拖拽（拉出右侧）时是负值
+                const transX = dragX.interpolate({
+                  inputRange: [-100, -50, 0],
+                  outputRange: [-10, 0, 30],
+                  extrapolate: 'clamp',
+                });
+                const opacity = dragX.interpolate({
+                  inputRange: [-100, -30, 0],
+                  outputRange: [1, 0.5, 0],
+                  extrapolate: 'clamp',
+                });
+                const scale = dragX.interpolate({
+                  inputRange: [-150, -100, 0],
+                  outputRange: [1.15, 1, 0.9],
+                  extrapolate: 'clamp',
+                });
+
                 if (filter === 'archived') {
                   return (
                     <View style={s.swipeRightAction}>
-                      <Trash2 size={18} color="#FFF" />
-                      <Text style={s.swipeActionTxt}>Delete</Text>
+                      <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
+                        <Trash2 size={18} color="#FFF" />
+                        <Text style={s.swipeActionTxt}>Delete</Text>
+                      </Animated.View>
                     </View>
                   );
                 }
                 if (filter === 'trash') {
                   return (
                     <View style={s.swipeRightAction}>
-                      <Trash2 size={18} color="#FFF" />
-                      <Text style={s.swipeActionTxt}>Delete Forever</Text>
+                      <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
+                        <Trash2 size={18} color="#FFF" />
+                        <Text style={s.swipeActionTxt}>Delete Forever</Text>
+                      </Animated.View>
                     </View>
                   );
                 }
                 const isArchive = settings.swipeRightAction === 'archive';
+                const label = isArchive ? 'Archive' : 'Delete';
+                const Icon = isArchive ? Archive : Trash2;
+
                 return (
                   <View style={[s.swipeRightAction, isArchive && { backgroundColor: '#FF9500' }]}>
-                    {isArchive ? (
-                      <Archive size={18} color="#FFF" />
-                    ) : (
-                      <Trash2 size={18} color="#FFF" />
-                    )}
-                    <Text style={s.swipeActionTxt}>{isArchive ? 'Archive' : 'Delete'}</Text>
+                    <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
+                      <Icon size={18} color="#FFF" />
+                      <Text style={s.swipeActionTxt}>{label}</Text>
+                    </Animated.View>
                   </View>
                 );
               };
@@ -2325,10 +2369,16 @@ export default function IdeaCapsuleApp() {
 
                 if (direction === 'left') {
                   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                  void updateCapsule(item.id, { 
-                    completed: !item.completed,
-                    isTodo: true
-                  });
+                  // 右滑状态机递进：Note -> Active Todo -> Completed Todo -> Active Todo...
+                  let updates: Partial<Capsule> = {};
+                  if (!item.isTodo) {
+                    updates = { isTodo: true, completed: false };
+                  } else if (!item.completed) {
+                    updates = { completed: true };
+                  } else {
+                    updates = { completed: false };
+                  }
+                  void updateCapsule(item.id, updates);
                 } else if (direction === 'right') {
                   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                   if (settings.swipeRightAction === 'archive') {
@@ -3872,8 +3922,8 @@ function SwipeableCardWrapper({
   children,
 }: {
   item: Capsule;
-  renderLeftActions: () => React.ReactNode;
-  renderRightActions: () => React.ReactNode;
+  renderLeftActions: (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => React.ReactNode;
+  renderRightActions: (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => React.ReactNode;
   onSwipeTrigger: (direction: 'left' | 'right') => void;
   children: React.ReactNode;
 }) {

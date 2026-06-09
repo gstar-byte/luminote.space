@@ -4526,11 +4526,22 @@ const CapsuleItem = memo(function CapsuleItem({
     if (isHorizontalSwipe.current === true) {
       // 触发阈值设定为 100px
       if (swipeX > 100) {
-        // 右滑：完成/激活待办（如果原本不是 Todo，也转化为 Todo）
-        const nextCompletedStatus = !capsule.completed;
-        void onUpdate({ completed: nextCompletedStatus, isTodo: true });
+        // 右滑状态机递进：Note -> Active Todo -> Completed Todo -> Active Todo...
+        let updates: Partial<Capsule> = {};
+        let toastMsg = '';
+        if (!capsule.isTodo) {
+          updates = { isTodo: true, completed: false };
+          toastMsg = 'Task created!';
+        } else if (!capsule.completed) {
+          updates = { completed: true };
+          toastMsg = 'Task completed!';
+        } else {
+          updates = { completed: false };
+          toastMsg = 'Task activated!';
+        }
+        void onUpdate(updates);
         if (showToast) {
-          showToast(nextCompletedStatus ? 'Task completed!' : 'Task active!', 'success');
+          showToast(toastMsg, 'success');
         }
       } else if (swipeX < -100) {
         // 左滑：归档/撤销归档
@@ -4697,10 +4708,22 @@ const CapsuleItem = memo(function CapsuleItem({
               swipeX > 100 ? "scale-110 font-black text-white" : ""
             )}
           >
-            {capsule.completed ? <Undo size={18} className="shrink-0" /> : <Check size={18} className="shrink-0" />}
-            <span className="text-[10px] font-black uppercase tracking-wider">
-              {capsule.completed ? 'Activate' : 'Complete'}
-            </span>
+            {!capsule.isTodo ? (
+              <>
+                <Check size={18} className="shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider">Todo</span>
+              </>
+            ) : capsule.completed ? (
+              <>
+                <Undo size={18} className="shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider">Activate</span>
+              </>
+            ) : (
+              <>
+                <Check size={18} className="shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider">Complete</span>
+              </>
+            )}
           </div>
 
           {/* 右侧提示（左滑触发归档） */}
