@@ -3647,12 +3647,22 @@ export default function IdeaCapsuleApp() {
                 { paddingBottom: Math.max(insets.bottom, 8) },
                 isKeyboardActive && {
                   justifyContent: 'flex-start',
-                  paddingTop: Platform.OS === 'ios' ? insets.top + 10 : 20,
-                  paddingBottom: 8,
+                  paddingTop: Platform.OS === 'ios' ? insets.top : 0,
+                  paddingBottom: 0,
                 }
               ]}
             >
-              <View style={s.editBox}>
+              <View style={[
+                s.editBox,
+                isKeyboardActive && {
+                  width: '100%',
+                  borderRadius: 0,
+                  minHeight: '100%',
+                  maxHeight: '100%',
+                  elevation: 0,
+                  shadowOpacity: 0,
+                }
+              ]}>
                 <View style={s.editHeader}>
                   <View style={s.editHeaderLeft}>
                     {/* Color dot indicator */}
@@ -4033,14 +4043,129 @@ function CapsuleCard({
   onMenu: (e: any) => void;
   onToggleTodo: () => void;
 }) {
+  if (isGrid) {
+    const currentTag = item.tag || (item.tags && item.tags.length > 0 ? item.tags[0] : undefined);
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        style={[
+          s.cardGrid,
+          s.cardGridFill,
+          { backgroundColor: item.color || PRESET_COLORS[0], position: 'relative' as const, flexDirection: 'column' },
+          isSelected && { borderWidth: 2, borderColor: '#007AFF' },
+        ]}
+      >
+        {/* 顶部：正文 / 标题文字 */}
+        <View style={{ flex: 1, width: '100%', minWidth: 0 }}>
+          <Text
+            style={[
+              s.cardText,
+              item.isTodo && item.completed ? s.cardTextDone : null,
+              { fontWeight: '700', fontSize: 13, lineHeight: 17 },
+            ]}
+            numberOfLines={4}
+            ellipsizeMode="tail"
+          >
+            {item.subject ? item.subject : plainTextFromContent(item.content)}
+          </Text>
+        </View>
+
+        {/* 底部：一整行，包含左下角待办和底部的 category、tag、时间 */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 'auto', width: '100%', minHeight: 32 }}>
+          {/* 左下角待办方块 */}
+          {item.isTodo ? (
+            <View style={{ paddingBottom: 2 }}>
+              <TouchableOpacity
+                style={[s.checkOuter, item.completed && s.checkOuterDone]}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  onToggleTodo();
+                }}
+              >
+                {item.completed ? <Check size={11} color="rgba(0,0,0,0.62)" strokeWidth={3} /> : null}
+              </TouchableOpacity>
+            </View>
+          ) : <View style={{ width: 0 }} />}
+
+          {/* 右下角/底部：Category, Tag 以及创建时间 */}
+          <View style={{ alignItems: 'flex-end', gap: 3, flex: 1, marginLeft: item.isTodo ? 8 : 0 }}>
+            {/* Category & Tag Row */}
+            {(item.category || currentTag) ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
+                {item.category ? (
+                  <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 8, fontWeight: '900', letterSpacing: 0.2 }}>
+                      {item.category.toUpperCase()}
+                    </Text>
+                  </View>
+                ) : null}
+                {currentTag ? (
+                  <View style={{ backgroundColor: 'rgba(0,0,0,0.1)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 8, fontWeight: '900' }}>
+                      #{currentTag}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            {/* Date Row */}
+            {item.createdAt ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, opacity: 0.65 }}>
+                <Clock size={8} color="#FFF" />
+                <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '700', letterSpacing: 0.2, textTransform: 'uppercase' }}>
+                  {new Date(item.createdAt).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        {/* 绝对定位角标：星标、置顶（右上角） */}
+        {(item.isStarred || item.isPinned) && (
+          <View style={{ position: 'absolute', top: 6, right: isMulti ? 6 : 28, flexDirection: 'row', gap: 3, zIndex: 3 }}>
+            {item.isPinned && <Pin size={10} color="rgba(255,255,255,0.9)" />}
+            {item.isStarred && <Star size={10} color="#FFD60A" fill="#FFD60A" />}
+          </View>
+        )}
+
+        {/* 绝对定位角标：提醒铃铛 */}
+        {hasActiveReminder(item) ? (
+          <View style={{ position: 'absolute', bottom: 6, right: isMulti ? 6 : 24, zIndex: 3 }} pointerEvents="none">
+            <Bell size={10} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
+          </View>
+        ) : null}
+
+        {/* 绝对定位角标：三点菜单（右下角） */}
+        {!isMulti ? (
+          <View style={{ position: 'absolute', bottom: 4, right: 4, zIndex: 3 }}>
+            <TouchableOpacity
+              onPress={(e) => {
+                (e as { stopPropagation?: () => void }).stopPropagation?.();
+                onMenu(e);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MoreVertical size={14} color="#FFF" style={{ opacity: 0.6 }} />
+            </TouchableOpacity>
+          </View>
+        ) : null}
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={onPress}
       onLongPress={onLongPress}
       style={[
-        isGrid ? s.cardGrid : s.cardList,
-        isGrid && s.cardGridFill,
+        s.cardList,
         { backgroundColor: item.color || PRESET_COLORS[0], position: 'relative' as const },
         isSelected && { borderWidth: 2, borderColor: '#007AFF' },
       ]}
@@ -4066,7 +4191,7 @@ function CapsuleCard({
               item.isTodo && item.completed ? s.cardTextDone : null,
               { fontWeight: '700', fontSize: 14 },
             ]}
-            numberOfLines={isGrid ? 3 : 1}
+            numberOfLines={1}
             ellipsizeMode="tail"
           >
             {item.subject ? item.subject : plainTextFromContent(item.content)}
@@ -4132,7 +4257,7 @@ function CapsuleCard({
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <MoreVertical size={isGrid ? 16 : 18} color="#FFF" style={{ opacity: 0.6 }} />
+            <MoreVertical size={18} color="#FFF" style={{ opacity: 0.6 }} />
           </TouchableOpacity>
         </View>
       ) : null}
