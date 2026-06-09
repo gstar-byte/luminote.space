@@ -3126,22 +3126,24 @@ export default function App() {
         {/* User Card */}
         <div className="mt-auto p-3 border-t border-[#E5E5EA] flex flex-col gap-2">
            {/* 手动同步：PC 没有下拉刷新手势，这里提供桌面端的同步入口 */}
-           <button
-             type="button"
-             onClick={async () => {
-                void handleSync();
-              }}
-              disabled={isSyncing}
-             aria-label="Manual sync"
-             title="Manual sync"
-             className={cn(
-               "w-full flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold text-[#8E8E93] hover:text-[#007AFF] hover:bg-[#007AFF]/10 transition-all disabled:opacity-60",
-               isSidebarOpen ? "pl-2.5 pr-4 justify-start" : "px-0 justify-center"
-             )}
-           >
-             <RefreshCw size={14} className={isSyncing ? "animate-spin text-[#007AFF]" : ""} />
-             {isSidebarOpen && <span>{isSyncing ? 'Syncing…' : 'Manual Sync'}</span>}
-           </button>
+           {!isMobile && (
+             <button
+               type="button"
+               onClick={async () => {
+                  void handleSync();
+                }}
+                disabled={isSyncing}
+               aria-label="Manual sync"
+               title="Manual sync"
+               className={cn(
+                 "w-full flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold text-[#8E8E93] hover:text-[#007AFF] hover:bg-[#007AFF]/10 transition-all disabled:opacity-60",
+                 isSidebarOpen ? "pl-2.5 pr-4 justify-start" : "px-0 justify-center"
+               )}
+             >
+               <RefreshCw size={14} className={isSyncing ? "animate-spin text-[#007AFF]" : ""} />
+               {isSidebarOpen && <span>{isSyncing ? 'Syncing…' : 'Manual Sync'}</span>}
+             </button>
+           )}
            {/* <button
              type="button"
              onClick={() => setShowSettingsModal(true)}
