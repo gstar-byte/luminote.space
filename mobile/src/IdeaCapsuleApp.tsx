@@ -4099,14 +4099,14 @@ function CapsuleCard({
 
         {/* 绝对定位角标：提醒铃铛 */}
         {hasActiveReminder(item) ? (
-          <View style={{ position: 'absolute', bottom: 6, right: isMulti ? 6 : 24, zIndex: 3 }} pointerEvents="none">
+          <View style={{ position: 'absolute', bottom: 12, right: isMulti ? 8 : 28, zIndex: 3 }} pointerEvents="none">
             <Bell size={10} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
           </View>
         ) : null}
 
         {/* 绝对定位角标：三点菜单（右下角） */}
         {!isMulti ? (
-          <View style={{ position: 'absolute', bottom: 4, right: 4, zIndex: 3 }}>
+          <View style={{ position: 'absolute', bottom: 10, right: 8, zIndex: 3 }}>
             <TouchableOpacity
               onPress={(e) => {
                 (e as { stopPropagation?: () => void }).stopPropagation?.();
