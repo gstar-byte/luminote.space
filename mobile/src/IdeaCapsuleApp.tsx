@@ -3645,17 +3645,16 @@ export default function IdeaCapsuleApp() {
             <View
               style={[
                 s.editBoxCenter,
-                { paddingBottom: Math.max(insets.bottom, 8) },
-                isKeyboardActive && {
+                {
                   justifyContent: 'flex-start',
-                  paddingTop: Platform.OS === 'ios' ? insets.top : 0,
-                  paddingBottom: 0,
+                  paddingTop: insets.top > 0 ? insets.top : (Platform.OS === 'ios' ? 20 : 10),
+                  paddingBottom: isKeyboardActive ? 0 : Math.max(insets.bottom, 8),
                 }
               ]}
             >
               <View style={[
                 s.editBox,
-                isKeyboardActive && {
+                {
                   width: '100%',
                   borderRadius: 0,
                   minHeight: '100%',
@@ -3690,142 +3689,123 @@ export default function IdeaCapsuleApp() {
                 </View>
 
                 {/* Plain / Markdown switcher — Aligned with Web */}
-                {!isKeyboardActive && (
-                  <View style={s.editModeTabWrap}>
-                    <View style={s.editModeTabs}>
-                      <TouchableOpacity
-                        style={[s.editModeTab, editMode === 'plain' && s.editModeTabActive]}
-                        onPress={() => setEditMode('plain')}
-                      >
-                        <Text style={[s.editModeTabTxt, editMode === 'plain' && s.editModeTabTxtActive]}>Plain</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[s.editModeTab, editMode === 'markdown' && s.editModeTabActive]}
-                        onPress={() => setEditMode('markdown')}
-                      >
-                        <Text style={[s.editModeTabTxt, editMode === 'markdown' && s.editModeTabTxtActive]}>Markdown</Text>
-                      </TouchableOpacity>
-                    </View>
+                <View style={s.editModeTabWrap}>
+                  <View style={s.editModeTabs}>
+                    <TouchableOpacity
+                      style={[s.editModeTab, editMode === 'plain' && s.editModeTabActive]}
+                      onPress={() => setEditMode('plain')}
+                    >
+                      <Text style={[s.editModeTabTxt, editMode === 'plain' && s.editModeTabTxtActive]}>Plain</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[s.editModeTab, editMode === 'markdown' && s.editModeTabActive]}
+                      onPress={() => setEditMode('markdown')}
+                    >
+                      <Text style={[s.editModeTabTxt, editMode === 'markdown' && s.editModeTabTxtActive]}>Markdown</Text>
+                    </TouchableOpacity>
                   </View>
-                )}
+                </View>
 
-                {editMode === 'plain' ? (
-                  <View style={{ flex: 1, backgroundColor: '#FFFBE6' }}>
-                    <CapsuleEditorMobile
-                      key="plain-editor"
-                      content={editContent}
-                      onChange={(json) => setEditContent(json)}
-                      placeholder="Type your brilliant thought here..."
-                      autoFocus
-                      editMode={editMode}
-                      isMetaFocused={isMetaFocused}
-                      attachments={editingCapsule?.attachments}
-                      onRemoveAttachment={removeAttachmentAt}
-                    />
-                  </View>
-                ) : (
-                  <View style={{ flex: 1, backgroundColor: '#FFFBE6' }}>
-                    <CapsuleEditorMobile
-                      key="markdown-editor"
-                      content={editContent}
-                      onChange={(json) => setEditContent(json)}
-                      placeholder="Type your brilliant thought here..."
-                      autoFocus
-                      editMode={editMode}
-                      isMetaFocused={isMetaFocused}
-                    />
-                  </View>
-                )}
+                <View style={{ flex: 1, backgroundColor: '#FFFBE6' }}>
+                  <CapsuleEditorMobile
+                    key="capsule-editor-global"
+                    content={editContent}
+                    onChange={(json) => setEditContent(json)}
+                    placeholder="Type your brilliant thought here..."
+                    autoFocus
+                    editMode={editMode}
+                    isMetaFocused={isMetaFocused}
+                    attachments={editMode === 'plain' ? editingCapsule?.attachments : undefined}
+                    onRemoveAttachment={editMode === 'plain' ? removeAttachmentAt : undefined}
+                  />
+                </View>
 
                 {/* 并排紧凑的 Category & Tags —— 紧靠在 Done 按钮之上，背景保持一致的纯白色以形成悬浮纸卡质感 */}
-                {(!isKeyboardActive || isMetaFocused) && (
-                  <View style={{
-                    flexDirection: 'row',
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    backgroundColor: '#FFF',
-                    gap: 12,
-                  }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Category</Text>
-                      <TextInput
-                        style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
-                        placeholder="Category"
-                        placeholderTextColor="#8E8E93"
-                        value={editCategoryDraft}
-                        onChangeText={setEditCategoryDraft}
-                        onFocus={() => setIsMetaFocused(true)}
-                        onBlur={() => {
-                          setIsMetaFocused(false);
-                          saveEditSilent();
-                        }}
-                      />
-                    </View>
-                    <View style={{ flex: 1.5 }}>
-                      <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Tag</Text>
-                      <TextInput
-                        style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
-                        placeholder="Tag"
-                        placeholderTextColor="#8E8E93"
-                        value={editTagDraft}
-                        onChangeText={(t) => setEditTagDraft(t.replace(/,/g, ''))}
-                        onFocus={() => setIsMetaFocused(true)}
-                        onBlur={() => {
-                          setIsMetaFocused(false);
-                          saveEditSilent();
-                        }}
-                      />
-                    </View>
+                <View style={{
+                  flexDirection: 'row',
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  backgroundColor: '#FFF',
+                  gap: 12,
+                }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Category</Text>
+                    <TextInput
+                      style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
+                      placeholder="Category"
+                      placeholderTextColor="#8E8E93"
+                      value={editCategoryDraft}
+                      onChangeText={setEditCategoryDraft}
+                      onFocus={() => setIsMetaFocused(true)}
+                      onBlur={() => {
+                        setIsMetaFocused(false);
+                        saveEditSilent();
+                      }}
+                    />
                   </View>
-                )}
-                {(!isKeyboardActive || isMetaFocused) && (
-                  <View style={[s.editFooter, { backgroundColor: '#FFF' }]}>
-                    <TouchableOpacity
-                      onPress={() => editingCapsule && pickImageForCapsule(editingCapsule)}
-                      style={{ padding: 8 }}
-                    >
-                      <ImageIcon size={22} color="#8E8E93" />
-                    </TouchableOpacity>
+                  <View style={{ flex: 1.5 }}>
+                    <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Tag</Text>
+                    <TextInput
+                      style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
+                      placeholder="Tag"
+                      placeholderTextColor="#8E8E93"
+                      value={editTagDraft}
+                      onChangeText={(t) => setEditTagDraft(t.replace(/,/g, ''))}
+                      onFocus={() => setIsMetaFocused(true)}
+                      onBlur={() => {
+                        setIsMetaFocused(false);
+                        saveEditSilent();
+                      }}
+                    />
+                  </View>
+                </View>
 
-                    <View style={{ flex: 1, paddingHorizontal: 12, gap: 4 }}>
+                <View style={[s.editFooter, { backgroundColor: '#FFF' }]}>
+                  <TouchableOpacity
+                    onPress={() => editingCapsule && pickImageForCapsule(editingCapsule)}
+                    style={{ padding: 8 }}
+                  >
+                    <ImageIcon size={22} color="#8E8E93" />
+                  </TouchableOpacity>
+
+                  <View style={{ flex: 1, paddingHorizontal: 12, gap: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Clock size={10} color="#AEAEB2" />
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: '700',
+                          color: '#AEAEB2',
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.3,
+                        }}
+                      >
+                        Created: {editingCapsule ? formatNoteDateTime(editingCapsule.createdAt) : ''}
+                      </Text>
+                    </View>
+                    {editingCapsule?.reminder && editingCapsule.reminder.type !== 'none' && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Clock size={10} color="#AEAEB2" />
+                        <Bell size={10} color="#007AFF" strokeWidth={2.5} />
                         <Text
                           style={{
                             fontSize: 10,
-                            fontWeight: '700',
-                            color: '#AEAEB2',
+                            fontWeight: '800',
+                            color: '#007AFF',
                             textTransform: 'uppercase',
                             letterSpacing: 0.3,
                           }}
                         >
-                          Created: {editingCapsule ? formatNoteDateTime(editingCapsule.createdAt) : ''}
+                          Reminder: {formatNoteDateTime(editingCapsule.reminder.date)} (
+                          {repeatLabelForMenu(editingCapsule.reminder)})
                         </Text>
                       </View>
-                      {editingCapsule?.reminder && editingCapsule.reminder.type !== 'none' && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                          <Bell size={10} color="#007AFF" strokeWidth={2.5} />
-                          <Text
-                            style={{
-                              fontSize: 10,
-                              fontWeight: '800',
-                              color: '#007AFF',
-                              textTransform: 'uppercase',
-                              letterSpacing: 0.3,
-                            }}
-                          >
-                            Reminder: {formatNoteDateTime(editingCapsule.reminder.date)} (
-                            {repeatLabelForMenu(editingCapsule.reminder)})
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
-                    <TouchableOpacity style={[s.doneBtnBlack, { borderRadius: 18, paddingHorizontal: 22 }]} onPress={saveEdit}>
-                      <Text style={{ color: '#FFF', fontWeight: '800' }}>Done</Text>
-                    </TouchableOpacity>
+                    )}
                   </View>
-                )}
+
+                  <TouchableOpacity style={[s.doneBtnBlack, { borderRadius: 18, paddingHorizontal: 22 }]} onPress={saveEdit}>
+                    <Text style={{ color: '#FFF', fontWeight: '800' }}>Done</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </KeyboardAvoidingView>
