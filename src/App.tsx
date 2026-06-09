@@ -2434,7 +2434,9 @@ export default function App() {
   
   const filteredCapsules = sortedCapsules.filter(c => {
     const currentTag = c.tag || (c.tags && c.tags.length > 0 ? c.tags[0] : undefined);
-    const matchesSearch = (contentText || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const contentText = typeof c.content === 'string' ? c.content : plainTextFromContent(c.content);
+    const matchesSearch = (c.subject || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (contentText || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
                          (currentTag && currentTag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = categoryFilter === 'all' || c.category === categoryFilter;
     const matchesTag = !tagFilter || (currentTag === tagFilter);
@@ -4486,7 +4488,7 @@ const CapsuleItem = memo(function CapsuleItem({
     // 长按 ~480ms 弹出就近操作菜单。
     clearLongPress();
     longPressTimer.current = setTimeout(() => {
-      onToggleSelection(capsule.id);
+      onToggleSelection();
       // 吞掉长按后紧随的 click，避免立刻又被切回（取消选中）或打开详情。
       suppressNextClickRef.current = true;
       setIsSwiping(false);
@@ -4573,7 +4575,7 @@ const CapsuleItem = memo(function CapsuleItem({
     mouseDownPos.current = { x: e.clientX, y: e.clientY };
     clearLongPress();
     longPressTimer.current = setTimeout(() => {
-      onToggleSelection(capsule.id);
+      onToggleSelection();
       suppressNextClickRef.current = true;
       mouseDownPos.current = null;
     }, 480);
