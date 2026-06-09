@@ -697,25 +697,37 @@ export function CapsuleEditorMobile({
     return () => {
       if (debounceTimeout.current) {
         clearTimeout(debounceTimeout.current);
-        if (latestContentRef.current) {
-          onChange(latestContentRef.current.html, latestContentRef.current.text);
-        }
+      }
+      if (latestContentRef.current) {
+        onChange(latestContentRef.current.html, latestContentRef.current.text);
       }
     };
   }, [onChange]);
 
   useEffect(() => {
     setDraft(getInitialSource());
-  }, [content, editMode]);
+  }, [editMode]);
 
   const updateDraftAndNotify = (newText: string, newSelectionStart: number, newSelectionEnd?: number) => {
     setDraft(newText);
+    let html = '';
+    let text = '';
     if (editMode === 'plain') {
-      const compiledHtml = markdownToHtml(newText);
-      onChange(compiledHtml, newText.replace(/[*#`~_\-+[\]()]/g, ''));
+      html = markdownToHtml(newText);
+      text = newText.replace(/[*#`~_\-+[\]()]/g, '');
     } else {
-      onChange(newText, newText.replace(/<[^>]+>/g, ''));
+      html = newText;
+      text = newText.replace(/<[^>]+>/g, '');
     }
+
+    latestContentRef.current = { html, text };
+
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+    debounceTimeout.current = setTimeout(() => {
+      onChange(html, text);
+    }, 250);
 
     const targetEnd = newSelectionEnd ?? newSelectionStart;
     setTimeout(() => {
@@ -1042,7 +1054,15 @@ export function CapsuleEditorMobile({
               onChangeText={(t) => {
                 setDraft(t);
                 const compiledHtml = markdownToHtml(t);
-                onChange(compiledHtml, t.replace(/[*#`~_\-+[\]()]/g, ''));
+                const plainText = t.replace(/[*#`~_\-+[\]()]/g, '');
+                
+                latestContentRef.current = { html: compiledHtml, text: plainText };
+                if (debounceTimeout.current) {
+                  clearTimeout(debounceTimeout.current);
+                }
+                debounceTimeout.current = setTimeout(() => {
+                  onChange(compiledHtml, plainText);
+                }, 250);
               }}
               autoFocus={autoFocus}
             />

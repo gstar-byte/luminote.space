@@ -3634,8 +3634,8 @@ export default function IdeaCapsuleApp() {
 
         <Modal transparent visible={!!editingCapsule} animationType="fade">
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 15 : 0}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 15 : 44}
             style={s.editKeyboardWrap}
           >
             <Pressable
@@ -3708,7 +3708,7 @@ export default function IdeaCapsuleApp() {
 
                 <View style={{ flex: 1, backgroundColor: '#FFFBE6' }}>
                   <CapsuleEditorMobile
-                    key="capsule-editor-global"
+                    key={editingCapsule ? `editor-${editingCapsule.id}` : 'new-editor'}
                     content={editContent}
                     onChange={(json) => setEditContent(json)}
                     placeholder="Type your brilliant thought here..."
@@ -3996,10 +3996,13 @@ function CapsuleCard({
         style={[
           s.cardGrid,
           s.cardGridFill,
-          { backgroundColor: item.color || PRESET_COLORS[0], position: 'relative' as const, flexDirection: 'column' },
+          { backgroundColor: '#FFFFFF', position: 'relative' as const, flexDirection: 'column', paddingLeft: 16 },
           isSelected && { borderWidth: 2, borderColor: '#007AFF' },
         ]}
       >
+        {/* 左侧代表便签颜色的垂直小竖条 */}
+        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4.5, backgroundColor: item.color || PRESET_COLORS[0] }} />
+
         {/* 顶部：正文 / 标题文字 */}
         <View style={{ flex: 1, width: '100%', minWidth: 0 }}>
           <Text
@@ -4027,7 +4030,7 @@ function CapsuleCard({
                   onToggleTodo();
                 }}
               >
-                {item.completed ? <Check size={11} color="rgba(0,0,0,0.62)" strokeWidth={3} /> : null}
+                {item.completed ? <Check size={11} color="#FFF" strokeWidth={3} /> : null}
               </TouchableOpacity>
             </View>
           ) : null}
@@ -4038,15 +4041,15 @@ function CapsuleCard({
             {(item.category || currentTag) ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-start' }}>
                 {item.category ? (
-                  <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                    <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 8, fontWeight: '900', letterSpacing: 0.2 }}>
+                  <View style={{ backgroundColor: 'rgba(0,122,255,0.08)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                    <Text style={{ color: '#007AFF', fontSize: 8, fontWeight: '900', letterSpacing: 0.2 }}>
                       {item.category.toUpperCase()}
                     </Text>
                   </View>
                 ) : null}
                 {currentTag ? (
-                  <View style={{ backgroundColor: 'rgba(0,0,0,0.1)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 8, fontWeight: '900' }}>
+                  <View style={{ backgroundColor: 'rgba(142,142,147,0.12)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                    <Text style={{ color: '#8E8E93', fontSize: 8, fontWeight: '900' }}>
                       #{currentTag}
                     </Text>
                   </View>
@@ -4056,9 +4059,9 @@ function CapsuleCard({
 
             {/* Date Row */}
             {item.createdAt ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, opacity: 0.65 }}>
-                <Clock size={8} color="#FFF" />
-                <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '700', letterSpacing: 0.2, textTransform: 'uppercase' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, opacity: 0.75 }}>
+                <Clock size={8} color="#8E8E93" />
+                <Text style={{ color: '#8E8E93', fontSize: 8, fontWeight: '700', letterSpacing: 0.2, textTransform: 'uppercase' }}>
                   {new Date(item.createdAt).toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric',
@@ -4072,15 +4075,15 @@ function CapsuleCard({
         {/* 绝对定位角标：星标、置顶（右上角） */}
         {(item.isStarred || item.isPinned) && (
           <View style={{ position: 'absolute', top: 6, right: isMulti ? 6 : 28, flexDirection: 'row', gap: 3, zIndex: 3 }}>
-            {item.isPinned && <Pin size={10} color="rgba(255,255,255,0.9)" />}
-            {item.isStarred && <Star size={10} color="#FFD60A" fill="#FFD60A" />}
+            {item.isPinned && <Pin size={10} color="#8E8E93" />}
+            {item.isStarred && <Star size={10} color="#FFB800" fill="#FFB800" />}
           </View>
         )}
 
         {/* 绝对定位角标：提醒铃铛 */}
         {hasActiveReminder(item) ? (
           <View style={{ position: 'absolute', bottom: 12, right: isMulti ? 8 : 28, zIndex: 3 }} pointerEvents="none">
-            <Bell size={10} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
+            <Bell size={10} color="#8E8E93" strokeWidth={2.5} />
           </View>
         ) : null}
 
@@ -4094,7 +4097,7 @@ function CapsuleCard({
               }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <MoreVertical size={14} color="#FFF" style={{ opacity: 0.6 }} />
+              <MoreVertical size={14} color="#8E8E93" style={{ opacity: 0.7 }} />
             </TouchableOpacity>
           </View>
         ) : null}
@@ -4109,10 +4112,13 @@ function CapsuleCard({
       onLongPress={onLongPress}
       style={[
         s.cardList,
-        { backgroundColor: item.color || PRESET_COLORS[0], position: 'relative' as const },
+        { backgroundColor: '#FFFFFF', position: 'relative' as const, paddingLeft: 16 },
         isSelected && { borderWidth: 2, borderColor: '#007AFF' },
       ]}
     >
+      {/* 左侧代表便签颜色的垂直小竖条 */}
+      <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4.5, backgroundColor: item.color || PRESET_COLORS[0] }} />
+
       {item.isTodo ? (
         <View style={s.cardCheckCol}>
           <TouchableOpacity
@@ -4122,7 +4128,7 @@ function CapsuleCard({
               onToggleTodo();
             }}
           >
-            {item.completed ? <Check size={11} color="rgba(0,0,0,0.62)" strokeWidth={3} /> : null}
+            {item.completed ? <Check size={11} color="#FFF" strokeWidth={3} /> : null}
           </TouchableOpacity>
         </View>
       ) : null}
@@ -4148,15 +4154,15 @@ function CapsuleCard({
           return (
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginTop: 5 }}>
               {item.category ? (
-                <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
-                  <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 }}>
+                <View style={{ backgroundColor: 'rgba(0,122,255,0.08)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
+                  <Text style={{ color: '#007AFF', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 }}>
                     {item.category.toUpperCase()}
                   </Text>
                 </View>
               ) : null}
               {currentTag ? (
-                <View key={currentTag} style={{ backgroundColor: 'rgba(0,0,0,0.1)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
-                  <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: '900' }}>
+                <View key={currentTag} style={{ backgroundColor: 'rgba(142,142,147,0.12)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
+                  <Text style={{ color: '#8E8E93', fontSize: 9, fontWeight: '900' }}>
                     #{currentTag}
                   </Text>
                 </View>
@@ -4167,9 +4173,9 @@ function CapsuleCard({
 
         {/* Date Row */}
         {item.createdAt ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5, opacity: 0.65 }}>
-            <Clock size={9} color="#FFF" />
-            <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '700', letterSpacing: 0.3, textTransform: 'uppercase' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5, opacity: 0.75 }}>
+            <Clock size={9} color="#8E8E93" />
+            <Text style={{ color: '#8E8E93', fontSize: 9, fontWeight: '700', letterSpacing: 0.3, textTransform: 'uppercase' }}>
               {new Date(item.createdAt).toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
@@ -4181,14 +4187,14 @@ function CapsuleCard({
       {/* Star & Pin badges — top-right, aligned with PC Web */}
       {(item.isStarred || item.isPinned) && (
         <View style={{ position: 'absolute', top: 5, right: isMulti ? 5 : 36, flexDirection: 'row', gap: 3, zIndex: 3 }}>
-          {item.isPinned && <Pin size={10} color="rgba(255,255,255,0.9)" />}
-          {item.isStarred && <Star size={10} color="#FFD60A" fill="#FFD60A" />}
+          {item.isPinned && <Pin size={10} color="#8E8E93" />}
+          {item.isStarred && <Star size={10} color="#FFB800" fill="#FFB800" />}
         </View>
       )}
       {/* Reminder bell — bottom-right corner */}
       {hasActiveReminder(item) ? (
         <View style={s.cardBellCorner} pointerEvents="none">
-          <Bell size={10} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
+          <Bell size={10} color="#8E8E93" strokeWidth={2.5} />
         </View>
       ) : null}
       {!isMulti ? (
@@ -4200,7 +4206,7 @@ function CapsuleCard({
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <MoreVertical size={18} color="#FFF" style={{ opacity: 0.6 }} />
+            <MoreVertical size={18} color="#8E8E93" style={{ opacity: 0.7 }} />
           </TouchableOpacity>
         </View>
       ) : null}
@@ -4612,7 +4618,14 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'stretch',
-    elevation: 4,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
     overflow: 'hidden',
   },
   cardGridFill: { width: '100%', alignSelf: 'stretch' },
@@ -4625,6 +4638,14 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'stretch',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1.5,
     overflow: 'hidden',
   },
   cardCheckCol: {
@@ -4651,23 +4672,24 @@ const s = StyleSheet.create({
     height: 20,
     borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.92)',
+    borderColor: '#C7C7CC',
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkOuterDone: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
   },
   cardText: {
-    color: 'rgba(255,255,255,0.96)',
+    color: '#1C1C1E',
     fontSize: 13,
     fontWeight: '500',
     lineHeight: 17,
   },
   cardTextDone: {
     textDecorationLine: 'line-through',
+    color: '#8E8E93',
     opacity: 0.72,
   },
   cardFoot: {
