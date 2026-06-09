@@ -4351,7 +4351,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  authScroll: { padding: 24, paddingTop: 24 },
+  authScroll: { padding: 24, paddingTop: 100 },
   authH: { fontSize: 26, fontWeight: '900', color: '#1D1D1F' },
   authHint: { color: '#8E8E93', marginTop: 6, marginBottom: 12, fontWeight: '600' },
   label: { fontSize: 10, fontWeight: '900', color: '#8E8E93', letterSpacing: 1.2, marginBottom: 4 },
