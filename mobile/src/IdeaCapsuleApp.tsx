@@ -385,6 +385,7 @@ export default function IdeaCapsuleApp() {
   const searchInputRef = useRef<TextInput>(null);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
+  const [isMetaFocused, setIsMetaFocused] = useState(false);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'info' | 'success' | 'error'>('info');
@@ -3709,66 +3710,19 @@ export default function IdeaCapsuleApp() {
                 )}
 
                 {editMode === 'plain' ? (
-                  <ScrollView
-                    style={{ flex: 1 }}
-                    contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}
-                    keyboardShouldPersistTaps="handled"
-                    keyboardDismissMode="on-drag"
-                  >
-                    <View style={s.editBodyContainer}>
-                      <CapsuleEditorMobile
-                        key="plain-editor"
-                        content={editContent}
-                        onChange={(json) => setEditContent(json)}
-                        placeholder="Type your brilliant thought here..."
-                        autoFocus
-                        editMode={editMode}
-                      />
-
-                      {editingCapsule?.attachments?.length ? (
-                        <View style={s.editAttachments}>
-                          {editingCapsule.attachments.map((a, i) => (
-                            <View
-                              key={`att-${editingCapsule.id}-${i}-${a.url.slice(0, 20)}`}
-                              style={{ marginTop: 12 }}
-                            >
-                              <View style={{ position: 'relative' }}>
-                                {a.type === 'image' ? (
-                                  <Image
-                                    source={{ uri: a.url }}
-                                    style={{ width: '100%', height: 180, borderRadius: 12 }}
-                                  />
-                                ) : (
-                                  <View
-                                    style={{
-                                      width: '100%',
-                                      height: 120,
-                                      borderRadius: 12,
-                                      backgroundColor: '#000',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                    }}
-                                  >
-                                    <Text style={{ color: '#FFF' }}>Video</Text>
-                                  </View>
-                                )}
-                                <TouchableOpacity
-                                  onPress={(e) => {
-                                    e?.stopPropagation?.();
-                                    void removeAttachmentAt(i);
-                                  }}
-                                  style={s.removeAttBtn}
-                                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                                >
-                                  <X size={18} color="#FFF" />
-                                </TouchableOpacity>
-                              </View>
-                            </View>
-                          ))}
-                        </View>
-                      ) : null}
-                    </View>
-                  </ScrollView>
+                  <View style={{ flex: 1, backgroundColor: '#FFFBE6' }}>
+                    <CapsuleEditorMobile
+                      key="plain-editor"
+                      content={editContent}
+                      onChange={(json) => setEditContent(json)}
+                      placeholder="Type your brilliant thought here..."
+                      autoFocus
+                      editMode={editMode}
+                      isMetaFocused={isMetaFocused}
+                      attachments={editingCapsule?.attachments}
+                      onRemoveAttachment={removeAttachmentAt}
+                    />
+                  </View>
                 ) : (
                   <View style={{ flex: 1, backgroundColor: '#FFFBE6' }}>
                     <CapsuleEditorMobile
@@ -3778,12 +3732,13 @@ export default function IdeaCapsuleApp() {
                       placeholder="Type your brilliant thought here..."
                       autoFocus
                       editMode={editMode}
+                      isMetaFocused={isMetaFocused}
                     />
                   </View>
                 )}
 
                 {/* 并排紧凑的 Category & Tags —— 紧靠在 Done 按钮之上，背景保持一致的纯白色以形成悬浮纸卡质感 */}
-                {!isKeyboardActive && (
+                {(!isKeyboardActive || isMetaFocused) && (
                   <View style={{
                     flexDirection: 'row',
                     paddingHorizontal: 16,
@@ -3799,7 +3754,11 @@ export default function IdeaCapsuleApp() {
                         placeholderTextColor="#8E8E93"
                         value={editCategoryDraft}
                         onChangeText={setEditCategoryDraft}
-                        onBlur={saveEditSilent}
+                        onFocus={() => setIsMetaFocused(true)}
+                        onBlur={() => {
+                          setIsMetaFocused(false);
+                          saveEditSilent();
+                        }}
                       />
                     </View>
                     <View style={{ flex: 1.5 }}>
@@ -3810,12 +3769,16 @@ export default function IdeaCapsuleApp() {
                         placeholderTextColor="#8E8E93"
                         value={editTagDraft}
                         onChangeText={(t) => setEditTagDraft(t.replace(/,/g, ''))}
-                        onBlur={saveEditSilent}
+                        onFocus={() => setIsMetaFocused(true)}
+                        onBlur={() => {
+                          setIsMetaFocused(false);
+                          saveEditSilent();
+                        }}
                       />
                     </View>
                   </View>
                 )}
-                {!isKeyboardActive && (
+                {(!isKeyboardActive || isMetaFocused) && (
                   <View style={[s.editFooter, { backgroundColor: '#FFF' }]}>
                     <TouchableOpacity
                       onPress={() => editingCapsule && pickImageForCapsule(editingCapsule)}
