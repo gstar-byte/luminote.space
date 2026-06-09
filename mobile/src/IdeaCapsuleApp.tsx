@@ -2029,7 +2029,7 @@ export default function IdeaCapsuleApp() {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={{ marginTop: 8 }} onPress={handleResetPassword}>
+            <TouchableOpacity style={{ marginTop: 6 }} onPress={handleResetPassword}>
               <Text style={{ color: '#007AFF', fontWeight: '700', fontSize: 13 }}>
                 Forgot password?
               </Text>
@@ -2040,7 +2040,7 @@ export default function IdeaCapsuleApp() {
               <GoogleSignInButton variant="light" compact />
             </View>
 
-            <TouchableOpacity style={{ marginTop: 14 }} onPress={() => setIsRegistering(!isRegistering)}>
+            <TouchableOpacity style={{ marginTop: 10 }} onPress={() => setIsRegistering(!isRegistering)}>
               <Text style={{ textAlign: 'center', color: '#8E8E93', fontSize: 13 }}>
                 {isRegistering ? 'Already have an account?' : 'New here?'}{' '}
                 <Text style={{ color: '#007AFF', fontWeight: '800' }}>
@@ -4351,7 +4351,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  authScroll: { padding: 24, paddingTop: 100 },
+  authScroll: { paddingHorizontal: 28, paddingTop: 90, paddingBottom: 24 },
   authH: { fontSize: 26, fontWeight: '900', color: '#1D1D1F' },
   authHint: { color: '#8E8E93', marginTop: 6, marginBottom: 12, fontWeight: '600' },
   label: { fontSize: 10, fontWeight: '900', color: '#8E8E93', letterSpacing: 1.2, marginBottom: 4 },
@@ -4361,15 +4361,15 @@ const s = StyleSheet.create({
     backgroundColor: '#F2F2F7',
     borderRadius: 16,
     paddingHorizontal: 14,
-    marginBottom: 12,
+    marginBottom: 10,
     gap: 10,
   },
   input: { flex: 1, height: 42, fontSize: 15, fontWeight: '600' },
   errTxt: { color: '#FF3B30', fontSize: 13, fontWeight: '600', marginTop: 8 },
   dividerLabel: {
     textAlign: 'center',
-    marginTop: 16,
-    marginBottom: 10,
+    marginTop: 12,
+    marginBottom: 8,
     fontSize: 10,
     fontWeight: '900',
     color: '#8E8E93',

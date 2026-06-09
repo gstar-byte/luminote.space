@@ -19,6 +19,12 @@ import {
   Palette,
   Tablet,
   Monitor,
+  Star,
+  Pin,
+  Clock,
+  Bell,
+  Play,
+  Apple,
 } from 'lucide-react-native';
 import { GoogleSignInButton } from './GoogleSignInButton';
 import { AppLogo } from './AppLogo';
@@ -133,42 +139,107 @@ export function LandingScreen({ onEmailAuth, onGuestPress }: Props) {
 
           {/* Mock App Cards */}
           <View style={styles.mockAppContainer}>
-            {/* Card 1: yellow note with countdown */}
+            {/* Card 1: Orange - Product Launch Presentation */}
             <View style={[styles.mockCard, { backgroundColor: '#FF9500' }]}>
-              <View style={styles.mockCardHeader}>
+              {/* Star and Pin in top right */}
+              <View style={styles.mockAbsoluteIcons}>
+                <Pin size={10} color="rgba(255,255,255,0.75)" />
+                <Star size={10} color="#FFD700" fill="#FFD700" />
+              </View>
+              
+              <View style={styles.mockCardBody}>
                 <View style={styles.mockTodoCheckbox} />
-                <View style={styles.mockCardBadge}>
-                  <Text style={styles.mockBadgeText}>5 DAYS LEFT</Text>
+                <Text style={styles.mockCardText}>Product Launch Presentation</Text>
+              </View>
+              
+              <View style={styles.mockCardFooter}>
+                <View style={styles.mockBadgeRow}>
+                  <View style={styles.mockBadge}>
+                    <Text style={styles.mockBadgeText}>DESIGN</Text>
+                  </View>
+                  <View style={styles.mockBadgeDark}>
+                    <Text style={styles.mockBadgeText}>#LAUNCH</Text>
+                  </View>
+                </View>
+                <View style={styles.mockTimeRow}>
+                  <Clock size={10} color="rgba(255,255,255,0.7)" />
+                  <Text style={styles.mockTimeText}>MAY 24</Text>
                 </View>
               </View>
-              <View style={[styles.mockCardLine, { width: '85%' }]} />
-              <View style={[styles.mockCardLine, { width: '50%' }]} />
             </View>
 
-            {/* Card 2: blue note with checked todo and repeating tag */}
+            {/* Card 2: Blue - Update landing page aesthetics (Completed) */}
             <View style={[styles.mockCard, { backgroundColor: '#007AFF' }]}>
-              <View style={styles.mockCardHeader}>
+              <View style={styles.mockCardBody}>
                 <View style={styles.mockTodoChecked}>
                   <Text style={styles.mockCheckIcon}>✔</Text>
                 </View>
-                <View style={[styles.mockCardBadge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
-                  <Text style={styles.mockBadgeText}>REPEAT</Text>
+                <Text style={[styles.mockCardText, styles.mockTextCompleted]}>
+                  Update landing page aesthetics
+                </Text>
+              </View>
+              
+              <View style={styles.mockCardFooter}>
+                <View style={styles.mockBadgeRow}>
+                  <View style={styles.mockBadge}>
+                    <Text style={styles.mockBadgeText}>WORK</Text>
+                  </View>
+                  <View style={styles.mockBadgeDark}>
+                    <Text style={styles.mockBadgeText}>#TODAY</Text>
+                  </View>
+                </View>
+                <View style={styles.mockTimeRow}>
+                  <Clock size={10} color="rgba(255,255,255,0.7)" />
+                  <Text style={styles.mockTimeText}>MAY 28</Text>
                 </View>
               </View>
-              <View style={[styles.mockCardLine, { width: '70%', opacity: 0.6 }]} />
             </View>
 
-            {/* Card 3: purple custom reminder card */}
+            {/* Card 3: Purple - Weekly review with engineering team */}
             <View style={[styles.mockCard, { backgroundColor: '#AF52DE' }]}>
-              <View style={styles.mockCardHeader}>
-                <View style={styles.mockTodoCheckbox} />
-                <View style={[styles.mockCardBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                  <Text style={styles.mockBadgeText}>REMINDER</Text>
-                </View>
+              {/* Bell in bottom right */}
+              <View style={styles.mockAbsoluteBell}>
+                <Bell size={10} color="rgba(255,255,255,0.75)" />
               </View>
-              <View style={[styles.mockCardLine, { width: '90%' }]} />
-              <View style={[styles.mockCardLine, { width: '60%' }]} />
+
+              <View style={styles.mockCardBody}>
+                <View style={styles.mockTodoCheckbox} />
+                <Text style={styles.mockCardText}>Weekly review with engineering team</Text>
+              </View>
+              
+              <View style={styles.mockCardFooter}>
+                <View style={styles.mockBadgeRow}>
+                  <View style={styles.mockBadge}>
+                    <Text style={styles.mockBadgeText}>TEAM</Text>
+                  </View>
+                  <View style={styles.mockBadgeDark}>
+                    <Text style={styles.mockBadgeText}>#SYNC</Text>
+                  </View>
+                </View>
+                {/* Keep space empty on right since Bell is absolute */}
+                <View style={{ width: 16 }} />
+              </View>
             </View>
+          </View>
+
+          {/* Cloud Sync Ecosystem */}
+          <Text style={styles.storeTitle}>CLOUD SYNC ECOSYSTEM</Text>
+          <View style={styles.storeButtonsContainer}>
+            <TouchableOpacity style={styles.storeBtn} activeOpacity={0.8}>
+              <Apple size={22} color="#FFF" />
+              <View style={styles.storeBtnTextContainer}>
+                <Text style={styles.storeBtnSub}>Download on the</Text>
+                <Text style={styles.storeBtnMain}>App Store</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.storeBtn} activeOpacity={0.8}>
+              <Play size={18} color="#FFF" fill="#FFF" />
+              <View style={styles.storeBtnTextContainer}>
+                <Text style={styles.storeBtnSub}>GET IT ON</Text>
+                <Text style={styles.storeBtnMain}>Google Play</Text>
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* Feature Sanctuary */}
@@ -582,4 +653,59 @@ const styles = StyleSheet.create({
   footerLinks: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
   footerLink: { color: 'rgba(255,255,255,0.45)', fontSize: 13, fontWeight: '600' },
   footerDot: { color: 'rgba(255,255,255,0.35)' },
+  mockAbsoluteIcons: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', gap: 4 },
+  mockAbsoluteBell: { position: 'absolute', bottom: 10, right: 10 },
+  mockCardBody: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, marginRight: 24 },
+  mockCardText: { color: '#FFF', fontSize: 14, fontWeight: '700', flex: 1 },
+  mockTextCompleted: { textDecorationLine: 'line-through', opacity: 0.7 },
+  mockCardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
+  mockBadgeRow: { flexDirection: 'row', gap: 6 },
+  mockBadge: { backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  mockBadgeDark: { backgroundColor: 'rgba(0,0,0,0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  mockTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  mockTimeText: { color: 'rgba(255,255,255,0.7)', fontSize: 9, fontWeight: '700' },
+  storeTitle: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textAlign: 'center',
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  storeButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 24,
+  },
+  storeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#1D1D1F',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    width: 146,
+  },
+  storeBtnTextContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  storeBtnSub: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 7,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    lineHeight: 8,
+  },
+  storeBtnMain: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 14,
+  },
 });
