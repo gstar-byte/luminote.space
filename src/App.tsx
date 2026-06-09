@@ -4430,6 +4430,7 @@ const CapsuleItem = memo(function CapsuleItem({
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null);
   const cardRootRef = useRef<HTMLDivElement>(null);
+  const isTouchRef = useRef(false);
   const clearLongPress = useCallback(() => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
@@ -4477,6 +4478,7 @@ const CapsuleItem = memo(function CapsuleItem({
   }, [openMenuAt]);
 
   const handleTouchStartSwipe = (e: React.TouchEvent) => {
+    isTouchRef.current = true;
     if (showOptions || showColorPicker || showReminderPicker) return;
     if (e.touches.length === 0) return;
     if (isSelectionMode) return;
@@ -4567,6 +4569,7 @@ const CapsuleItem = memo(function CapsuleItem({
 
   // 桌面端：按住左键 ~480ms 弹出就近操作菜单。移动超过阈值或提前松开则取消。
   const handleMouseDownCard = (e: React.MouseEvent) => {
+    isTouchRef.current = false;
     if (e.button !== 0) return;                 // 仅左键
     if (isSelectionMode) return;
     if (showOptions || showColorPicker || showReminderPicker) return;
@@ -4789,6 +4792,9 @@ const CapsuleItem = memo(function CapsuleItem({
           // Desktop right-click opens the per-note context menu at the click location.
           e.preventDefault();
           e.stopPropagation();
+          if (isTouchRef.current) {
+            return;
+          }
           openMenuAt(e.clientX, e.clientY, 'context');
           suppressNextClickRef.current = true;
         }}
