@@ -372,7 +372,7 @@ function capsulePartialToFirestoreData(updates: Partial<Capsule>): Record<string
 }
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
-  swipeEnabled: false,
+  swipeEnabled: true,
   swipeRightAction: 'archive',
   edgePanelEnabled: false,
   ongoingNotificationEnabled: false,
@@ -2236,18 +2236,18 @@ export default function IdeaCapsuleApp() {
                 dragX: Animated.AnimatedInterpolation<number>
               ) => {
                 const transX = dragX.interpolate({
-                  inputRange: [0, 50, 100],
-                  outputRange: [-30, 0, 10],
+                  inputRange: [0, 20, 80],
+                  outputRange: [-20, 0, 10],
                   extrapolate: 'clamp',
                 });
                 const opacity = dragX.interpolate({
-                  inputRange: [0, 30, 100],
-                  outputRange: [0, 0.5, 1],
+                  inputRange: [0, 20, 80],
+                  outputRange: [0, 1, 1],
                   extrapolate: 'clamp',
                 });
                 const scale = dragX.interpolate({
-                  inputRange: [0, 100, 150],
-                  outputRange: [0.9, 1, 1.15],
+                  inputRange: [0, 65, 80, 120],
+                  outputRange: [0.9, 1.0, 1.25, 1.25],
                   extrapolate: 'clamp',
                 });
 
@@ -2282,18 +2282,18 @@ export default function IdeaCapsuleApp() {
               ) => {
                 // dragX 在向左拖拽（拉出右侧）时是负值
                 const transX = dragX.interpolate({
-                  inputRange: [-100, -50, 0],
-                  outputRange: [-10, 0, 30],
+                  inputRange: [-80, -20, 0],
+                  outputRange: [-10, 0, 20],
                   extrapolate: 'clamp',
                 });
                 const opacity = dragX.interpolate({
-                  inputRange: [-100, -30, 0],
-                  outputRange: [1, 0.5, 0],
+                  inputRange: [-80, -20, 0],
+                  outputRange: [1, 1, 0],
                   extrapolate: 'clamp',
                 });
                 const scale = dragX.interpolate({
-                  inputRange: [-150, -100, 0],
-                  outputRange: [1.15, 1, 0.9],
+                  inputRange: [-120, -80, -65, 0],
+                  outputRange: [1.25, 1.25, 1.0, 0.9],
                   extrapolate: 'clamp',
                 });
 
@@ -2322,7 +2322,7 @@ export default function IdeaCapsuleApp() {
                 const Icon = isArchive ? Archive : Trash2;
 
                 return (
-                  <View style={[s.swipeRightAction, isArchive && { backgroundColor: '#FF9500' }]}>
+                  <View style={[s.swipeRightAction, isArchive && { backgroundColor: '#007AFF' }]}>
                     <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
                       <Icon size={18} color="#FFF" />
                       <Text style={s.swipeActionTxt}>{label}</Text>
@@ -3950,8 +3950,8 @@ function SwipeableCardWrapper({
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }}
       friction={1.5}
-      leftThreshold={50}
-      rightThreshold={50}
+      leftThreshold={80}
+      rightThreshold={80}
     >
       {children}
     </Swipeable>
