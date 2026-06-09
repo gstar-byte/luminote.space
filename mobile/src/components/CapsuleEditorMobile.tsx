@@ -8,6 +8,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Text,
+  Image,
 } from 'react-native';
 import {
   Bold,
@@ -18,6 +19,7 @@ import {
   Quote,
   Image as ImageIcon,
   ChevronDown,
+  X,
 } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
 import * as ImagePicker from 'expo-image-picker';
@@ -29,6 +31,9 @@ interface CapsuleEditorMobileProps {
   placeholder?: string;
   autoFocus?: boolean;
   editMode?: 'plain' | 'markdown';
+  isMetaFocused?: boolean;
+  attachments?: any[];
+  onRemoveAttachment?: (index: number) => void;
 }
 
 // -----------------------------------------------------------------------------
@@ -657,6 +662,9 @@ export function CapsuleEditorMobile({
   placeholder = 'Write your idea...',
   autoFocus = false,
   editMode = 'plain',
+  isMetaFocused = false,
+  attachments = [],
+  onRemoveAttachment,
 }: CapsuleEditorMobileProps) {
   const getInitialSource = () => {
     const html = tiptapJsonToHtml(content);
@@ -1038,6 +1046,45 @@ export function CapsuleEditorMobile({
               }}
               autoFocus={autoFocus}
             />
+
+            {attachments && attachments.length > 0 ? (
+              <View style={{ marginTop: 8, paddingHorizontal: 16, paddingBottom: 16 }}>
+                {attachments.map((a, i) => (
+                  <View key={`att-${i}-${a.url.slice(0, 15)}`} style={{ marginTop: 12 }}>
+                    <View style={{ position: 'relative' }}>
+                      {a.type === 'image' ? (
+                        <Image source={{ uri: a.url }} style={{ width: '100%', height: 180, borderRadius: 12 }} />
+                      ) : (
+                        <View style={{ width: '100%', height: 120, borderRadius: 12, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ color: '#FFF' }}>Video</Text>
+                        </View>
+                      )}
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e?.stopPropagation?.();
+                          onRemoveAttachment?.(i);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          zIndex: 50,
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: 'rgba(0,0,0,0.55)',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      >
+                        <X size={16} color="#FFF" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : null}
           </ScrollView>
         </View>
       ) : (
@@ -1056,75 +1103,77 @@ export function CapsuleEditorMobile({
           </View>
 
           {/* 原生快捷工具栏：在 Markdown 模式下也展现，解决被键盘遮挡的 WebView 工具栏问题 */}
-          <View style={styles.nativeToolbar}>
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('heading')}
-              style={[styles.nativeToolBtn, (webviewState.heading !== '') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.nativeToolText, { color: (webviewState.heading !== '') ? '#007AFF' : '#4E4E50' }]}>
-                {getHeadingText()}
-              </Text>
-            </TouchableOpacity>
-            
-            <View style={styles.nativeToolbarDivider} />
+          {!isMetaFocused && (
+            <View style={styles.nativeToolbar}>
+              <TouchableOpacity
+                onPress={() => handleNativeToolbarPress('heading')}
+                style={[styles.nativeToolBtn, (webviewState.heading !== '') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.nativeToolText, { color: (webviewState.heading !== '') ? '#007AFF' : '#4E4E50' }]}>
+                  {getHeadingText()}
+                </Text>
+              </TouchableOpacity>
+              
+              <View style={styles.nativeToolbarDivider} />
 
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('bold')}
-              style={[styles.nativeToolBtn, isBtnActive('bold') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
-              activeOpacity={0.7}
-            >
-              <Bold size={16} color={isBtnActive('bold') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleNativeToolbarPress('bold')}
+                style={[styles.nativeToolBtn, isBtnActive('bold') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+                activeOpacity={0.7}
+              >
+                <Bold size={16} color={isBtnActive('bold') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('italic')}
-              style={[styles.nativeToolBtn, isBtnActive('italic') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
-              activeOpacity={0.7}
-            >
-              <Italic size={16} color={isBtnActive('italic') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleNativeToolbarPress('italic')}
+                style={[styles.nativeToolBtn, isBtnActive('italic') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+                activeOpacity={0.7}
+              >
+                <Italic size={16} color={isBtnActive('italic') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('strike')}
-              style={[styles.nativeToolBtn, isBtnActive('strike') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
-              activeOpacity={0.7}
-            >
-              <Strikethrough size={16} color={isBtnActive('strike') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleNativeToolbarPress('strike')}
+                style={[styles.nativeToolBtn, isBtnActive('strike') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+                activeOpacity={0.7}
+              >
+                <Strikethrough size={16} color={isBtnActive('strike') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('quote')}
-              style={styles.nativeToolBtn}
-              activeOpacity={0.7}
-            >
-              <Quote size={16} color="#4E4E50" strokeWidth={2.5} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleNativeToolbarPress('quote')}
+                style={styles.nativeToolBtn}
+                activeOpacity={0.7}
+              >
+                <Quote size={16} color="#4E4E50" strokeWidth={2.5} />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('bullet')}
-              style={[styles.nativeToolBtn, isBtnActive('bullet') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
-              activeOpacity={0.7}
-            >
-              <List size={16} color={isBtnActive('bullet') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleNativeToolbarPress('bullet')}
+                style={[styles.nativeToolBtn, isBtnActive('bullet') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+                activeOpacity={0.7}
+              >
+                <List size={16} color={isBtnActive('bullet') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('ordered')}
-              style={[styles.nativeToolBtn, isBtnActive('ordered') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
-              activeOpacity={0.7}
-            >
-              <ListOrdered size={16} color={isBtnActive('ordered') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleNativeToolbarPress('ordered')}
+                style={[styles.nativeToolBtn, isBtnActive('ordered') && { backgroundColor: 'rgba(0, 122, 255, 0.08)' }]}
+                activeOpacity={0.7}
+              >
+                <ListOrdered size={16} color={isBtnActive('ordered') ? '#007AFF' : '#4E4E50'} strokeWidth={2.5} />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => handleNativeToolbarPress('image')}
-              style={styles.nativeToolBtn}
-              activeOpacity={0.7}
-            >
-              <ImageIcon size={16} color="#4E4E50" strokeWidth={2.5} />
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                onPress={() => handleNativeToolbarPress('image')}
+                style={styles.nativeToolBtn}
+                activeOpacity={0.7}
+              >
+                <ImageIcon size={16} color="#4E4E50" strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
+          )}
         </>
       )}
     </View>
