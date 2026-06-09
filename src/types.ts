@@ -21,6 +21,8 @@ export interface Capsule {
   isArchived: boolean;
   isDeleted: boolean;
   color?: string; // Hex color for custom override
+  tag?: string;
+  /** @deprecated Use tag instead. Only kept for backward compatibility and data migration. */
   tags?: string[];
   reminder?: ReminderConfig;
   attachments?: { url: string; type: 'image' | 'video' }[];

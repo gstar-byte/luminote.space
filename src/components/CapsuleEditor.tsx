@@ -174,7 +174,12 @@ function htmlToMarkdown(html: string): string {
     }
   }
 
-  return parseNode(temp).replace(/\n{3,}/g, '\n\n').trim();
+  const result = parseNode(temp);
+  return result
+    .replace(/<\/?p\b[^>]*>?/gi, '')
+    .replace(/<br\b[^>]*\/?>?/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 // Convert Markdown to HTML format
@@ -414,12 +419,8 @@ export function CapsuleEditor({
     const prev = prevModeRef.current;
     if (prev === editMode) return;
     if (editMode === 'plain') {
-      // 进入纯文本：如果前一个模式是 markdown，展示 markdown 源码，否则展示 HTML 源码。
-      if (prev === 'markdown') {
-        setPlainSource(htmlToMarkdown(editor.getHTML()));
-      } else {
-        setPlainSource(editor.getHTML());
-      }
+      // 永远将其转换为 Markdown 源码，不再直接暴露 HTML 标签
+      setPlainSource(htmlToMarkdown(editor.getHTML()));
     } else if (prev === 'plain') {
       // 离开纯文本：如果新模式是 markdown，把 plainSource (此时是 markdown) 转为 HTML 后喂给 Tiptap。
       if (editMode === 'markdown') {

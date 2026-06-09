@@ -10,8 +10,9 @@ import {
   TouchableOpacity,
   View,
   Platform,
+  Linking,
 } from 'react-native';
-import { User as UserIcon, X, Sliders } from 'lucide-react-native';
+import { User as UserIcon, X, Sliders, Hand, Smartphone, Layers } from 'lucide-react-native';
 import type { UserProfile, AppSettings } from '../types';
 import { PAYWALL_ACTIVE } from '../featureFlags';
 import * as Haptics from 'expo-haptics';
@@ -266,6 +267,111 @@ export function SettingsModalMobile({
                 </View>
               </>
             )}
+
+            {/* Section: iOS Back Tap */}
+            {Platform.OS === 'ios' && (
+              <>
+                <Text style={styles.sectionLbl}>iOS BACK TAP</Text>
+                <View style={styles.sectionCard}>
+                  <View style={styles.row}>
+                    <View style={{ marginRight: 12 }}>
+                      <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(0,122,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                        <Hand size={18} color="#007AFF" strokeWidth={2.5} />
+                      </View>
+                    </View>
+                    <View style={styles.rowMeta}>
+                      <Text style={styles.rowTitle}>Double / Triple Tap</Text>
+                      <Text style={styles.rowSub}>
+                        Tap the back of your iPhone to instantly open Quick Capture — no need to unlock or find the app.
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.rowDivider}>
+                    <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#636366', lineHeight: 17 }}>
+                        {'1. Open '}
+                        <Text style={{ color: '#007AFF', fontWeight: '800' }}>Settings → Accessibility → Touch</Text>
+                        {'\n2. Scroll to '}
+                        <Text style={{ color: '#007AFF', fontWeight: '800' }}>Back Tap</Text>
+                        {'\n3. Choose '}
+                        <Text style={{ fontWeight: '800' }}>Double Tap</Text>
+                        {' or '}
+                        <Text style={{ fontWeight: '800' }}>Triple Tap</Text>
+                        {'\n4. Select '}
+                        <Text style={{ color: '#007AFF', fontWeight: '800' }}>Lumi Note</Text>
+                        {' (under Shortcuts)'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.rowDivider}>
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, gap: 6 }}
+                      onPress={() => {
+                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        Linking.openURL('App-prefs:ACCESSIBILITY_PATH');
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#007AFF' }}>Open Accessibility Settings</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* Section: Home Screen Widget */}
+            <Text style={styles.sectionLbl}>HOME SCREEN WIDGET</Text>
+            <View style={styles.sectionCard}>
+              <View style={styles.row}>
+                <View style={{ marginRight: 12 }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(52,199,89,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                    <Layers size={18} color="#34C759" strokeWidth={2.5} />
+                  </View>
+                </View>
+                <View style={styles.rowMeta}>
+                  <Text style={styles.rowTitle}>Quick Capture Widget</Text>
+                  <Text style={styles.rowSub}>
+                    Add a Lumi Note widget to your home screen for one-tap note capture and recent notes at a glance.
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.rowDivider}>
+                <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+                  {Platform.OS === 'ios' ? (
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#636366', lineHeight: 17 }}>
+                      {'1. Long press on your '}
+                      <Text style={{ fontWeight: '800' }}>Home Screen</Text>
+                      {'\n2. Tap the '}
+                      <Text style={{ color: '#007AFF', fontWeight: '800' }}>+ button</Text>
+                      {' (top left)'}
+                      {'\n3. Search for '}
+                      <Text style={{ color: '#007AFF', fontWeight: '800' }}>Lumi Note</Text>
+                      {'\n4. Choose a widget size and tap '}
+                      <Text style={{ fontWeight: '800' }}>Add Widget</Text>
+                    </Text>
+                  ) : (
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#636366', lineHeight: 17 }}>
+                      {'1. Long press on your '}
+                      <Text style={{ fontWeight: '800' }}>Home Screen</Text>
+                      {'\n2. Tap '}
+                      <Text style={{ color: '#007AFF', fontWeight: '800' }}>Widgets</Text>
+                      {'\n3. Search for '}
+                      <Text style={{ color: '#007AFF', fontWeight: '800' }}>Lumi Note</Text>
+                      {'\n4. Drag the widget to your home screen'}
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <View style={styles.rowDivider}>
+                <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,149,0,0.08)', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10 }}>
+                    <Smartphone size={13} color="#FF9500" strokeWidth={2.5} />
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#FF9500', flex: 1 }}>
+                      Widget will be available after installing the app from {Platform.OS === 'ios' ? 'App Store' : 'Play Store'}.
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
 
             <TouchableOpacity style={styles.done} onPress={onClose}>
               <Text style={styles.doneTxt}>Done</Text>

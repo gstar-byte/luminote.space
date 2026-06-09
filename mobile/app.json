@@ -35,11 +35,22 @@
         {
           "microphonePermission": "Allow Idea Capsule to record voice notes."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "googleWebClientId": "",
+      "googleIosClientId": "",
+      "googleAndroidClientId": "",
+      "eas": {
+        "projectId": "270197b3-4a9c-451e-b8c8-7224a99a5c50"
+      }
+    },
+    "owner": "luminote.space"
   }
 }

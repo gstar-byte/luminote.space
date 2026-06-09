@@ -232,12 +232,16 @@ function mergeCapsulePatch(c: Capsule, updates: Partial<Capsule>): Capsule {
       n = rest as Capsule;
     }
   }
-  if (Object.prototype.hasOwnProperty.call(updates, 'tags')) {
-    const t = updates.tags;
-    if (t === undefined || t === null || (Array.isArray(t) && t.length === 0)) {
-      const { tags: _omit, ...rest } = n;
+  if (Object.prototype.hasOwnProperty.call(updates, 'tag')) {
+    const t = updates.tag;
+    if (t === undefined || t === null || (typeof t === 'string' && t.trim() === '')) {
+      const { tag: _omit, ...rest } = n;
       n = rest as Capsule;
     }
+  }
+  if ('tags' in n) {
+    const { tags: _omit, ...rest } = n as any;
+    n = rest as Capsule;
   }
   if (Object.prototype.hasOwnProperty.call(updates, 'attachments')) {
     const a = updates.attachments;
@@ -281,12 +285,13 @@ function partialCapsuleToFirestore(updates: Partial<Capsule>): Record<string, un
       }
       return;
     }
-    if (key === 'tags') {
-      if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) {
+    if (key === 'tag') {
+      if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
         cleanUpdates[key] = deleteField();
       } else {
         cleanUpdates[key] = value;
       }
+      cleanUpdates['tags'] = deleteField();
       return;
     }
     if (key === 'attachments') {
@@ -330,8 +335,8 @@ function partialCapsuleToFirestore(updates: Partial<Capsule>): Record<string, un
   return cleanUpdates;
 }
 
-function tagsSignature(tags: string[] | undefined): string {
-  return [...(tags || [])].map((t) => t.trim()).filter(Boolean).sort().join('\0');
+function tagSignature(tag: string | undefined): string {
+  return (tag || '').trim();
 }
 
 function CrownJewel({ className, size = 32 }: { className?: string; size?: number }) {
@@ -791,7 +796,7 @@ export default function App() {
           id: 'demo-1',
           content: "🚀 Welcome to Lumi Note! This is a thought note to record your inspiration. It displays perfectly in both list and grid views.",
           category: "Technology",
-          tags: ["intro", "welcome"],
+          tag: "intro",
           color: PRESET_COLORS[0],
           isTodo: false,
           completed: false,
@@ -806,7 +811,7 @@ export default function App() {
           id: 'demo-2',
           content: "🛒 Remember to buy milk and bread",
           category: "Personal",
-          tags: ["shopping", "home"],
+          tag: "shopping",
           color: PRESET_COLORS[1],
           isTodo: true,
           completed: false,
@@ -818,7 +823,7 @@ export default function App() {
           id: 'demo-3',
           content: "🎯 Finish project presentation PPT",
           category: "Work",
-          tags: ["important", "deadline"],
+          tag: "important",
           color: PRESET_COLORS[2],
           isTodo: true,
           completed: true,
@@ -831,7 +836,7 @@ export default function App() {
           id: 'demo-4',
           content: "💡 A crazy idea for a new App: AI-driven dream analyzer.",
           category: "Idea",
-          tags: ["creative", "startup", "ai"],
+          tag: "creative",
           color: PRESET_COLORS[3],
           isTodo: false,
           completed: false,
@@ -854,7 +859,7 @@ export default function App() {
           id: 'demo-6',
           content: "⏰ Book tomorrow's dentist appointment",
           category: "Health",
-          tags: ["appointment"],
+          tag: "appointment",
           color: PRESET_COLORS[5],
           isTodo: true,
           completed: false,
@@ -867,7 +872,7 @@ export default function App() {
           id: 'demo-7',
           content: 'This is a completed todo item demo, visible in the "Completed To-do" view.',
           category: 'Personal',
-          tags: ['demo', 'done'],
+          tag: 'demo',
           color: '#434343',
           isTodo: true,
           completed: true,
@@ -879,7 +884,7 @@ export default function App() {
           id: 'demo-8',
           content: "📚 Read 'The Design of Everyday Things' Chapters 1-3",
           category: "Study",
-          tags: ["reading", "design"],
+          tag: "reading",
           color: PRESET_COLORS[6] || '#AF52DE',
           isTodo: true,
           completed: false,
@@ -891,7 +896,7 @@ export default function App() {
           id: 'demo-9',
           content: "📞 Confirm next week's online meeting time with investors",
           category: "Work",
-          tags: ["meeting", "important"],
+          tag: "meeting",
           color: PRESET_COLORS[2],
           isTodo: true,
           completed: false,
@@ -904,7 +909,7 @@ export default function App() {
           id: 'demo-10',
           content: "🎬 Recommended movies: Interstellar, Inception",
           category: "Entertainment",
-          tags: ["movie", "weekend"],
+          tag: "movie",
           color: PRESET_COLORS[3],
           isTodo: false,
           completed: false,
@@ -916,7 +921,7 @@ export default function App() {
           id: 'demo-11',
           content: "✈️ Make travel plans for Kyoto, Japan at the end of the year: flights, hotels, visas",
           category: "Personal",
-          tags: ["travel", "japan"],
+          tag: "travel",
           color: PRESET_COLORS[1],
           isTodo: true,
           completed: false,
@@ -928,7 +933,7 @@ export default function App() {
           id: 'demo-12',
           content: "💻 Optimize frontend first-screen loading speed, check Vite config and lazy loading",
           category: "Technology",
-          tags: ["dev", "performance"],
+          tag: "dev",
           color: PRESET_COLORS[0],
           isTodo: true,
           completed: false,
@@ -1394,14 +1399,14 @@ export default function App() {
   const inputRef = useRef<HTMLInputElement>(null);
   const recognition = useRef<any>(null);
   
-  const allTags = Array.from(new Set(allCapsules.flatMap(c => c.tags || []))).sort();
+  const allTags = Array.from(new Set(allCapsules.map(c => c.tag || (c.tags && c.tags.length > 0 ? c.tags[0] : undefined)).filter(Boolean) as string[])).sort();
   const allCategories = Array.from(new Set(allCapsules.map(c => c.category).filter(Boolean) as string[])).sort();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // 批量「分类 & 标签」面板（批量场景下的唯一弹层，颜色/提醒已从批量中移除）
   const [batchTagCatOpen, setBatchTagCatOpen] = useState(false);
   const [batchCat, setBatchCat] = useState('');
-  const [batchTags, setBatchTags] = useState('');
+  const [batchTag, setBatchTag] = useState('');
 
   const toggleSelection = (id: string) => {
     const newSelection = new Set(selectedIds);
@@ -1541,9 +1546,9 @@ export default function App() {
   const editSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [editDetailCategory, setEditDetailCategory] = useState('');
-  const [editDetailTags, setEditDetailTags] = useState('');
+  const [editDetailTag, setEditDetailTag] = useState('');
   const editDetailCategoryRef = useRef('');
-  const editDetailTagsRef = useRef('');
+  const editDetailTagRef = useRef('');
   const editDetailCapsuleIdRef = useRef<string | null>(null);
   const editingCapsuleRef = useRef<Capsule | null>(null);
   editingCapsuleRef.current = editingCapsule;
@@ -1560,11 +1565,11 @@ export default function App() {
     if (editDetailCapsuleIdRef.current !== editingCapsule.id) {
       editDetailCapsuleIdRef.current = editingCapsule.id;
       const c = editingCapsule.category || '';
-      const t = (editingCapsule.tags || []).join(', ');
+      const t = editingCapsule.tag || (editingCapsule.tags && editingCapsule.tags.length > 0 ? editingCapsule.tags[0] : '');
       setEditDetailCategory(c);
-      setEditDetailTags(t);
+      setEditDetailTag(t);
       editDetailCategoryRef.current = c;
-      editDetailTagsRef.current = t;
+      editDetailTagRef.current = t;
       setIsMarkdownPreview(false);
     }
   }, [editingCapsule]);
@@ -1655,15 +1660,14 @@ export default function App() {
         isAmbiguous: shouldShowPill,
         clarificationPrompt: shouldShowPill ? 'Quickly set a reminder, star, pin, or keep as note?' : null
       };
-      if (category) newCapsuleData.category = category;
-      if (tags && tags.length > 0) newCapsuleData.tags = tags;
+      if (tags && tags.length > 0) newCapsuleData.tag = tags[0];
       if (isStarred) newCapsuleData.isStarred = true;
       if (isPinned) newCapsuleData.isPinned = true;
       
       console.log('[handleCreate] saving to Firestore:', JSON.stringify({ content: newCapsuleData.content, subject: newCapsuleData.subject, isTodo: newCapsuleData.isTodo, hasReminder: !!newCapsuleData.reminder, isAmbiguous: newCapsuleData.isAmbiguous }));
       
-      const docRef = await addDoc(collection(getDb(), 'capsules'), newCapsuleData);
-      console.log('[handleCreate] saved doc id:', docRef.id);
+      // 同步生成唯一的文档 ID，消除 addDoc 的异步挂起阻塞
+      const docRef = doc(collection(getDb(), 'capsules'));
       
       const createdCapsule: Capsule = {
         id: docRef.id,
@@ -1681,15 +1685,22 @@ export default function App() {
         isAmbiguous: shouldShowPill,
         clarificationPrompt: shouldShowPill ? 'Quickly set a reminder, star, pin, or keep as note?' : null,
         category: (newCapsuleData.category || undefined) as string,
-        tags: (newCapsuleData.tags || undefined) as string[],
+        tag: (newCapsuleData.tag || undefined) as string,
         isStarred: (newCapsuleData.isStarred || undefined) as boolean,
         isPinned: (newCapsuleData.isPinned || undefined) as boolean
       };
 
-      // Optimistic local state update (Instant Response)
+      // 立即在本地状态中加入此笔记（瞬时响应，避免断网时 UI 卡死或延迟）
       setCapsules(prev => {
         if (prev.some(c => c.id === docRef.id)) return prev;
         return [createdCapsule, ...prev];
+      });
+
+      // 在后台静默运行保存，即使离线，Firestore localCache 也会安全接管数据并在重连时自动推送
+      setDoc(docRef, newCapsuleData).then(() => {
+        console.log('[handleCreate] saved successfully to Firestore:', docRef.id);
+      }).catch(err => {
+        console.error('[handleCreate] Firestore setDoc failed:', err);
       });
       
       // Manage ClarificationPill state
@@ -1697,7 +1708,6 @@ export default function App() {
         wasCaptureCollapsedBeforeClarification.current = isCaptureCollapsed;
         setTemporaryPendingCapsule(createdCapsule);
         setPendingClarificationCapsuleId(docRef.id);
-        // ClarificationPill 已改为 portal 浮层，无需展开 footer
       } else {
         setTemporaryPendingCapsule(null);
         setPendingClarificationCapsuleId(null);
@@ -1711,7 +1721,7 @@ export default function App() {
       console.error('[handleCreate] ERROR in try block:', error);
       const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
       const fallbackDoc = {
-        userId: user?.uid,
+        userId: user?.uid || '',
         content: text,
         subject: '',
         createdAt: Date.now(),
@@ -1722,27 +1732,28 @@ export default function App() {
         isDeleted: false,
         color: randomColor
       };
-      try {
-        const docRef = await addDoc(collection(getDb(), 'capsules'), fallbackDoc);
-        console.log('[handleCreate] fallback saved (raw text)');
-        
-        // Optimistic local state update for fallback flow
-        setCapsules(prev => {
-          if (prev.some(c => c.id === docRef.id)) return prev;
-          return [{ id: docRef.id, ...fallbackDoc } as Capsule, ...prev];
-        });
-        
-        if (user) {
-          safeLocalStorageSet(`luminote_has_notes_seeded_${user.uid}`, 'true');
-          updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
-        }
-      } catch (innerError) {
-        console.error('[handleCreate] fallback ERROR:', innerError);
+
+      // 同步生成 ID 并乐观更新 fallback 流程
+      const docRef = doc(collection(getDb(), 'capsules'));
+      setCapsules(prev => {
+        if (prev.some(c => c.id === docRef.id)) return prev;
+        return [{ id: docRef.id, ...fallbackDoc } as Capsule, ...prev];
+      });
+
+      // 后台静默发送 fallback
+      setDoc(docRef, fallbackDoc).then(() => {
+        console.log('[handleCreate] fallback saved successfully');
+      }).catch(innerError => {
+        console.error('[handleCreate] fallback setDoc ERROR:', innerError);
         handleFirestoreError(innerError, OperationType.CREATE, 'capsules');
+      });
+
+      if (user) {
+        safeLocalStorageSet(`luminote_has_notes_seeded_${user.uid}`, 'true');
+        updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
       }
     } finally {
       setIsProcessing(false);
-      // Ensure focus again just in case
       setTimeout(() => inputRef.current?.focus(), 10);
     }
   };
@@ -1913,14 +1924,15 @@ export default function App() {
     const cap = editingCapsuleRef.current;
     if (cap) {
       const cat = editDetailCategoryRef.current.trim();
-      const tagParts = editDetailTagsRef.current.split(',').map((t) => t.trim()).filter(Boolean);
+      const newTag = editDetailTagRef.current.replace(/,/g, '').trim();
       const prevCat = (cap.category || '').trim();
+      const prevTag = cap.tag || (cap.tags && cap.tags.length > 0 ? cap.tags[0] : '');
       const patch: Partial<Capsule> = {};
       if (prevCat !== cat) {
         patch.category = cat ? cat : undefined;
       }
-      if (tagsSignature(cap.tags) !== tagsSignature(tagParts)) {
-        patch.tags = tagParts.length ? tagParts : undefined;
+      if (prevTag !== newTag) {
+        patch.tag = newTag ? newTag : undefined;
       }
       if (cap.content !== editContentDraftRef.current) {
         patch.content = editContentDraftRef.current;
@@ -2161,10 +2173,11 @@ export default function App() {
   const renameTag = (oldTag: string) => {
     const newTag = prompt('Rename tag:', oldTag);
     if (newTag && newTag.trim() && newTag !== oldTag) {
-      const trimmed = newTag.trim().replace('#', '');
+      const trimmed = newTag.trim().replace('#', '').replace(/,/g, '');
       allCapsules.forEach(c => {
-        if (c.tags?.includes(oldTag)) {
-          updateCapsule(c.id, { tags: c.tags.map(t => t === oldTag ? trimmed : t) });
+        const currentTag = c.tag || (c.tags && c.tags.length > 0 ? c.tags[0] : undefined);
+        if (currentTag === oldTag) {
+          updateCapsule(c.id, { tag: trimmed });
         }
       });
       if (tagFilter === oldTag) setTagFilter(trimmed);
@@ -2185,7 +2198,8 @@ export default function App() {
   const removeTag = (tagToRemove: string) => {
     if (confirm(`This will delete all notes with this tag.`)) {
       allCapsules.forEach(c => {
-        if (c.tags?.includes(tagToRemove)) {
+        const currentTag = c.tag || (c.tags && c.tags.length > 0 ? c.tags[0] : undefined);
+        if (currentTag === tagToRemove) {
           removeCapsuleForever(c.id);
         }
       });
@@ -2419,11 +2433,11 @@ export default function App() {
   const sortedCapsules = allCapsules;
   
   const filteredCapsules = sortedCapsules.filter(c => {
-    const contentText = typeof c.content === 'string' ? c.content : plainTextFromContent(c.content);
+    const currentTag = c.tag || (c.tags && c.tags.length > 0 ? c.tags[0] : undefined);
     const matchesSearch = (contentText || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         (c.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())));
+                         (currentTag && currentTag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = categoryFilter === 'all' || c.category === categoryFilter;
-    const matchesTag = !tagFilter || (c.tags && c.tags.includes(tagFilter));
+    const matchesTag = !tagFilter || (currentTag === tagFilter);
     
     // Hard state filters (Archive/Trash)
     if (filter === 'starred') return matchesSearch && matchesCategory && matchesTag && c.isStarred && !c.isArchived && !c.isDeleted;
@@ -2540,7 +2554,7 @@ export default function App() {
     }
 
     return (
-      <div id="login-screen" className="min-h-[100dvh] md:h-[100dvh] w-screen flex flex-col md:flex-row bg-white overflow-y-auto md:overflow-hidden py-8 md:py-0 relative">
+      <div id="login-screen" className="min-h-[100dvh] md:h-[100dvh] w-screen flex flex-col md:flex-row bg-white overflow-y-auto md:overflow-hidden py-4 md:py-0 relative">
         {/* 全屏磨砂模糊登录 Toast / Fullscreen backdrop-blur Auth Toast */}
         {authProcessing && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#F8F9FA]/40 dark:bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
@@ -2634,49 +2648,49 @@ export default function App() {
         </div>
 
         {/* Right Auth Section */}
-        <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12">
+        <div className="flex-1 flex flex-col items-center justify-center py-4 px-6 md:p-12">
           <div className="w-full max-w-sm">
-            <div className="md:hidden flex flex-col items-center mb-6">
-              <AppLogo className="w-[216px] h-[216px] mb-4" />
-              <h1 className="text-3xl font-extrabold tracking-tight text-center bg-clip-text text-transparent bg-gradient-to-r from-[#1D1D1F] to-[#434343]">Lumi Note</h1>
+            <div className="md:hidden flex flex-col items-center mb-4">
+              <AppLogo className="w-14 h-14 mb-2" />
+              <h1 className="text-2xl font-extrabold tracking-tight text-center bg-clip-text text-transparent bg-gradient-to-r from-[#1D1D1F] to-[#434343]">Lumi Note</h1>
             </div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <h3 className="text-2xl font-bold text-[#1D1D1F] mb-2">{isRegistering ? 'Create Account' : 'Welcome Back'}</h3>
-              <p className="text-[#8E8E93] text-sm font-semibold mb-4 md:mb-8">
+              <h3 className="text-xl font-bold text-[#1D1D1F] mb-1">{isRegistering ? 'Create Account' : 'Welcome Back'}</h3>
+              <p className="text-[#8E8E93] text-xs font-semibold mb-3">
                 {isRegistering ? 'Create an account to instantly capture and sync your notes, to-dos & reminders.' : 'Sign in to instantly capture and sync your notes, to-dos & reminders.'}
               </p>
 
-              <form onSubmit={handleEmailAuth} className="space-y-4">
+              <form onSubmit={handleEmailAuth} className="space-y-3">
                 <div>
-                  <label className="block text-[10px] font-black text-[#8E8E93] uppercase tracking-widest mb-2 ml-1">Email</label>
+                  <label className="block text-[10px] font-black text-[#8E8E93] uppercase tracking-widest mb-1 ml-1">Email</label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8E8E93]" size={18} />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8E8E93]" size={16} />
                     <input 
                       type="email"
                       required
                       placeholder="name@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 bg-[#F2F2F7] border-2 border-transparent focus:border-[#007AFF] focus:bg-white rounded-2xl text-sm font-semibold transition-all outline-none placeholder:text-[#8E8E93]/40"
+                      className="w-full pl-12 pr-4 py-2.5 bg-[#F2F2F7] border-2 border-transparent focus:border-[#007AFF] focus:bg-white rounded-xl text-sm font-semibold transition-all outline-none placeholder:text-[#8E8E93]/40"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black text-[#8E8E93] uppercase tracking-widest mb-2 ml-1">Password</label>
+                  <label className="block text-[10px] font-black text-[#8E8E93] uppercase tracking-widest mb-1 ml-1">Password</label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8E8E93]" size={18} />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8E8E93]" size={16} />
                     <input 
                       type="password"
                       required
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 bg-[#F2F2F7] border-2 border-transparent focus:border-[#007AFF] focus:bg-white rounded-2xl text-sm font-semibold transition-all outline-none placeholder:text-[#8E8E93]/40"
+                      className="w-full pl-12 pr-4 py-2.5 bg-[#F2F2F7] border-2 border-transparent focus:border-[#007AFF] focus:bg-white rounded-xl text-sm font-semibold transition-all outline-none placeholder:text-[#8E8E93]/40"
                     />
                   </div>
                 </div>
@@ -2684,13 +2698,13 @@ export default function App() {
                 <button 
                   type="submit"
                   disabled={authProcessing}
-                  className="w-full bg-[#007AFF] text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-[#007AFF]/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-4"
+                  className="w-full bg-[#007AFF] text-white py-2.5 rounded-xl font-black text-sm shadow-xl shadow-[#007AFF]/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
                 >
                   {authProcessing ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : (isRegistering ? 'Create Account' : 'Sign In')}
                 </button>
               </form>
 
-              <div className="relative my-5 md:my-10">
+              <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[#E5E5EA]"></div></div>
                 <div className="relative flex justify-center text-[10px] uppercase font-black text-[#8E8E93]"><span className="bg-white px-4 tracking-widest lowercase">or sign in with</span></div>
               </div>
@@ -2699,17 +2713,17 @@ export default function App() {
                 <button 
                   type="button"
                   onClick={handleGoogleSignIn}
-                  className="w-full flex items-center justify-center gap-3 bg-white py-3 rounded-xl border border-[#E5E5EA] hover:bg-[#F2F2F7] transition-all active:scale-95 shadow-sm font-bold text-sm text-[#1D1D1F]"
+                  className="w-full flex items-center justify-center gap-3 bg-white py-2.5 rounded-xl border border-[#E5E5EA] hover:bg-[#F2F2F7] transition-all active:scale-95 shadow-sm font-bold text-sm text-[#1D1D1F]"
                   title="Sign in with Google"
                 >
-                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
+                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="Google" />
                   <span>Google</span>
                 </button>
               </div>
 
               <button 
                 onClick={() => setIsRegistering(!isRegistering)}
-                className="w-full text-center mt-6 md:mt-12 text-xs font-bold text-[#8E8E93]"
+                className="w-full text-center mt-4 text-xs font-bold text-[#8E8E93]"
               >
                 {isRegistering ? 'Already have an account?' : "Don't have an account?"} <span className="text-[#007AFF]">{isRegistering ? 'Sign In' : 'Sign Up'}</span>
               </button>
@@ -3044,7 +3058,7 @@ export default function App() {
                   >
                     <div className="flex items-center gap-2">
                       <TagLucideIcon size={16} className="text-[#007AFF]" strokeWidth={2.2} />
-                      <span className="text-[#1D1D1F] normal-case text-xs font-bold tracking-normal">Tags</span>
+                      <span className="text-[#1D1D1F] normal-case text-xs font-bold tracking-normal">Tag</span>
                     </div>
                     <ChevronDown
                       size={14}
@@ -3065,12 +3079,13 @@ export default function App() {
                           removeTag={removeTag}
                           isMobile={isMobile}
                           setIsSidebarOpen={setIsSidebarOpen}
-                          count={allCapsules.filter((c) => c.tags?.includes(tag) && !c.isArchived && !c.isDeleted).length}
+                          count={allCapsules.filter((c) => (c.tag === tag || (!c.tag && c.tags?.includes(tag))) && !c.isArchived && !c.isDeleted).length}
                           onRename={(oldTag: string, newTag: string) => {
                             setCapsules((prev) =>
                               prev.map((c) => {
-                                if (c.tags?.includes(oldTag)) {
-                                  return { ...c, tags: c.tags.map((t) => (t === oldTag ? newTag : t)) };
+                                const currentTag = c.tag || (c.tags && c.tags.length > 0 ? c.tags[0] : undefined);
+                                if (currentTag === oldTag) {
+                                  return { ...c, tag: newTag, tags: undefined };
                                 }
                                 return c;
                               }),
@@ -3606,14 +3621,15 @@ export default function App() {
                         />
                       </div>
                       <div className="flex-[2]">
-                        <label className="block text-[10px] font-black text-[#8E8E93] uppercase tracking-widest mb-1 ml-1">Tags (comma separated)</label>
+                        <label className="block text-[10px] font-black text-[#8E8E93] uppercase tracking-widest mb-1 ml-1">Tag</label>
                         <input
                           type="text"
-                          placeholder="e.g. design, slide, coding"
-                          value={editDetailTags}
+                          placeholder="e.g. design"
+                          value={editDetailTag}
                           onChange={(e) => {
-                            setEditDetailTags(e.target.value);
-                            editDetailTagsRef.current = e.target.value;
+                            const val = e.target.value.replace(/,/g, '');
+                            setEditDetailTag(val);
+                            editDetailTagRef.current = val;
                           }}
                           className="w-full px-3.5 py-2 bg-[#F2F2F7] border border-transparent focus:border-[#007AFF] focus:bg-white rounded-2xl text-xs font-bold transition-all outline-none text-[#1D1D1F] dark:text-white dark:bg-[#2C2C2E] dark:focus:bg-[#1C1C1E]"
                         />
@@ -3732,7 +3748,7 @@ export default function App() {
                     onClick={() => {
                       const first = allCapsules.find((c) => selectedIds.has(c.id));
                       setBatchCat(first?.category || '');
-                      setBatchTags((first?.tags || []).join(', '));
+                      setBatchTag(first ? (first.tag || (first.tags && first.tags.length > 0 ? first.tags[0] : '')) : '');
                       setBatchTagCatOpen(true);
                     }}
                     className="flex items-center gap-2 px-3 py-2.5 text-[#007AFF] hover:bg-[#F2F2F7] transition-colors w-full text-left"
@@ -3806,12 +3822,12 @@ export default function App() {
                 />
               </div>
               <div>
-                <div className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider mb-1">Tags (comma separated)</div>
+                <div className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider mb-1">Tag</div>
                 <input
                   type="text"
-                  value={batchTags}
-                  onChange={(e) => setBatchTags(e.target.value)}
-                  placeholder="idea, follow-up"
+                  value={batchTag}
+                  onChange={(e) => setBatchTag(e.target.value.replace(/,/g, ''))}
+                  placeholder="e.g. Work"
                   className="w-full px-3 py-2 bg-[#F2F2F7] rounded-xl text-xs border-none outline-none focus:ring-2 focus:ring-[#007AFF]/30"
                 />
               </div>
@@ -3827,8 +3843,8 @@ export default function App() {
                   type="button"
                   onClick={() => {
                     const cat = batchCat.trim();
-                    const tags = batchTags.split(',').map((t) => t.trim()).filter(Boolean);
-                    void batchUpdate({ category: cat || undefined, tags: tags.length ? tags : undefined });
+                    const tag = batchTag.trim();
+                    void batchUpdate({ category: cat || undefined, tag: tag || undefined });
                     setBatchTagCatOpen(false);
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-[#007AFF] text-xs font-bold text-white"
@@ -4391,7 +4407,7 @@ const CapsuleItem = memo(function CapsuleItem({
   const [menuMode, setMenuMode] = useState<'actions' | 'batch' | 'context'>('actions');
 
   const [tempCategory, setTempCategory] = useState(capsule.category || '');
-  const [tempTags, setTempTags] = useState((capsule.tags || []).join(', '));
+  const [tempTag, setTempTag] = useState(capsule.tag || (capsule.tags && capsule.tags.length > 0 ? capsule.tags[0] : ''));
   const [tempReminderDate, setTempReminderDate] = useState<number | null>(capsule.reminder?.date || null);
   const [tempReminderType, setTempReminderType] = useState<ReminderType>(capsule.reminder?.type || 'none');
 
@@ -4470,9 +4486,7 @@ const CapsuleItem = memo(function CapsuleItem({
     // 长按 ~480ms 弹出就近操作菜单。
     clearLongPress();
     longPressTimer.current = setTimeout(() => {
-      const x = touchStartPos.current?.x ?? (e.touches[0] ? e.touches[0].clientX : window.innerWidth / 2);
-      const y = touchStartPos.current?.y ?? (e.touches[0] ? e.touches[0].clientY : window.innerHeight / 2);
-      openMenuAt(x, y, 'context');
+      onToggleSelection(capsule.id);
       // 吞掉长按后紧随的 click，避免立刻又被切回（取消选中）或打开详情。
       suppressNextClickRef.current = true;
       setIsSwiping(false);
@@ -4519,11 +4533,22 @@ const CapsuleItem = memo(function CapsuleItem({
     if (isHorizontalSwipe.current === true) {
       // 触发阈值设定为 100px
       if (swipeX > 100) {
-        // 右滑：完成/激活待办（如果原本不是 Todo，也转化为 Todo）
-        const nextCompletedStatus = !capsule.completed;
-        void onUpdate({ completed: nextCompletedStatus, isTodo: true });
+        // 右滑状态机递进：Note -> Active Todo -> Completed Todo -> Active Todo...
+        let updates: Partial<Capsule> = {};
+        let toastMsg = '';
+        if (!capsule.isTodo) {
+          updates = { isTodo: true, completed: false };
+          toastMsg = 'Task created!';
+        } else if (!capsule.completed) {
+          updates = { completed: true };
+          toastMsg = 'Task completed!';
+        } else {
+          updates = { completed: false };
+          toastMsg = 'Task activated!';
+        }
+        void onUpdate(updates);
         if (showToast) {
-          showToast(nextCompletedStatus ? 'Task completed!' : 'Task active!', 'success');
+          showToast(toastMsg, 'success');
         }
       } else if (swipeX < -100) {
         // 左滑：归档/撤销归档
@@ -4548,9 +4573,7 @@ const CapsuleItem = memo(function CapsuleItem({
     mouseDownPos.current = { x: e.clientX, y: e.clientY };
     clearLongPress();
     longPressTimer.current = setTimeout(() => {
-      const x = mouseDownPos.current?.x ?? e.clientX;
-      const y = mouseDownPos.current?.y ?? e.clientY;
-      openMenuAt(x, y, 'context');
+      onToggleSelection(capsule.id);
       suppressNextClickRef.current = true;
       mouseDownPos.current = null;
     }, 480);
@@ -4572,7 +4595,7 @@ const CapsuleItem = memo(function CapsuleItem({
 
   useEffect(() => {
     setTempCategory(capsule.category || '');
-    setTempTags((capsule.tags || []).join(', '));
+    setTempTag(capsule.tag || (capsule.tags && capsule.tags.length > 0 ? capsule.tags[0] : ''));
     setTempReminderDate(capsule.reminder?.date || null);
     setTempReminderType(capsule.reminder?.type || 'none');
   }, [capsule]);
@@ -4690,10 +4713,22 @@ const CapsuleItem = memo(function CapsuleItem({
               swipeX > 100 ? "scale-110 font-black text-white" : ""
             )}
           >
-            {capsule.completed ? <Undo size={18} className="shrink-0" /> : <Check size={18} className="shrink-0" />}
-            <span className="text-[10px] font-black uppercase tracking-wider">
-              {capsule.completed ? 'Activate' : 'Complete'}
-            </span>
+            {!capsule.isTodo ? (
+              <>
+                <Check size={18} className="shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider">Todo</span>
+              </>
+            ) : capsule.completed ? (
+              <>
+                <Undo size={18} className="shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider">Activate</span>
+              </>
+            ) : (
+              <>
+                <Check size={18} className="shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider">Complete</span>
+              </>
+            )}
           </div>
 
           {/* 右侧提示（左滑触发归档） */}
@@ -4853,20 +4888,18 @@ const CapsuleItem = memo(function CapsuleItem({
                   {capsule.category}
                 </span>
               )}
-              {capsule.tags &&
-                capsule.tags.slice(0, 3).map((t) => (
+              {(() => {
+                const currentTag = capsule.tag || (capsule.tags && capsule.tags.length > 0 ? capsule.tags[0] : undefined);
+                if (!currentTag) return null;
+                return (
                   <span
-                    key={t}
+                    key={currentTag}
                     className="text-[9px] font-black bg-black/10 px-2 py-0.5 rounded-md text-white/80"
                   >
-                    #{t}
+                    #{currentTag}
                   </span>
-                ))}
-              {capsule.tags && capsule.tags.length > 3 && (
-                <span className="text-[9px] font-black bg-black/15 px-1.5 py-0.5 rounded-md text-white/60">
-                  +{capsule.tags.length - 3}
-                </span>
-              )}
+                );
+              })()}
             </div>
 
             <div className={cn(
@@ -4953,13 +4986,13 @@ const CapsuleItem = memo(function CapsuleItem({
                     />
                   </div>
                   <div>
-                    <label className="text-[9px] font-bold text-[#8E8E93] uppercase block mb-1">Tags (comma separated)</label>
+                    <label className="text-[9px] font-bold text-[#8E8E93] uppercase block mb-1">Tag</label>
                     <input
                       type="text"
-                      value={tempTags}
-                      onChange={(e) => setTempTags(e.target.value)}
+                      value={tempTag}
+                      onChange={(e) => setTempTag(e.target.value.replace(/,/g, ''))}
                       onClick={(e) => e.stopPropagation()}
-                      placeholder="idea, follow-up"
+                      placeholder="e.g. Work"
                       className="w-full px-2 py-1.5 bg-[#F2F2F7] rounded-md text-xs border-none outline-none focus:ring-2 focus:ring-[#007AFF]"
                     />
                   </div>
@@ -4967,8 +5000,8 @@ const CapsuleItem = memo(function CapsuleItem({
                     onClick={(e) => {
                       e.stopPropagation();
                       const cat = tempCategory.trim();
-                      const tags = tempTags.split(',').map((t) => t.trim()).filter(Boolean);
-                      void onUpdate({ category: cat || undefined, tags: tags.length ? tags : undefined });
+                      const tag = tempTag.trim();
+                      void onUpdate({ category: cat || undefined, tag: tag || undefined });
                       closeMenu();
                     }}
                     className="w-full py-2 bg-[#007AFF] text-white rounded-lg text-xs font-bold shadow-md hover:bg-[#0051FF] transition-all"

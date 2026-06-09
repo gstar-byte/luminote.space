@@ -315,8 +315,8 @@ function alertCaptureEmpty() {
 }
 
 /** Maps a partial capsule update to Firestore `update()` / batch fields (incl. deleteField). */
-function capsulePartialToFirestoreData(updates: Partial<Capsule>): Record<string, unknown> {
-  const clean: Record<string, unknown> = {};
+function capsulePartialToFirestoreData(updates: Partial<Capsule>): Record<string, any> {
+  const clean: Record<string, any> = {};
   Object.entries(updates).forEach(([k, v]) => {
     if (k === 'category') {
       if (v === undefined || v === null || (typeof v === 'string' && v.trim() === '')) {
@@ -326,12 +326,13 @@ function capsulePartialToFirestoreData(updates: Partial<Capsule>): Record<string
       }
       return;
     }
-    if (k === 'tags') {
-      if (v === undefined || v === null || (Array.isArray(v) && v.length === 0)) {
+    if (k === 'tag') {
+      if (v === undefined || v === null || (typeof v === 'string' && v.trim() === '')) {
         clean[k] = deleteField();
       } else {
         clean[k] = v;
       }
+      clean['tags'] = deleteField();
       return;
     }
     if (k === 'attachments') {
@@ -372,7 +373,7 @@ function capsulePartialToFirestoreData(updates: Partial<Capsule>): Record<string
 }
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
-  swipeEnabled: false,
+  swipeEnabled: true,
   swipeRightAction: 'archive',
   edgePanelEnabled: false,
   ongoingNotificationEnabled: false,
@@ -384,6 +385,30 @@ export default function IdeaCapsuleApp() {
   const searchInputRef = useRef<TextInput>(null);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'info' | 'success' | 'error'>('info');
+  const toastTimerRef = useRef<any>(null);
+
+  const showToast = useCallback((msg: string, type: 'info' | 'success' | 'error' = 'info') => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setToastMessage(msg);
+    setToastType(type);
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimerRef.current = null;
+    }, 3000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -524,7 +549,7 @@ export default function IdeaCapsuleApp() {
           setEditContent(found.content);
           setEditSubjectDraft(found.subject || '');
           setEditCategoryDraft(found.category || '');
-          setEditTagsDraft(found.tags?.join(', ') || '');
+          setEditTagDraft(found.tag || (found.tags && found.tags.length > 0 ? found.tags[0] : ''));
         }
       }
     });
@@ -656,9 +681,11 @@ export default function IdeaCapsuleApp() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setRefreshTitle('Syncing…');
+    showToast('Syncing notes...', 'info');
     try {
       await syncCapsules();
       setShowSyncComplete(true);
+      showToast('Sync complete!', 'success');
       setTimeout(() => {
         setShowSyncComplete(false);
       }, 1500);
@@ -667,16 +694,16 @@ export default function IdeaCapsuleApp() {
       setRefreshTitle('Pull to sync');
       pullReachedRef.current = false;
     }
-  }, [syncCapsules]);
+  }, [syncCapsules, showToast]);
 
   const [editingCapsule, setEditingCapsule] = useState<Capsule | null>(null);
   const [editContent, setEditContent] = useState('');
   const [editCategoryDraft, setEditCategoryDraft] = useState('');
-  const [editTagsDraft, setEditTagsDraft] = useState('');
+  const [editTagDraft, setEditTagDraft] = useState('');
   const [editSubjectDraft, setEditSubjectDraft] = useState('');
   const [isTextInputFocused, setIsTextInputFocused] = useState(false);
   const [editCategoryFocused, setEditCategoryFocused] = useState(false);
-  const [editTagsFocused, setEditTagsFocused] = useState(false);
+  const [editTagFocused, setEditTagFocused] = useState(false);
   const editModalCapsuleIdRef = useRef<string | null>(null);
   const editingCapsuleRef = useRef<Capsule | null>(null);
   editingCapsuleRef.current = editingCapsule;
@@ -699,7 +726,7 @@ export default function IdeaCapsuleApp() {
   const [batchReminderMultiOpen, setBatchReminderMultiOpen] = useState(false);
   const [batchTagCatOpen, setBatchTagCatOpen] = useState(false);
   const [batchCategory, setBatchCategory] = useState('');
-  const [batchTags, setBatchTags] = useState('');
+  const [batchTag, setBatchTag] = useState('');
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
 
   const [colorPickerCapsule, setColorPickerCapsule] = useState<Capsule | null>(null);
@@ -932,7 +959,13 @@ export default function IdeaCapsuleApp() {
 
   const allTags = useMemo(
     () =>
-      Array.from(new Set(sortedCapsules.flatMap((c) => c.tags || []))).sort(),
+      Array.from(
+        new Set(
+          sortedCapsules
+            .map((c) => c.tag || (c.tags && c.tags.length > 0 ? c.tags[0] : undefined))
+            .filter(Boolean) as string[],
+        ),
+      ).sort(),
     [sortedCapsules],
   );
 
@@ -958,13 +991,14 @@ export default function IdeaCapsuleApp() {
   const filteredCapsules = useMemo(() => {
     return sortedCapsules.filter((c) => {
       const searchLower = searchQuery.toLowerCase().trim();
+      const currentTag = c.tag || (c.tags && c.tags.length > 0 ? c.tags[0] : undefined);
       const matchesSearch = !searchLower || 
         plainTextFromContent(c.content).toLowerCase().includes(searchLower) ||
         (c.category?.toLowerCase().includes(searchLower)) ||
-        (c.tags?.some((t) => t.toLowerCase().includes(searchLower)) ?? false);
+        (currentTag?.toLowerCase().includes(searchLower) ?? false);
       const matchesCategory =
         categoryFilter === 'all' || c.category === categoryFilter;
-      const matchesTag = !tagFilter || (c.tags && c.tags.includes(tagFilter));
+      const matchesTag = !tagFilter || (currentTag === tagFilter);
 
       if (filter === 'archived')
         return (
@@ -1074,12 +1108,16 @@ export default function IdeaCapsuleApp() {
         n = rest as Capsule;
       }
     }
-    if (Object.prototype.hasOwnProperty.call(updates, 'tags')) {
-      const t = updates.tags;
-      if (t === undefined || t === null || (Array.isArray(t) && t.length === 0)) {
-        const { tags: _omit, ...rest } = n;
+    if (Object.prototype.hasOwnProperty.call(updates, 'tag')) {
+      const t = updates.tag;
+      if (t === undefined || t === null || (typeof t === 'string' && t.trim() === '')) {
+        const { tag: _omit, ...rest } = n;
         n = rest as Capsule;
       }
+    }
+    if ('tags' in n) {
+      const { tags: _omit, ...rest } = n as any;
+      n = rest as Capsule;
     }
     if (Object.prototype.hasOwnProperty.call(updates, 'attachments')) {
       const a = updates.attachments;
@@ -1140,6 +1178,14 @@ export default function IdeaCapsuleApp() {
       }
 
       if (requireAuth()) return;
+      // 乐观更新本地 capsules（与 demo 路径一致），避免关弹窗后 Firestore 回调未到导致卡片显示旧数据
+      setCapsules((prev) =>
+        prev.map((c) => {
+          if (c.id !== id) return c;
+          const merged = mergeCapsuleUpdates(c, updates);
+          return bump ? { ...merged, updatedAt: now } : merged;
+        }),
+      );
       if (editingCapsule?.id === id) {
         setEditingCapsule((prev) => {
           if (!prev) return null;
@@ -1234,12 +1280,16 @@ export default function IdeaCapsuleApp() {
       const norm = normalizeReminder(reminder);
       const isTodoResolved = Boolean(isTodo || (norm != null && norm.type !== 'none'));
 
-      await addDoc(collection(db, 'capsules'), {
+      // 同步生成唯一的文档 ID，不阻塞 UI 线程
+      const docRef = doc(collection(db, 'capsules'));
+      
+      const newNote = {
+        id: docRef.id,
         userId: user.uid,
         content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: refinedContent }] }] }),
         subject: title || undefined,
         category: category || undefined,
-        tags: tags && tags.length > 0 ? tags : undefined,
+        tag: tags && tags.length > 0 ? tags[0] : undefined,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         completed: false,
@@ -1248,11 +1298,26 @@ export default function IdeaCapsuleApp() {
         isDeleted: false,
         reminder: norm,
         color: randomColor,
+      };
+
+      // 1. 同步执行本地状态乐观更新（瞬时展现，不管断网与否卡片立刻出现在首页）
+      setCapsules(prev => {
+        if (prev.some(c => c.id === docRef.id)) return prev;
+        return [newNote, ...prev];
       });
+
+      // 2. 后台静默发送（即使离线，Firestore offline cache 也会保存并会在设备重连时自动推送）
+      setDoc(docRef, newNote).catch(e => {
+        console.error("EAS setDoc failed:", e);
+      });
+
     } catch {
       const randomColor =
         PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
-      await addDoc(collection(db, 'capsules'), {
+      
+      const docRef = doc(collection(db, 'capsules'));
+      const fallbackNote = {
+        id: docRef.id,
         userId: user.uid,
         content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: text }] }] }),
         subject: undefined,
@@ -1263,6 +1328,17 @@ export default function IdeaCapsuleApp() {
         isArchived: false,
         isDeleted: false,
         color: randomColor,
+      };
+
+      // 乐观更新 fallback 流程
+      setCapsules(prev => {
+        if (prev.some(c => c.id === docRef.id)) return prev;
+        return [fallbackNote, ...prev];
+      });
+
+      // 后台静默发送 fallback
+      setDoc(docRef, fallbackNote).catch(e => {
+        console.error("EAS fallback setDoc failed:", e);
       });
     } finally {
       setIsProcessing(false);
@@ -1348,7 +1424,7 @@ export default function IdeaCapsuleApp() {
           clean.updatedAt = now;
         }
         realIds.forEach((id) => {
-          batch.update(doc(db, 'capsules', id), { ...clean } as Record<string, unknown>);
+          batch.update(doc(db, 'capsules', id), clean as any);
         });
         await batch.commit();
       } catch (e) {
@@ -1580,7 +1656,7 @@ export default function IdeaCapsuleApp() {
           }),
           subject: meta.title || undefined,
           category: meta.category || undefined,
-          tags: meta.tags && meta.tags.length > 0 ? meta.tags : undefined,
+          tag: meta.tags && meta.tags.length > 0 ? meta.tags[0] : undefined,
           createdAt: Date.now(),
           updatedAt: Date.now(),
           completed: false,
@@ -1659,19 +1735,19 @@ export default function IdeaCapsuleApp() {
   const flushMenuTag = useCallback((): Capsule | null => {
     const cap = activeMenuCapsuleRef.current;
     if (!cap || cap.isDeleted) return null;
-    const raw = menuTagInputRef.current.trim().replace(/^#/, '');
+    const raw = menuTagInputRef.current.trim().replace(/^#/, '').replace(/,/g, '');
     if (!raw) return cap;
     let merged: Capsule = cap;
     setCapsules((s) => {
       const fromList = s.find((x) => x.id === cap.id) ?? cap;
-      if (fromList.tags?.includes(raw)) {
+      const currentTag = fromList.tag || (fromList.tags && fromList.tags.length > 0 ? fromList.tags[0] : undefined);
+      if (currentTag === raw) {
         merged = fromList;
         return s;
       }
-      const tags = [...(fromList.tags || []), raw];
-      merged = { ...fromList, tags };
-      void updateCapsule(cap.id, { tags });
-      return s.map((x) => (x.id === cap.id ? { ...x, tags } : x));
+      merged = { ...fromList, tag: raw, tags: undefined };
+      void updateCapsule(cap.id, { tag: raw });
+      return s.map((x) => (x.id === cap.id ? { ...x, tag: raw, tags: undefined } : x));
     });
     setActiveMenuCapsule((prev) => (prev?.id === cap.id ? merged : prev));
     setMenuTagInput('');
@@ -1719,21 +1795,21 @@ export default function IdeaCapsuleApp() {
   const applyMenuTagPick = useCallback(
     (tag: string) => {
       if (!activeMenuCapsule || activeMenuCapsule.isDeleted) return;
-      const val = tag.trim().replace(/^#/, '');
+      const val = tag.trim().replace(/^#/, '').replace(/,/g, '');
       if (!val) return;
       const id = activeMenuCapsule.id;
       let merged: Capsule = activeMenuCapsule;
       setCapsules((s) => {
         const cap = s.find((x) => x.id === id) ?? activeMenuCapsule;
         if (!cap) return s;
-        if (cap.tags?.includes(val)) {
+        const currentTag = cap.tag || (cap.tags && cap.tags.length > 0 ? cap.tags[0] : undefined);
+        if (currentTag === val) {
           merged = cap;
           return s;
         }
-        const tags = [...(cap.tags || []), val];
-        merged = { ...cap, tags };
-        void updateCapsule(id, { tags });
-        return s.map((x) => (x.id === id ? { ...x, tags } : x));
+        merged = { ...cap, tag: val };
+        void updateCapsule(id, { tag: val });
+        return s.map((x) => (x.id === id ? { ...x, tag: val, tags: undefined } : x));
       });
       setActiveMenuCapsule((prev) => (prev?.id === id ? merged : prev));
     },
@@ -1741,13 +1817,12 @@ export default function IdeaCapsuleApp() {
   );
 
   const removeMenuTag = useCallback(
-    (tagToRemove: string) => {
+    () => {
       if (!activeMenuCapsule || activeMenuCapsule.isDeleted) return;
       const id = activeMenuCapsule.id;
-      const nextTags = (activeMenuCapsule.tags || []).filter((t) => t !== tagToRemove);
-      void updateCapsule(id, { tags: nextTags.length ? nextTags : undefined });
+      void updateCapsule(id, { tag: undefined });
       setActiveMenuCapsule((prev) =>
-        prev?.id === id ? { ...prev, tags: nextTags.length ? nextTags : undefined } : prev,
+        prev?.id === id ? { ...prev, tag: undefined, tags: undefined } : prev,
       );
     },
     [activeMenuCapsule, updateCapsule],
@@ -1784,7 +1859,8 @@ export default function IdeaCapsuleApp() {
     const raw = menuTagInput.trim().replace(/^#/, '');
     if (!raw) return [];
     const ql = raw.toLowerCase();
-    const existing = new Set((activeMenuCapsule.tags || []).map((t) => t.toLowerCase()));
+    const currentTag = activeMenuCapsule.tag || (activeMenuCapsule.tags && activeMenuCapsule.tags.length > 0 ? activeMenuCapsule.tags[0] : undefined);
+    const existing = new Set(currentTag ? [currentTag.toLowerCase()] : []);
     return allTags
       .filter((t) => {
         const tl = t.toLowerCase();
@@ -1807,24 +1883,17 @@ export default function IdeaCapsuleApp() {
   }, [editCategoryFocused, editCategoryDraft, allCategories]);
 
   const editTagSuggestions = useMemo(() => {
-    if (!editTagsFocused) return [];
-    const parts = editTagsDraft.split(',');
-    const raw = (parts[parts.length - 1] || '').trim().replace(/^#/, '');
+    if (!editTagFocused) return [];
+    const raw = editTagDraft.trim().replace(/^#/, '');
     if (!raw) return [];
     const ql = raw.toLowerCase();
-    const existing = new Set(
-      parts
-        .slice(0, -1)
-        .map((p) => p.trim().toLowerCase())
-        .filter(Boolean),
-    );
     return allTags
       .filter((t) => {
         const tl = t.toLowerCase();
-        return tl.includes(ql) && !existing.has(tl) && tl !== ql;
+        return tl.includes(ql) && tl !== ql;
       })
       .slice(0, 8);
-  }, [editTagsFocused, editTagsDraft, allTags]);
+  }, [editTagFocused, editTagDraft, allTags]);
 
   const saveEditSilent = useCallback(() => {
     if (!editingCapsule) return;
@@ -1833,10 +1902,7 @@ export default function IdeaCapsuleApp() {
     const content = editContent;
     const subjectTrim = editSubjectDraft.trim();
     const catTrim = editCategoryDraft.trim();
-    const tagParts = editTagsDraft.split(',').map((t) => t.trim()).filter(Boolean);
-
-    const tagSig = (arr: string[]) =>
-      [...arr].map((t) => t.trim()).filter(Boolean).sort().join('\0');
+    const newTag = editTagDraft.replace(/,/g, '').trim();
 
     const updates: Partial<Capsule> = {};
     if (!original || original.content !== content) {
@@ -1849,8 +1915,9 @@ export default function IdeaCapsuleApp() {
     if (prevCat !== catTrim) {
       updates.category = catTrim ? catTrim : undefined;
     }
-    if (tagSig(original?.tags || []) !== tagSig(tagParts)) {
-      updates.tags = tagParts.length ? tagParts : undefined;
+    const prevTag = original?.tag || (original?.tags && original?.tags.length > 0 ? original?.tags[0] : '');
+    if (prevTag !== newTag) {
+      updates.tag = newTag ? newTag : undefined;
     }
 
     if (Object.keys(updates).length === 0) return;
@@ -1860,7 +1927,7 @@ export default function IdeaCapsuleApp() {
     editContent,
     editSubjectDraft,
     editCategoryDraft,
-    editTagsDraft,
+    editTagDraft,
     capsules,
     updateCapsule,
   ]);
@@ -1880,7 +1947,7 @@ export default function IdeaCapsuleApp() {
       setEditContent(editingCapsule.content);
       setEditSubjectDraft(editingCapsule.subject || '');
       setEditCategoryDraft(editingCapsule.category || '');
-      setEditTagsDraft((editingCapsule.tags || []).join(', '));
+      setEditTagDraft(editingCapsule.tag || (editingCapsule.tags && editingCapsule.tags.length > 0 ? editingCapsule.tags[0] : ''));
     }
   }, [editingCapsule]);
 
@@ -1948,7 +2015,7 @@ export default function IdeaCapsuleApp() {
             {authError ? <Text style={s.errTxt}>{authError}</Text> : null}
 
             <TouchableOpacity
-              style={[s.primaryBtn, { marginTop: 16 }]}
+              style={[s.primaryBtn, { marginTop: 10 }]}
               disabled={authProcessing}
               onPress={handleEmailAuth}
             >
@@ -1961,7 +2028,7 @@ export default function IdeaCapsuleApp() {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={{ marginTop: 12 }} onPress={handleResetPassword}>
+            <TouchableOpacity style={{ marginTop: 8 }} onPress={handleResetPassword}>
               <Text style={{ color: '#007AFF', fontWeight: '700', fontSize: 13 }}>
                 Forgot password?
               </Text>
@@ -1972,7 +2039,7 @@ export default function IdeaCapsuleApp() {
               <GoogleSignInButton variant="light" compact />
             </View>
 
-            <TouchableOpacity style={{ marginTop: 24 }} onPress={() => setIsRegistering(!isRegistering)}>
+            <TouchableOpacity style={{ marginTop: 14 }} onPress={() => setIsRegistering(!isRegistering)}>
               <Text style={{ textAlign: 'center', color: '#8E8E93', fontSize: 13 }}>
                 {isRegistering ? 'Already have an account?' : 'New here?'}{' '}
                 <Text style={{ color: '#007AFF', fontWeight: '800' }}>
@@ -2190,61 +2257,105 @@ export default function IdeaCapsuleApp() {
                 colors={['transparent']}
               />
             }
-        >
-          <View style={viewMode === 'grid' ? s.gridRow : s.listCol}>
-            {filteredCapsules.map((item) => {
-              const renderLeftActions = () => {
+          >
+            <View style={viewMode === 'grid' ? s.gridRow : s.listCol}>
+              {filteredCapsules.map((item) => {
+                const renderLeftActions = (
+                progress: Animated.AnimatedInterpolation<number>,
+                dragX: Animated.AnimatedInterpolation<number>
+              ) => {
+                const transX = dragX.interpolate({
+                  inputRange: [0, 20, 80],
+                  outputRange: [-20, 0, 10],
+                  extrapolate: 'clamp',
+                });
+                const opacity = dragX.interpolate({
+                  inputRange: [0, 20, 80],
+                  outputRange: [0, 1, 1],
+                  extrapolate: 'clamp',
+                });
+                const scale = dragX.interpolate({
+                  inputRange: [0, 65, 80, 120],
+                  outputRange: [0.9, 1.0, 1.25, 1.25],
+                  extrapolate: 'clamp',
+                });
+
                 if (filter === 'archived' || filter === 'trash') {
                   return (
                     <View style={s.swipeLeftAction}>
-                      <RotateCcw size={18} color="#FFF" />
-                      <Text style={s.swipeActionTxt}>Restore</Text>
+                      <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
+                        <RotateCcw size={18} color="#FFF" />
+                        <Text style={s.swipeActionTxt}>Restore</Text>
+                      </Animated.View>
                     </View>
                   );
                 }
+
+                // 根据状态机决定展现的文字和图标：Note -> Todo, Active -> Complete, Completed -> Activate
+                const label = !item.isTodo ? 'Todo' : item.completed ? 'Activate' : 'Complete';
+                const Icon = item.completed ? RotateCcw : Check;
+
                 return (
                   <View style={s.swipeLeftAction}>
-                    {item.completed ? (
-                      <>
-                        <RotateCcw size={18} color="#FFF" />
-                        <Text style={s.swipeActionTxt}>Activate</Text>
-                      </>
-                    ) : (
-                      <>
-                        <Check size={18} color="#FFF" />
-                        <Text style={s.swipeActionTxt}>Done</Text>
-                      </>
-                    )}
+                    <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
+                      <Icon size={18} color="#FFF" />
+                      <Text style={s.swipeActionTxt}>{label}</Text>
+                    </Animated.View>
                   </View>
                 );
               };
 
-              const renderRightActions = () => {
+              const renderRightActions = (
+                progress: Animated.AnimatedInterpolation<number>,
+                dragX: Animated.AnimatedInterpolation<number>
+              ) => {
+                // dragX 在向左拖拽（拉出右侧）时是负值
+                const transX = dragX.interpolate({
+                  inputRange: [-80, -20, 0],
+                  outputRange: [-10, 0, 20],
+                  extrapolate: 'clamp',
+                });
+                const opacity = dragX.interpolate({
+                  inputRange: [-80, -20, 0],
+                  outputRange: [1, 1, 0],
+                  extrapolate: 'clamp',
+                });
+                const scale = dragX.interpolate({
+                  inputRange: [-120, -80, -65, 0],
+                  outputRange: [1.25, 1.25, 1.0, 0.9],
+                  extrapolate: 'clamp',
+                });
+
                 if (filter === 'archived') {
                   return (
                     <View style={s.swipeRightAction}>
-                      <Trash2 size={18} color="#FFF" />
-                      <Text style={s.swipeActionTxt}>Delete</Text>
+                      <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
+                        <Trash2 size={18} color="#FFF" />
+                        <Text style={s.swipeActionTxt}>Delete</Text>
+                      </Animated.View>
                     </View>
                   );
                 }
                 if (filter === 'trash') {
                   return (
                     <View style={s.swipeRightAction}>
-                      <Trash2 size={18} color="#FFF" />
-                      <Text style={s.swipeActionTxt}>Delete Forever</Text>
+                      <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
+                        <Trash2 size={18} color="#FFF" />
+                        <Text style={s.swipeActionTxt}>Delete Forever</Text>
+                      </Animated.View>
                     </View>
                   );
                 }
                 const isArchive = settings.swipeRightAction === 'archive';
+                const label = isArchive ? 'Archive' : 'Delete';
+                const Icon = isArchive ? Archive : Trash2;
+
                 return (
-                  <View style={[s.swipeRightAction, isArchive && { backgroundColor: '#FF9500' }]}>
-                    {isArchive ? (
-                      <Archive size={18} color="#FFF" />
-                    ) : (
-                      <Trash2 size={18} color="#FFF" />
-                    )}
-                    <Text style={s.swipeActionTxt}>{isArchive ? 'Archive' : 'Delete'}</Text>
+                  <View style={[s.swipeRightAction, isArchive && { backgroundColor: '#007AFF' }]}>
+                    <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
+                      <Icon size={18} color="#FFF" />
+                      <Text style={s.swipeActionTxt}>{label}</Text>
+                    </Animated.View>
                   </View>
                 );
               };
@@ -2254,9 +2365,11 @@ export default function IdeaCapsuleApp() {
                   if (direction === 'left') {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     void updateCapsule(item.id, { isArchived: false });
+                    showToast('Note restored!', 'success');
                   } else {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                     void updateCapsule(item.id, { isDeleted: true });
+                    showToast('Note deleted!', 'success');
                   }
                   return;
                 }
@@ -2265,6 +2378,7 @@ export default function IdeaCapsuleApp() {
                   if (direction === 'left') {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     void updateCapsule(item.id, { isDeleted: false });
+                    showToast('Note restored!', 'success');
                   } else {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                     Alert.alert(
@@ -2277,6 +2391,7 @@ export default function IdeaCapsuleApp() {
                           style: 'destructive',
                           onPress: () => {
                             void removeCapsuleForever(item.id);
+                            showToast('Note deleted forever!', 'success');
                           },
                         },
                       ],
@@ -2287,16 +2402,29 @@ export default function IdeaCapsuleApp() {
 
                 if (direction === 'left') {
                   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                  void updateCapsule(item.id, { 
-                    completed: !item.completed,
-                    isTodo: true
-                  });
+                  // 右滑状态机递进：Note -> Active Todo -> Completed Todo -> Active Todo...
+                  let updates: Partial<Capsule> = {};
+                  let toastMsg = '';
+                  if (!item.isTodo) {
+                    updates = { isTodo: true, completed: false };
+                    toastMsg = 'Task created!';
+                  } else if (!item.completed) {
+                    updates = { completed: true };
+                    toastMsg = 'Task completed!';
+                  } else {
+                    updates = { completed: false };
+                    toastMsg = 'Task activated!';
+                  }
+                  void updateCapsule(item.id, updates);
+                  showToast(toastMsg, 'success');
                 } else if (direction === 'right') {
                   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                   if (settings.swipeRightAction === 'archive') {
                     void updateCapsule(item.id, { isArchived: true });
+                    showToast('Note archived!', 'success');
                   } else {
                     void updateCapsule(item.id, { isDeleted: true });
+                    showToast('Note deleted!', 'success');
                   }
                 }
               };
@@ -2858,7 +2986,7 @@ export default function IdeaCapsuleApp() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <TagIcon size={20} color="#007AFF" strokeWidth={2.2} />
-                <Text style={s.sideSectionTitle}>Tags</Text>
+                <Text style={s.sideSectionTitle}>Tag</Text>
               </View>
               <ChevronDown
                 size={18}
@@ -2871,7 +2999,7 @@ export default function IdeaCapsuleApp() {
                 <SidebarRow
                   key={t}
                   label={t}
-                  count={sortedCapsules.filter((c) => c.tags?.includes(t)).length}
+                  count={sortedCapsules.filter((c) => c.tag === t || (!c.tag && c.tags?.includes(t))).length}
                   isSub
                   active={tagFilter === t}
                   onPress={() => {
@@ -3298,13 +3426,13 @@ export default function IdeaCapsuleApp() {
                       />
                     </View>
                     <View style={{ flex: 0 }}>
-                      <Text style={s.editFieldLbl}>Tags (comma separated)</Text>
+                      <Text style={s.editFieldLbl}>Tag</Text>
                       <TextInput
                         style={s.editFieldIn}
-                        placeholder="e.g. design, slide, coding"
+                        placeholder="Tag"
                         placeholderTextColor="#8E8E93"
-                        value={batchTags}
-                        onChangeText={setBatchTags}
+                        value={batchTag}
+                        onChangeText={(t) => setBatchTag(t.replace(/,/g, ''))}
                       />
                     </View>
                   </View>
@@ -3313,10 +3441,10 @@ export default function IdeaCapsuleApp() {
                     style={[s.primaryBtn, { marginTop: 20 }]}
                     onPress={() => {
                       const cat = batchCategory.trim();
-                      const tagsArr = batchTags.split(',').map((t) => t.trim()).filter(Boolean);
+                      const tagVal = batchTag.trim();
                       void batchUpdate({
                         category: cat || undefined,
-                        tags: tagsArr.length ? tagsArr : undefined,
+                        tag: tagVal || undefined,
                       });
                       setBatchTagCatOpen(false);
                       setIsMultiSelectMode(false);
@@ -3358,7 +3486,7 @@ export default function IdeaCapsuleApp() {
                   onPress={() => {
                     const first = capsules.find((c) => selectedIds.includes(c.id));
                     setBatchCategory(first?.category || '');
-                    setBatchTags((first?.tags || []).join(', '));
+                    setBatchTag(first ? (first.tag || (first.tags && first.tags.length > 0 ? first.tags[0] : '')) : '');
                     setBatchTagCatOpen(true);
                   }}
                 >
@@ -3505,8 +3633,8 @@ export default function IdeaCapsuleApp() {
 
         <Modal transparent visible={!!editingCapsule} animationType="fade">
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 15 : 0}
             style={s.editKeyboardWrap}
           >
             <Pressable
@@ -3665,13 +3793,13 @@ export default function IdeaCapsuleApp() {
                       />
                     </View>
                     <View style={{ flex: 1.5 }}>
-                      <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Tags (comma separated)</Text>
+                      <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Tag</Text>
                       <TextInput
                         style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
-                        placeholder="e.g. design, slide, coding"
+                        placeholder="Tag"
                         placeholderTextColor="#8E8E93"
-                        value={editTagsDraft}
-                        onChangeText={setEditTagsDraft}
+                        value={editTagDraft}
+                        onChangeText={(t) => setEditTagDraft(t.replace(/,/g, ''))}
                         onBlur={saveEditSilent}
                       />
                     </View>
@@ -3813,13 +3941,28 @@ export default function IdeaCapsuleApp() {
               setEditContent(capsule.content);
               setEditSubjectDraft(capsule.subject || '');
               setEditCategoryDraft(capsule.category || '');
-              setEditTagsDraft(capsule.tags?.join(', ') || '');
+              setEditTagDraft(capsule.tag || (capsule.tags && capsule.tags.length > 0 ? capsule.tags[0] : ''));
             }}
             isProcessing={isProcessing}
             isVoiceRecording={isVoiceRecording}
             startVoice={startVoice}
             limit={settings.quickCaptureLimit}
           />
+        )}
+
+        {/* Floating Toast Notification */}
+        {toastMessage && (
+          <View style={s.toastWrapper} pointerEvents="none">
+            <View style={s.toastContainer}>
+              {toastType === 'info' && (
+                <ActivityIndicator size="small" color="#007AFF" style={{ marginRight: 6 }} />
+              )}
+              {toastType === 'success' && (
+                <Check size={14} color="#34C759" style={{ marginRight: 6 }} />
+              )}
+              <Text style={s.toastText}>{toastMessage}</Text>
+            </View>
+          </View>
         )}
       </SafeAreaView>
     </View>
@@ -3834,8 +3977,8 @@ function SwipeableCardWrapper({
   children,
 }: {
   item: Capsule;
-  renderLeftActions: () => React.ReactNode;
-  renderRightActions: () => React.ReactNode;
+  renderLeftActions: (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => React.ReactNode;
+  renderRightActions: (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => React.ReactNode;
   onSwipeTrigger: (direction: 'left' | 'right') => void;
   children: React.ReactNode;
 }) {
@@ -3852,6 +3995,7 @@ function SwipeableCardWrapper({
   return (
     <Swipeable
       ref={swipeRef}
+      activeOffsetX={[-15, 15]}
       containerStyle={{ width: '100%' }}
       childrenContainerStyle={{ width: '100%' }}
       renderLeftActions={renderLeftActions}
@@ -3862,8 +4006,8 @@ function SwipeableCardWrapper({
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }}
       friction={1.5}
-      leftThreshold={50}
-      rightThreshold={50}
+      leftThreshold={80}
+      rightThreshold={80}
     >
       {children}
     </Swipeable>
@@ -3930,31 +4074,28 @@ function CapsuleCard({
         </View>
 
         {/* Category & Tags Row */}
-        {(item.category || (item.tags && item.tags.length > 0)) ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginTop: 5 }}>
-            {item.category ? (
-              <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 }}>
-                  {item.category.toUpperCase()}
-                </Text>
-              </View>
-            ) : null}
-            {item.tags && item.tags.slice(0, 3).map((tag) => (
-              <View key={tag} style={{ backgroundColor: 'rgba(0,0,0,0.1)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: '900' }}>
-                  #{tag}
-                </Text>
-              </View>
-            ))}
-            {item.tags && item.tags.length > 3 ? (
-              <View style={{ backgroundColor: 'rgba(0,0,0,0.15)', paddingHorizontal: 4, paddingVertical: 1.5, borderRadius: 5 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 9, fontWeight: '900' }}>
-                  +{item.tags.length - 3}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        ) : null}
+        {(() => {
+          const currentTag = item.tag || (item.tags && item.tags.length > 0 ? item.tags[0] : undefined);
+          if (!item.category && !currentTag) return null;
+          return (
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginTop: 5 }}>
+              {item.category ? (
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 }}>
+                    {item.category.toUpperCase()}
+                  </Text>
+                </View>
+              ) : null}
+              {currentTag ? (
+                <View key={currentTag} style={{ backgroundColor: 'rgba(0,0,0,0.1)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: '900' }}>
+                    #{currentTag}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          );
+        })()}
 
         {/* Date Row */}
         {item.createdAt ? (
@@ -4122,25 +4263,25 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  authScroll: { padding: 24, paddingTop: 56 },
+  authScroll: { padding: 24, paddingTop: 24 },
   authH: { fontSize: 26, fontWeight: '900', color: '#1D1D1F' },
-  authHint: { color: '#8E8E93', marginTop: 8, marginBottom: 24, fontWeight: '600' },
-  label: { fontSize: 10, fontWeight: '900', color: '#8E8E93', letterSpacing: 1.2, marginBottom: 8 },
+  authHint: { color: '#8E8E93', marginTop: 6, marginBottom: 12, fontWeight: '600' },
+  label: { fontSize: 10, fontWeight: '900', color: '#8E8E93', letterSpacing: 1.2, marginBottom: 4 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F2F2F7',
     borderRadius: 16,
     paddingHorizontal: 14,
-    marginBottom: 16,
+    marginBottom: 12,
     gap: 10,
   },
-  input: { flex: 1, height: 48, fontSize: 15, fontWeight: '600' },
+  input: { flex: 1, height: 42, fontSize: 15, fontWeight: '600' },
   errTxt: { color: '#FF3B30', fontSize: 13, fontWeight: '600', marginTop: 8 },
   dividerLabel: {
     textAlign: 'center',
-    marginTop: 28,
-    marginBottom: 12,
+    marginTop: 16,
+    marginBottom: 10,
     fontSize: 10,
     fontWeight: '900',
     color: '#8E8E93',
@@ -5216,5 +5357,33 @@ const s = StyleSheet.create({
     height: 12,
     borderRadius: 2,
     backgroundColor: '#FFF',
+  },
+  toastWrapper: {
+    position: 'absolute',
+    bottom: 90,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+  },
+  toastContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(29, 29, 31, 0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
+    maxWidth: '85%',
+  },
+  toastText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

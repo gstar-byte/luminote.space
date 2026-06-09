@@ -119,12 +119,15 @@ function htmlToMarkdownPure(html: string): string {
   md = md.replace(/<ul>([\s\S]*?)<\/ul>/gi, '$1\n');
   md = md.replace(/<ol>([\s\S]*?)<\/ol>/gi, '$1\n');
   
-  // Paragraphs & Line Breaks
-  md = md.replace(/<p>([\s\S]*?)<\/p>/gi, '$1\n\n');
-  md = md.replace(/<br\s*\/?>/gi, '\n');
+  // Paragraphs & Line Breaks (Supporting attributes like style/class)
+  md = md.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, '$1\n\n');
+  md = md.replace(/<br\b[^>]*\/?>/gi, '\n');
   
   // Strip remaining HTML tags
   md = md.replace(/<[^>]+>/g, '');
+  // Force remove any leftover unclosed <p>, </p> or <br> strings as extra safety guard
+  md = md.replace(/<\/?p\b[^>]*>?/gi, '');
+  md = md.replace(/<br\b[^>]*\/?>?/gi, '');
   
   // Clean up excessive newlines
   return md.replace(/\n{3,}/g, '\n\n').trim();
