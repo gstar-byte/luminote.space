@@ -7,84 +7,58 @@ type Props = {
 
 function padHex(c: string): string {
   if (/^#[0-9A-Fa-f]{6}$/.test(c)) return c;
-  return '#6BCB77';
+  return '#FFD60A';
 }
 
-/**
- * Web：与站点一致的 input[type=color] + 展示 hex。
- */
 export function CustomColorInput({ value, onChange }: Props) {
-  const v = padHex(value || '#6BCB77');
+  const v = padHex(value);
 
   return (
-    <div style={{ marginTop: 10 }}>
-      <div
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '8px 10px',
+        borderRadius: 12,
+        cursor: 'pointer',
+        position: 'relative',
+        backgroundColor: 'transparent',
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span style={{ fontSize: 18, userSelect: 'none', flexShrink: 0, lineHeight: 1 }}>🎨</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: '#1D1D1F' }}>
+        Custom color
+      </span>
+
+      {/* 圆形颜色预览球 */}
+      <span
         style={{
-          fontSize: 9,
-          fontWeight: 900,
-          color: '#8E8E93',
-          letterSpacing: 1,
-          marginBottom: 8,
+          width: 22,
+          height: 22,
+          borderRadius: 11,
+          border: '1px solid rgba(0,0,0,0.1)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          marginLeft: 'auto',
+          flexShrink: 0,
+          backgroundColor: v,
         }}
-      >
-        CUSTOM COLOR
-      </div>
-      <label
+      />
+
+      {/* 隐藏的原生取色器 */}
+      <input
+        type="color"
+        value={v}
+        onChange={(e) => onChange(e.target.value)}
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: 10,
-          background: '#F8F9FA',
-          border: '1px solid #E5E5EA',
-          borderRadius: 12,
-          cursor: 'pointer',
+          position: 'absolute',
+          opacity: 0,
+          pointerEvents: 'none',
+          width: 0,
+          height: 0,
         }}
-      >
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            border: '1px solid #0002',
-            overflow: 'hidden',
-            position: 'relative',
-            flexShrink: 0,
-          }}
-        >
-          <input
-            type="color"
-            value={v}
-            onChange={(e) => onChange(e.target.value)}
-            style={{
-              position: 'absolute',
-              inset: -8,
-              width: 64,
-              height: 64,
-              cursor: 'pointer',
-              border: 'none',
-              padding: 0,
-              margin: 0,
-              opacity: 0,
-            }}
-          />
-          <div style={{ width: '100%', height: '100%', background: v }} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: '#1D1D1F' }}>Palette</div>
-          <div
-            style={{
-              fontSize: 10,
-              color: '#8E8E93',
-              fontFamily: 'monospace',
-              textTransform: 'uppercase',
-              marginTop: 2,
-            }}
-          >
-            {v}
-          </div>
-        </div>
-      </label>
-    </div>
+      />
+    </label>
   );
 }
