@@ -1305,58 +1305,127 @@ export default function App() {
       
       // Force filter to 'all' to ensure elements are visible
       setFilter('all');
+      setIsCaptureCollapsed(false);
 
       setTimeout(() => {
+        const desktopSteps: any[] = [
+          { 
+            element: '#generate-demo-btn', 
+            popover: { 
+              title: '1. Generate Demo Data', 
+              description: 'Click here to generate example notes and explore the app instantly.', 
+              side: "bottom", 
+              align: 'center' 
+            } 
+          },
+          { 
+            element: '#quick-capture-area', 
+            popover: { 
+              title: '2. Quick Capture', 
+              description: 'Capture thoughts instantly. Use the text field or the mic button.', 
+              side: "top", 
+              align: 'center' 
+            } 
+          },
+          { 
+            element: '#capsule-options-btn-0', 
+            popover: { 
+              title: '3. Note Menu', 
+              description: 'Click here to manage your note - change color, set reminders, or delete.', 
+              side: "left", 
+              align: 'center' 
+            } 
+          },
+          { 
+            element: '#capsule-item-0', 
+            popover: { 
+              title: '4. Note Interactions', 
+              description: 'Right-click or long-press any note to open the context menu for quick actions.', 
+              side: "bottom", 
+              align: 'center' 
+            } 
+          },
+          { 
+            element: '#view-mode-toggle', 
+            popover: { 
+              title: '5. Toggle Layout', 
+              description: 'Switch between list and grid views to find your favorite layout.', 
+              side: "bottom", 
+              align: 'center' 
+            } 
+          }
+        ];
+
+        const mobileSteps: any[] = [
+          { 
+            element: '#generate-demo-btn', 
+            popover: { 
+              title: '1. Generate Demo Data', 
+              description: 'Tap here to generate example notes and explore the app instantly.', 
+              side: "bottom", 
+              align: 'center' 
+            } 
+          },
+          { 
+            element: '#quick-capture-area', 
+            popover: { 
+              title: '2. Quick Capture', 
+              description: 'Capture thoughts instantly. Use the text field or the mic button.', 
+              side: "top", 
+              align: 'center' 
+            } 
+          },
+          { 
+            element: '#capsule-item-0', 
+            popover: { 
+              title: '3. Swipe Right (State 1)', 
+              description: 'Swipe right once on a note card to turn it into a Todo task.', 
+              side: "bottom", 
+              align: 'center' 
+            } 
+          },
+          { 
+            element: '#capsule-item-0', 
+            popover: { 
+              title: '4. Complete & Reactivate (State 2 & 3)', 
+              description: 'Swipe right again to mark the task completed. Swipe a third time to reactivate it.', 
+              side: "bottom", 
+              align: 'center' 
+            } 
+          },
+          { 
+            element: '#capsule-item-0', 
+            popover: { 
+              title: '5. Swipe Left', 
+              description: 'Swipe left on any note to Archive it. If it is already archived, swipe left to Delete.', 
+              side: "bottom", 
+              align: 'center' 
+            } 
+          },
+          { 
+            element: '#capsule-item-0', 
+            popover: { 
+              title: '6. Long Press & Settings', 
+              description: 'Long press a note or tap its options button to access full settings.', 
+              side: "bottom", 
+              align: 'center' 
+            } 
+          },
+          { 
+            element: '#view-mode-toggle', 
+            popover: { 
+              title: '7. Toggle Layout', 
+              description: 'Switch between list and grid views to find your favorite layout.', 
+              side: "bottom", 
+              align: 'center' 
+            } 
+          }
+        ];
+
         const driverObj = driver({
           showProgress: true,
           overlayColor: 'rgba(0,0,0,0.5)',
-          steps: [
-            { 
-              element: '#generate-demo-btn', 
-              popover: { 
-                title: '1. Generate Demo Data', 
-                description: 'Click here to generate example notes and explore the app instantly.', 
-                side: "bottom", 
-                align: 'center' 
-              } 
-            },
-            { 
-              element: '#quick-capture-area', 
-              popover: { 
-                title: '2. Quick Capture', 
-                description: 'Capture thoughts instantly. Use the text field or the mic button.', 
-                side: "top", 
-                align: 'center' 
-              } 
-            },
-            { 
-              element: '#capsule-options-btn-0', 
-              popover: { 
-                title: '3. Note Menu', 
-                description: 'Click here to manage your note - change color, set reminders, or delete.', 
-                side: "left", 
-                align: 'center' 
-              } 
-            },
-            { 
-              element: '#capsule-item-0', 
-              popover: { 
-                title: '4. Bulk Select', 
-                description: 'Long press any note to enter selection mode for bulk operations.', 
-                side: "bottom", 
-                align: 'center' 
-              } 
-            },
-            { 
-              element: '#view-mode-toggle', 
-              popover: { 
-                title: '5. Toggle Layout', 
-                description: 'Switch between list and grid views to find your favorite layout.', 
-                side: "bottom", 
-                align: 'center' 
-              } 
-            }
-          ],
+          steps: isMobile ? mobileSteps : desktopSteps,
           onDestroyed: () => {
             tourActive.current = false;
             safeLocalStorageSet(ONBOARDING_STORAGE_KEY, 'true');
@@ -3204,7 +3273,7 @@ export default function App() {
         }}
       >
         {/* Header / Search & Adv Filter */}
-        <header className="h-16 px-4 md:px-8 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-[#E5E5EA] gap-4 z-40 sticky top-0">
+        <header className="min-h-[64px] h-[calc(64px+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] pb-0 px-4 md:px-8 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-[#E5E5EA] gap-4 z-40 sticky top-0">
           <div className="flex items-center gap-3 flex-1 min-w-0 max-w-2xl">
             {!isSidebarOpen && (
               <button 
@@ -3866,7 +3935,7 @@ export default function App() {
           className={`shrink-0 transition-all duration-500 ease-in-out relative z-[80] bg-white/90 dark:bg-[#1C1C1E]/90 backdrop-blur-xl border-t border-[#E5E5EA] dark:border-white/10 flex flex-col items-center justify-center ${
             isCaptureCollapsed 
               ? 'h-0 min-h-0 py-0 opacity-0 pointer-events-none translate-y-full overflow-hidden' 
-              : 'min-h-[96px] px-4 md:px-8 pt-3 pb-[calc(32px+env(safe-area-inset-bottom))] md:pb-4 md:pt-3 opacity-100 translate-y-0'
+              : 'min-h-[96px] px-4 md:px-8 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] md:pb-4 md:pt-3 opacity-100 translate-y-0'
           } ${selectedIds.size > 0 ? 'opacity-30 pointer-events-none' : ''}`}
         >
           {/* iOS-style Drag/Collapse Handle */}
@@ -4591,10 +4660,12 @@ const CapsuleItem = memo(function CapsuleItem({
     if (showOptions || showColorPicker || showReminderPicker) return;
     const target = e.target as HTMLElement;
     if (target.closest('button, a, input, textarea, label, [data-no-longpress]')) return;
-    mouseDownPos.current = { x: e.clientX, y: e.clientY };
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    mouseDownPos.current = { x: clientX, y: clientY };
     clearLongPress();
     longPressTimer.current = setTimeout(() => {
-      onToggleSelection();
+      openMenuAt(clientX, clientY, 'context');
       suppressNextClickRef.current = true;
       mouseDownPos.current = null;
     }, 480);
@@ -5139,6 +5210,15 @@ const CapsuleItem = memo(function CapsuleItem({
                   >
                     <Archive size={16} className="text-[#8E8E93]" />
                     {capsule.isArchived ? 'Unarchive' : 'Archive'}
+                  </button>
+                )}
+                {menuMode === 'context' && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onToggleSelection(); closeMenu(); }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
+                  >
+                    <CheckSquare size={16} className="text-[#8E8E93]" />
+                    Select Note
                   </button>
                 )}
                 <button
