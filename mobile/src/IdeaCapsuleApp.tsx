@@ -21,6 +21,13 @@ import {
   View,
   Keyboard as RNKeyboard,
 } from 'react-native';
+import { LogBox } from 'react-native';
+
+LogBox.ignoreLogs([
+  'expo-notifications: Android Push notifications',
+  'Android Push notifications (remote notifications) functionality provided by expo-notifications was removed from Expo Go',
+]);
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -756,7 +763,7 @@ export default function IdeaCapsuleApp() {
       };
     }
     const menuWidth = 180;
-    const menuHeight = 240;
+    const menuHeight = 310;
     
     let left = menuPosition.x - menuWidth;
     if (left < 16) left = 16;
@@ -775,6 +782,7 @@ export default function IdeaCapsuleApp() {
       left,
       top,
       width: menuWidth,
+      maxHeight: menuHeight,
     };
   }, [menuPosition, windowWidth, windowHeight]);
 
@@ -2301,7 +2309,7 @@ export default function IdeaCapsuleApp() {
                   return (
                     <View style={s.swipeLeftAction}>
                       <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
-                        <RotateCcw size={18} color="#FFF" />
+                        <RotateCcw size={15} color="#FFF" />
                         <Text style={s.swipeActionTxt}>Restore</Text>
                       </Animated.View>
                     </View>
@@ -2315,7 +2323,7 @@ export default function IdeaCapsuleApp() {
                 return (
                   <View style={s.swipeLeftAction}>
                     <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
-                      <Icon size={18} color="#FFF" />
+                      <Icon size={15} color="#FFF" />
                       <Text style={s.swipeActionTxt}>{label}</Text>
                     </Animated.View>
                   </View>
@@ -2347,7 +2355,7 @@ export default function IdeaCapsuleApp() {
                   return (
                     <View style={s.swipeRightAction}>
                       <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
-                        <Trash2 size={18} color="#FFF" />
+                        <Trash2 size={15} color="#FFF" />
                         <Text style={s.swipeActionTxt}>Delete</Text>
                       </Animated.View>
                     </View>
@@ -2357,7 +2365,7 @@ export default function IdeaCapsuleApp() {
                   return (
                     <View style={s.swipeRightAction}>
                       <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
-                        <Trash2 size={18} color="#FFF" />
+                        <Trash2 size={15} color="#FFF" />
                         <Text style={s.swipeActionTxt}>Delete Forever</Text>
                       </Animated.View>
                     </View>
@@ -2370,7 +2378,7 @@ export default function IdeaCapsuleApp() {
                 return (
                   <View style={[s.swipeRightAction, isArchive && { backgroundColor: '#007AFF' }]}>
                     <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
-                      <Icon size={18} color="#FFF" />
+                      <Icon size={15} color="#FFF" />
                       <Text style={s.swipeActionTxt}>{label}</Text>
                     </Animated.View>
                   </View>
@@ -2561,7 +2569,7 @@ export default function IdeaCapsuleApp() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom + 4 : 4}
-          style={s.captureBarWrap}
+          style={[s.captureBarWrap, { bottom: Math.max(16, insets.bottom + 8) }]}
           pointerEvents="box-none"
         >
           {quickCaptureMode === 'buttons' ? (
@@ -5199,18 +5207,18 @@ const s = StyleSheet.create({
   sideMenuFloating: {
     position: 'absolute',
     bottom: 100,
+    left: 20,
     right: 20,
-    width: 200,
     backgroundColor: '#FFF',
-    borderRadius: 24,
+    borderRadius: 20,
     padding: 8,
-    elevation: 25,
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
+    borderColor: 'rgba(0,0,0,0.06)',
     zIndex: 1000,
   },
   sideMenuHead: {
