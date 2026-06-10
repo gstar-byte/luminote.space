@@ -3478,12 +3478,12 @@ export default function App() {
             selectedIds.size > 0 ? 'mt-3' : ''
           } ${
             viewMode === 'grid' 
-              ? 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-3 md:gap-5' 
+              ? 'columns-2 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5 3xl:columns-6 gap-3 md:gap-5' 
               : 'w-full max-w-[1200px] flex flex-col space-y-2.5 md:space-y-3.5'
           } ${isSidebarOpen ? 'ml-0' : 'mx-auto'}`}>
             <AnimatePresence initial={false}>
               {filteredCapsules.map((capsule, index) => (
-                <div key={capsule.id} className="flex items-center gap-3 md:gap-5 group/list">
+                <div key={capsule.id} className={cn("flex items-center gap-3 md:gap-5 group/list", viewMode === 'grid' ? "break-inside-avoid mb-3 md:mb-5" : "")}>
                   {selectedIds.size > 0 && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); toggleSelection(capsule.id); }}
@@ -4790,19 +4790,15 @@ const CapsuleItem = memo(function CapsuleItem({
     >
       {window.innerWidth <= 768 && isSwiping && Math.abs(swipeX) > 10 && (
         <div 
-          className="absolute inset-0 flex items-center justify-between px-6 z-0 rounded-2xl md:rounded-[24px]"
-          style={{
-            backgroundColor: swipeX > 0 
-              ? '#30D158' 
-              : (swipeX < 0 ? (capsule.isArchived ? '#FF3B30' : '#007AFF') : 'transparent'),
-          }}
+          className="absolute inset-0 flex items-center justify-between px-6 z-0 rounded-2xl md:rounded-[24px] bg-[#F2F2F7] dark:bg-[#1C1C1E]"
         >
           {/* 左侧提示（右滑触发） */}
           <div 
             className={cn(
-              "flex items-center gap-2 text-white transition-all duration-150",
+              "flex items-center gap-2 transition-all duration-150",
               swipeX > 30 ? "opacity-100 translate-x-0 scale-100" : "opacity-0 -translate-x-4 scale-90",
-              swipeX > 100 ? "scale-110 font-black text-white" : ""
+              swipeX > 100 ? "scale-110 font-black" : "",
+              capsule.isArchived ? "text-[#007AFF]" : "text-[#30D158]"
             )}
           >
             {capsule.isArchived ? (
@@ -4831,9 +4827,10 @@ const CapsuleItem = memo(function CapsuleItem({
           {/* 右侧提示（左滑触发） */}
           <div 
             className={cn(
-              "flex items-center gap-2 text-white transition-all duration-150",
+              "flex items-center gap-2 transition-all duration-150",
               swipeX < -30 ? "opacity-100 translate-x-0 scale-100" : "opacity-0 translate-x-4 scale-90",
-              swipeX < -100 ? "scale-110 font-black text-white" : ""
+              swipeX < -100 ? "scale-110 font-black" : "",
+              capsule.isArchived ? "text-[#FF3B30]" : "text-[#007AFF]"
             )}
           >
             {capsule.isArchived ? (
@@ -4858,9 +4855,9 @@ const CapsuleItem = memo(function CapsuleItem({
         className={cn(
           "group w-full shrink-0 flex relative select-none border-b border-black/5",
           viewMode === 'grid'
-            ? "flex-col justify-between min-h-[160px] md:min-h-[220px]"
+            ? "flex-col justify-between"
             : "items-center gap-1.5 p-2.5 md:gap-3 md:p-6",
-          isSelected ? "border-[#007AFF] shadow-xl ring-4 ring-[#007AFF]/10" : "border-black/5 hover:border-black/10 hover:shadow-lg",
+          isSelected ? "border-[#007AFF] shadow-xl ring-4 ring-[#007AFF]/10" : "border-black/5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-black/10 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]",
           capsule.isTodo &&
           capsule.completed &&
           !(showOptions || showColorPicker || showReminderPicker)
