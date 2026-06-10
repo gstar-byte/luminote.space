@@ -3715,7 +3715,7 @@ export default function IdeaCapsuleApp() {
         <Modal transparent visible={!!editingCapsule} animationType="fade">
           <View style={{ flex: 1, backgroundColor: '#FFF' }}>
             <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              behavior="padding"
               keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 15 : 0}
               style={s.editKeyboardWrap}
             >
