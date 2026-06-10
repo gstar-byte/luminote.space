@@ -2376,10 +2376,10 @@ export default function IdeaCapsuleApp() {
                 const Icon = isArchive ? Archive : Trash2;
 
                 return (
-                  <View style={[s.swipeRightAction, isArchive && { backgroundColor: '#007AFF' }]}>
+                  <View style={[s.swipeRightAction, isArchive && { backgroundColor: '#F2F2F7' }]}>
                     <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
-                      <Icon size={15} color="#FFF" />
-                      <Text style={s.swipeActionTxt}>{label}</Text>
+                      <Icon size={15} color="#007AFF" />
+                      <Text style={[s.swipeActionTxt, { color: '#007AFF' }]}>{label}</Text>
                     </Animated.View>
                   </View>
                 );
@@ -4496,7 +4496,7 @@ function SidebarRow({
 
 const s = StyleSheet.create({
   swipeLeftAction: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#F2F2F7',
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingLeft: 24,
@@ -4507,7 +4507,7 @@ const s = StyleSheet.create({
     gap: 8,
   },
   swipeRightAction: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#F2F2F7',
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingRight: 24,

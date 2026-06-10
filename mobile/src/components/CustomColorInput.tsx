@@ -275,22 +275,6 @@ export function CustomColorInput({ value, onChange }: Props) {
             onRelease={handleRelease}
           />
 
-          {/* 3. 24格精美快捷色块 */}
-          <Text style={s.sectionHeader}>Quick Palette</Text>
-          <View style={s.presetGrid}>
-            {RECOMMEND_COLORS.map((color) => (
-              <TouchableOpacity
-                key={color}
-                style={[
-                  s.colorGridItem,
-                  { backgroundColor: color },
-                  previewColor === color && s.colorGridItemActive,
-                ]}
-                onPress={() => handlePickPreset(color)}
-                activeOpacity={0.8}
-              />
-            ))}
-          </View>
 
           {/* 4. HEX 文本输入备份 */}
           <View style={s.inputWrapper}>

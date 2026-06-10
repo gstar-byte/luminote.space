@@ -28,9 +28,34 @@ export function CapsuleColorSheet({
   return (
     <View style={s.sheet}>
       <Text style={s.title}>Change Color</Text>
-      
-
-      <CustomColorInput
+      {!hidePresets && (
+        <View style={s.presetGrid}>
+          {PRESET_COLORS.map((color) => (
+            <TouchableOpacity
+              key={color}
+              style={[
+                s.dot,
+                { backgroundColor: color },
+                selected === color && s.dotOn,
+              ]}
+              onPress={() => onSelectPreset(color)}
+              activeOpacity={0.8}
+            >
+              {selected === color && (
+                <Check size={14} color="#FFF" />
+              )}
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={[s.resetDot, !selected && s.resetDotOn]}
+            onPress={onReset}
+            accessibilityLabel="Reset to default"
+            activeOpacity={0.8}
+          >
+            <RotateCcw size={14} color="#8E8E93" />
+          </TouchableOpacity>
+        </View>
+      )}      <CustomColorInput
         value={selected || '#6BCB77'}
         onChange={(hex) => onCustomColor(hex)}
       />
