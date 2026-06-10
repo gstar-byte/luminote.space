@@ -2474,12 +2474,12 @@ export default function IdeaCapsuleApp() {
                           ? s.multiCheckFloating
                           : {
                               position: 'absolute',
-                              left: 6,
+                              left: 2,
                               top: '50%',
-                              marginTop: -18,
+                              marginTop: -16,
                               zIndex: 10,
-                              width: 36,
-                              height: 36,
+                              width: 32,
+                              height: 32,
                               alignItems: 'center',
                               justifyContent: 'center',
                             }
@@ -2494,7 +2494,7 @@ export default function IdeaCapsuleApp() {
                     >
                       {selectedIds.includes(item.id) ? (
                         <View style={s.checkedCircle}>
-                          <Check size={12} color="#FFF" />
+                          <Check size={10} color="#FFF" strokeWidth={3.5} />
                         </View>
                       ) : (
                         <View style={[s.uncheckCircle, viewMode === 'grid' && s.uncheckCircleOnCard]} />
@@ -2502,7 +2502,7 @@ export default function IdeaCapsuleApp() {
                     </TouchableOpacity>
                   )}
                   {isListMulti ? (
-                    <View style={[s.cardWrapList, { flex: 1, marginBottom: 0, marginLeft: 3 }]}>
+                    <View style={[s.cardWrapList, { flex: 1, marginBottom: 0, marginLeft: 33 }]}>
                       <CapsuleCard
                         item={item}
                         isGrid={false}
@@ -4979,14 +4979,14 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   checkedCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  uncheckCircle: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#C7C7CC' },
+  uncheckCircle: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: '#C7C7CC' },
   uncheckCircleOnCard: {
     borderColor: 'rgba(255,255,255,0.85)',
     backgroundColor: 'rgba(0,0,0,0.25)',
