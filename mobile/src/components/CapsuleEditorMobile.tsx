@@ -186,6 +186,7 @@ function markdownToHtml(md: string): string {
         outputLines.push(inList === 'ordered' ? '</ol>' : '</ul>');
         inList = null;
       }
+      outputLines.push('<p><br></p>');
       return;
     }
     
@@ -545,7 +546,18 @@ const getHtmlTemplate = (placeholder: string) => `
       if (!isFirstLoad && hasBeenEdited) {
         return;
       }
-      editor.innerHTML = html;
+      let processed = html || '';
+      // 如果是非 HTML 的纯文本，将其进行段落化换行处理，防止断行丢失
+      if (processed && !processed.trim().startsWith('<') && !processed.includes('</')) {
+        processed = processed
+          .split('\n')
+          .map(line => '<p>' + (line ? line : '<br>') + '</p>')
+          .join('');
+      } else {
+        // 兜底：将非标签交界处的 \n 替换为 <br> 以防止浏览器合并换行
+        processed = processed.replace(/([^>])\n([^<])/g, '$1<br>$2');
+      }
+      editor.innerHTML = processed;
       sendContent();
       isFirstLoad = false;
     };
@@ -697,9 +709,9 @@ export function CapsuleEditorMobile({
     return () => {
       if (debounceTimeout.current) {
         clearTimeout(debounceTimeout.current);
-      }
-      if (latestContentRef.current) {
-        onChange(latestContentRef.current.html, latestContentRef.current.text);
+        if (latestContentRef.current) {
+          onChange(latestContentRef.current.html, latestContentRef.current.text);
+        }
       }
     };
   }, [onChange]);
@@ -710,24 +722,12 @@ export function CapsuleEditorMobile({
 
   const updateDraftAndNotify = (newText: string, newSelectionStart: number, newSelectionEnd?: number) => {
     setDraft(newText);
-    let html = '';
-    let text = '';
     if (editMode === 'plain') {
-      html = markdownToHtml(newText);
-      text = newText.replace(/[*#`~_\-+[\]()]/g, '');
+      const compiledHtml = markdownToHtml(newText);
+      onChange(compiledHtml, newText.replace(/[*#`~_\-+[\]()]/g, ''));
     } else {
-      html = newText;
-      text = newText.replace(/<[^>]+>/g, '');
+      onChange(newText, newText.replace(/<[^>]+>/g, ''));
     }
-
-    latestContentRef.current = { html, text };
-
-    if (debounceTimeout.current) {
-      clearTimeout(debounceTimeout.current);
-    }
-    debounceTimeout.current = setTimeout(() => {
-      onChange(html, text);
-    }, 250);
 
     const targetEnd = newSelectionEnd ?? newSelectionStart;
     setTimeout(() => {
@@ -1054,15 +1054,7 @@ export function CapsuleEditorMobile({
               onChangeText={(t) => {
                 setDraft(t);
                 const compiledHtml = markdownToHtml(t);
-                const plainText = t.replace(/[*#`~_\-+[\]()]/g, '');
-                
-                latestContentRef.current = { html: compiledHtml, text: plainText };
-                if (debounceTimeout.current) {
-                  clearTimeout(debounceTimeout.current);
-                }
-                debounceTimeout.current = setTimeout(() => {
-                  onChange(compiledHtml, plainText);
-                }, 250);
+                onChange(compiledHtml, t.replace(/[*#`~_\-+[\]()]/g, ''));
               }}
               autoFocus={autoFocus}
             />

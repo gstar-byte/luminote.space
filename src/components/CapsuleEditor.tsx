@@ -240,6 +240,7 @@ function markdownToHtml(md: string): string {
         outputLines.push(inList === 'ordered' ? '</ol>' : '</ul>');
         inList = null;
       }
+      outputLines.push('<p><br></p>');
       return;
     }
     

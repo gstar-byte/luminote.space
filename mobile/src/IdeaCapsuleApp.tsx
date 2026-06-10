@@ -731,6 +731,8 @@ export default function IdeaCapsuleApp() {
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
 
   const [colorPickerCapsule, setColorPickerCapsule] = useState<Capsule | null>(null);
+  const [colorPickerHidePresets, setColorPickerHidePresets] = useState(false);
+  const [showLocalColors, setShowLocalColors] = useState(false);
   const [reminderTarget, setReminderTarget] = useState<Capsule | null>(null);
 
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
@@ -1175,6 +1177,13 @@ export default function IdeaCapsuleApp() {
             return bump ? { ...merged, updatedAt: now } : merged;
           });
         }
+        if (colorPickerCapsule?.id === id) {
+          setColorPickerCapsule((prev) => {
+            if (!prev) return null;
+            const merged = mergeCapsuleUpdates(prev, updates);
+            return bump ? { ...merged, updatedAt: now } : merged;
+          });
+        }
         return;
       }
 
@@ -1194,6 +1203,13 @@ export default function IdeaCapsuleApp() {
           return bump ? { ...merged, updatedAt: now } : merged;
         });
       }
+      if (colorPickerCapsule?.id === id) {
+        setColorPickerCapsule((prev) => {
+          if (!prev) return null;
+          const merged = mergeCapsuleUpdates(prev, updates);
+          return bump ? { ...merged, updatedAt: now } : merged;
+        });
+      }
       try {
         const docRef = doc(db, 'capsules', id);
         const clean = capsulePartialToFirestoreData(updates);
@@ -1206,7 +1222,7 @@ export default function IdeaCapsuleApp() {
         Alert.alert('Sync failed', 'Could not update the note. Check your network.');
       }
     },
-    [user, editingCapsule?.id, capsules, requireAuth],
+    [user, editingCapsule?.id, colorPickerCapsule?.id, capsules, requireAuth],
   );
 
   const updateCapsuleRef = useRef(updateCapsule);
@@ -2367,7 +2383,7 @@ export default function IdeaCapsuleApp() {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     void updateCapsule(item.id, { isArchived: false });
                     showToast('Note restored!', 'success');
-                  } else {
+                  } else if (direction === 'right') {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                     void updateCapsule(item.id, { isDeleted: true });
                     showToast('Note deleted!', 'success');
@@ -2380,7 +2396,7 @@ export default function IdeaCapsuleApp() {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     void updateCapsule(item.id, { isDeleted: false });
                     showToast('Note restored!', 'success');
-                  } else {
+                  } else if (direction === 'right') {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                     Alert.alert(
                       'Confirm Delete',
@@ -2542,12 +2558,11 @@ export default function IdeaCapsuleApp() {
         </ScrollView>
       </View>
 
-        {!editingCapsule && (
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom + 4 : 4}
-            style={s.captureBarWrap}
-          >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom + 4 : 4}
+          style={s.captureBarWrap}
+        >
           {quickCaptureMode === 'buttons' ? (
             <View style={[s.captureBar, { justifyContent: 'center', backgroundColor: 'transparent', borderWidth: 0, shadowColor: 'transparent', elevation: 0, paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 }]}>
               <View
@@ -2744,7 +2759,6 @@ export default function IdeaCapsuleApp() {
             </View>
           )}
         </KeyboardAvoidingView>
-        )}
 
         {isSidebarOpen ? (
           <Pressable
@@ -3163,7 +3177,10 @@ export default function IdeaCapsuleApp() {
                       <TouchableOpacity
                         style={s.mItem}
                         onPress={() => {
-                          if (activeMenuCapsule) setColorPickerCapsule(activeMenuCapsule);
+                          if (activeMenuCapsule) {
+                            setColorPickerCapsule(activeMenuCapsule);
+                            setColorPickerHidePresets(false);
+                          }
                           setActiveMenuCapsule(null);
                         }}
                       >
@@ -3292,6 +3309,7 @@ export default function IdeaCapsuleApp() {
                 {colorPickerCapsule ? (
                   <CapsuleColorSheet
                     capsule={colorPickerCapsule}
+                    hidePresets={colorPickerHidePresets}
                     onSelectPreset={(hex) => {
                       void updateCapsule(colorPickerCapsule.id, { color: hex });
                       setColorPickerCapsule(null);
@@ -3635,62 +3653,144 @@ export default function IdeaCapsuleApp() {
         />
 
         <Modal transparent visible={!!editingCapsule} animationType="fade">
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 15 : 44}
-            style={s.editKeyboardWrap}
-          >
-            <Pressable
-              style={[StyleSheet.absoluteFillObject, s.editBackdropTint]}
-              onPress={saveEdit}
-            />
-            <View
-              style={[
-                s.editBoxCenter,
-                {
-                  justifyContent: 'flex-start',
-                  paddingTop: insets.top > 0 ? insets.top : (Platform.OS === 'ios' ? 20 : 10),
-                  paddingBottom: isKeyboardActive ? 0 : Math.max(insets.bottom, 8),
-                }
-              ]}
+          <View style={{ flex: 1, backgroundColor: '#FFF' }}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 15 : 0}
+              style={s.editKeyboardWrap}
             >
-              <View style={[
-                s.editBox,
-                {
-                  width: '100%',
-                  borderRadius: 0,
-                  minHeight: '100%',
-                  maxHeight: '100%',
-                  elevation: 0,
-                  shadowOpacity: 0,
-                }
-              ]}>
-                <View style={s.editHeader}>
-                  <View style={s.editHeaderLeft}>
-                    {/* Color dot indicator — 点击可直接拉起调色盘修改当前 note 颜色 */}
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => editingCapsule && setColorPickerCapsule(editingCapsule)}
-                      style={[
-                        s.editColorDot,
-                        { backgroundColor: editingCapsule?.color || '#FFB900' },
-                      ]}
-                    />
-                    {/* Note Title Input */}
-                    <TextInput
-                      style={s.editTitleInput}
-                      value={editSubjectDraft}
-                      onChangeText={setEditSubjectDraft}
-                      placeholder="Note Title"
-                      placeholderTextColor="#C7C7CC"
-                      returnKeyType="done"
-                      onBlur={saveEditSilent}
-                    />
+              <Pressable
+                style={[StyleSheet.absoluteFillObject, s.editBackdropTint]}
+                onPress={saveEdit}
+              />
+              <View
+                style={[
+                  s.editBoxCenter,
+                  {
+                    justifyContent: 'flex-start',
+                    paddingTop: insets.top > 0 ? insets.top : (Platform.OS === 'ios' ? 20 : 10),
+                    paddingBottom: isKeyboardActive ? 0 : Math.max(insets.bottom, 8),
+                  }
+                ]}
+              >
+                <View style={[
+                  s.editBox,
+                  {
+                    width: '100%',
+                    borderRadius: 0,
+                    minHeight: '100%',
+                    maxHeight: '100%',
+                    elevation: 0,
+                    shadowOpacity: 0,
+                  }
+                ]}>
+                  <View style={s.editHeader}>
+                    <View style={s.editHeaderLeft}>
+                      {/* Color dot indicator — 点击可直接在下方展开 Preset 颜色面板 */}
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => setShowLocalColors(!showLocalColors)}
+                        hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                        style={[
+                          s.editColorDot,
+                          { backgroundColor: editingCapsule?.color || '#FFB900' },
+                        ]}
+                      />
+                      {/* Note Title Input */}
+                      <TextInput
+                        style={s.editTitleInput}
+                        value={editSubjectDraft}
+                        onChangeText={setEditSubjectDraft}
+                        placeholder="Note Title"
+                        placeholderTextColor="#C7C7CC"
+                        returnKeyType="done"
+                        onBlur={saveEditSilent}
+                      />
+                    </View>
+                    <TouchableOpacity onPress={saveEdit} style={s.editCloseBtn}>
+                      <X size={20} color="#8E8E93" />
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity onPress={saveEdit} style={s.editCloseBtn}>
-                    <X size={20} color="#8E8E93" />
-                  </TouchableOpacity>
-                </View>
+
+                  {/* 详情页内嵌调色栏：极其小巧、避免双 Modal 冲突 */}
+                  {showLocalColors && (
+                    <View style={{
+                      flexDirection: 'row',
+                      gap: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      backgroundColor: '#F2F2F7',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                      borderBottomColor: '#E5E5EA',
+                    }}>
+                      {PRESET_COLORS.map(c => (
+                        <TouchableOpacity
+                          key={c}
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: 12,
+                            backgroundColor: c,
+                            borderWidth: (editingCapsule?.color || '#FFB900') === c ? 2 : 0,
+                            borderColor: '#007AFF',
+                          }}
+                          onPress={() => {
+                            if (editingCapsule) {
+                              void updateCapsule(editingCapsule.id, { color: c });
+                              setEditingCapsule({ ...editingCapsule, color: c });
+                              showToast('Color updated', 'success');
+                            }
+                            setShowLocalColors(false);
+                          }}
+                        />
+                      ))}
+                      <TouchableOpacity
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 12,
+                          backgroundColor: '#FFF',
+                          borderWidth: 1,
+                          borderColor: '#E5E5EA',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        onPress={() => {
+                          if (editingCapsule) {
+                            setColorPickerCapsule(editingCapsule);
+                            setColorPickerHidePresets(true);
+                          }
+                          setShowLocalColors(false);
+                        }}
+                      >
+                        <Text style={{ fontSize: 11 }}>🎨</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 12,
+                          backgroundColor: '#FFF',
+                          borderWidth: 1,
+                          borderColor: '#E5E5EA',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        onPress={() => {
+                          if (editingCapsule) {
+                            void updateCapsule(editingCapsule.id, { color: undefined });
+                            setEditingCapsule({ ...editingCapsule, color: undefined });
+                            showToast('Color reset', 'success');
+                          }
+                          setShowLocalColors(false);
+                        }}
+                      >
+                        <X size={12} color="#8E8E93" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
 
                 {/* Plain / Markdown switcher — Aligned with Web */}
                 <View style={s.editModeTabWrap}>
@@ -3710,9 +3810,9 @@ export default function IdeaCapsuleApp() {
                   </View>
                 </View>
 
-                <View style={{ flex: 1, backgroundColor: editingCapsule?.color || '#FFFBE6' }}>
+                <View style={{ flex: 1, backgroundColor: '#FFFBE6' }}>
                   <CapsuleEditorMobile
-                    key={editingCapsule ? `editor-${editingCapsule.id}` : 'new-editor'}
+                    key={editingCapsule?.id || 'new'}
                     content={editContent}
                     onChange={(json) => setEditContent(json)}
                     placeholder="Type your brilliant thought here..."
@@ -3725,98 +3825,95 @@ export default function IdeaCapsuleApp() {
                 </View>
 
                 {/* 并排紧凑的 Category & Tags —— 紧靠在 Done 按钮之上，背景保持一致的纯白色以形成悬浮纸卡质感 */}
-                {(!isKeyboardActive || isMetaFocused) && (
-                  <View style={{
-                    flexDirection: 'row',
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    backgroundColor: '#FFF',
-                    gap: 12,
-                  }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Category</Text>
-                      <TextInput
-                        style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
-                        placeholder="Category"
-                        placeholderTextColor="#8E8E93"
-                        value={editCategoryDraft}
-                        onChangeText={setEditCategoryDraft}
-                        onFocus={() => setIsMetaFocused(true)}
-                        onBlur={() => {
-                          setIsMetaFocused(false);
-                          saveEditSilent();
-                        }}
-                      />
-                    </View>
-                    <View style={{ flex: 1.5 }}>
-                      <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Tag</Text>
-                      <TextInput
-                        style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
-                        placeholder="Tag"
-                        placeholderTextColor="#8E8E93"
-                        value={editTagDraft}
-                        onChangeText={(t) => setEditTagDraft(t.replace(/,/g, ''))}
-                        onFocus={() => setIsMetaFocused(true)}
-                        onBlur={() => {
-                          setIsMetaFocused(false);
-                          saveEditSilent();
-                        }}
-                      />
-                    </View>
+                <View style={{
+                  flexDirection: 'row',
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  backgroundColor: '#FFF',
+                  gap: 12,
+                }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Category</Text>
+                    <TextInput
+                      style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
+                      placeholder="Category"
+                      placeholderTextColor="#8E8E93"
+                      value={editCategoryDraft}
+                      onChangeText={setEditCategoryDraft}
+                      onFocus={() => setIsMetaFocused(true)}
+                      onBlur={() => {
+                        setIsMetaFocused(false);
+                        saveEditSilent();
+                      }}
+                    />
                   </View>
-                )}
+                  <View style={{ flex: 1.5 }}>
+                    <Text style={[s.editFieldLbl, { fontSize: 10, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }]}>Tag</Text>
+                    <TextInput
+                      style={[s.editFieldIn, { height: 36, paddingVertical: 0, paddingHorizontal: 10, fontSize: 13, backgroundColor: '#F2F2F7', borderColor: 'transparent', borderRadius: 8 }]}
+                      placeholder="Tag"
+                      placeholderTextColor="#8E8E93"
+                      value={editTagDraft}
+                      onChangeText={(t) => setEditTagDraft(t.replace(/,/g, ''))}
+                      onFocus={() => setIsMetaFocused(true)}
+                      onBlur={() => {
+                        setIsMetaFocused(false);
+                        saveEditSilent();
+                      }}
+                    />
+                  </View>
+                </View>
 
-                {(!isKeyboardActive || isMetaFocused) && (
-                  <View style={[s.editFooter, { backgroundColor: '#FFF' }]}>
-                    <TouchableOpacity
-                      onPress={() => editingCapsule && pickImageForCapsule(editingCapsule)}
-                      style={{ padding: 8 }}
-                    >
-                      <ImageIcon size={22} color="#8E8E93" />
-                    </TouchableOpacity>
+                <View style={[s.editFooter, { backgroundColor: '#FFF' }]}>
+                  <TouchableOpacity
+                    onPress={() => editingCapsule && pickImageForCapsule(editingCapsule)}
+                    style={{ padding: 8 }}
+                  >
+                    <ImageIcon size={22} color="#8E8E93" />
+                  </TouchableOpacity>
 
-                    <View style={{ flex: 1, paddingHorizontal: 12, gap: 4 }}>
+                  <View style={{ flex: 1, paddingHorizontal: 12, gap: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Clock size={10} color="#AEAEB2" />
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: '700',
+                          color: '#AEAEB2',
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.3,
+                        }}
+                      >
+                        Created: {editingCapsule ? formatNoteDateTime(editingCapsule.createdAt) : ''}
+                      </Text>
+                    </View>
+                    {editingCapsule?.reminder && editingCapsule.reminder.type !== 'none' && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Clock size={10} color="#AEAEB2" />
+                        <Bell size={10} color="#007AFF" strokeWidth={2.5} />
                         <Text
                           style={{
                             fontSize: 10,
-                            fontWeight: '700',
-                            color: '#AEAEB2',
+                            fontWeight: '800',
+                            color: '#007AFF',
                             textTransform: 'uppercase',
                             letterSpacing: 0.3,
                           }}
                         >
-                          Created: {editingCapsule ? formatNoteDateTime(editingCapsule.createdAt) : ''}
+                          Reminder: {formatNoteDateTime(editingCapsule.reminder.date)} (
+                          {repeatLabelForMenu(editingCapsule.reminder)})
                         </Text>
                       </View>
-                      {editingCapsule?.reminder && editingCapsule.reminder.type !== 'none' && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                          <Bell size={10} color="#007AFF" strokeWidth={2.5} />
-                          <Text
-                            style={{
-                              fontSize: 10,
-                              fontWeight: '800',
-                              color: '#007AFF',
-                              textTransform: 'uppercase',
-                              letterSpacing: 0.3,
-                            }}
-                          >
-                            Reminder: {formatNoteDateTime(editingCapsule.reminder.date)} (
-                            {repeatLabelForMenu(editingCapsule.reminder)})
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
-                    <TouchableOpacity style={[s.doneBtnBlack, { borderRadius: 18, paddingHorizontal: 22 }]} onPress={saveEdit}>
-                      <Text style={{ color: '#FFF', fontWeight: '800' }}>Done</Text>
-                    </TouchableOpacity>
+                    )}
                   </View>
-                )}
+
+                  <TouchableOpacity style={[s.doneBtnBlack, { borderRadius: 18, paddingHorizontal: 22 }]} onPress={saveEdit}>
+                    <Text style={{ color: '#FFF', fontWeight: '800' }}>Done</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          </KeyboardAvoidingView>
+              </View>
+            </KeyboardAvoidingView>
+          </View>
         </Modal>
 
         <Modal transparent visible={isSortMenuOpen} animationType="fade">
@@ -3961,7 +4058,8 @@ function SwipeableCardWrapper({
       childrenContainerStyle={{ width: '100%' }}
       renderLeftActions={renderLeftActions}
       renderRightActions={renderRightActions}
-      onSwipeableOpen={handleSwipeOpen}
+      onSwipeableLeftOpen={() => handleSwipeOpen('left')}
+      onSwipeableRightOpen={() => handleSwipeOpen('right')}
       onSwipeableWillOpen={() => {
         // 在即将滑开的物理临界点触发清脆轻微的原生震动反馈
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -4004,13 +4102,10 @@ function CapsuleCard({
         style={[
           s.cardGrid,
           s.cardGridFill,
-          { backgroundColor: '#FFFFFF', position: 'relative' as const, flexDirection: 'column', paddingLeft: 16 },
+          { backgroundColor: item.color || PRESET_COLORS[0], position: 'relative' as const, flexDirection: 'column' },
           isSelected && { borderWidth: 2, borderColor: '#007AFF' },
         ]}
       >
-        {/* 左侧代表便签颜色的垂直小竖条 */}
-        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4.5, backgroundColor: item.color || PRESET_COLORS[0] }} />
-
         {/* 顶部：正文 / 标题文字 */}
         <View style={{ flex: 1, width: '100%', minWidth: 0 }}>
           <Text
@@ -4038,7 +4133,7 @@ function CapsuleCard({
                   onToggleTodo();
                 }}
               >
-                {item.completed ? <Check size={11} color="#FFF" strokeWidth={3} /> : null}
+                {item.completed ? <Check size={11} color="rgba(0,0,0,0.62)" strokeWidth={3} /> : null}
               </TouchableOpacity>
             </View>
           ) : null}
@@ -4049,15 +4144,15 @@ function CapsuleCard({
             {(item.category || currentTag) ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-start' }}>
                 {item.category ? (
-                  <View style={{ backgroundColor: 'rgba(0,122,255,0.08)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                    <Text style={{ color: '#007AFF', fontSize: 8, fontWeight: '900', letterSpacing: 0.2 }}>
+                  <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 8, fontWeight: '900', letterSpacing: 0.2 }}>
                       {item.category.toUpperCase()}
                     </Text>
                   </View>
                 ) : null}
                 {currentTag ? (
-                  <View style={{ backgroundColor: 'rgba(142,142,147,0.12)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                    <Text style={{ color: '#8E8E93', fontSize: 8, fontWeight: '900' }}>
+                  <View style={{ backgroundColor: 'rgba(0,0,0,0.1)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 8, fontWeight: '900' }}>
                       #{currentTag}
                     </Text>
                   </View>
@@ -4067,9 +4162,9 @@ function CapsuleCard({
 
             {/* Date Row */}
             {item.createdAt ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, opacity: 0.75 }}>
-                <Clock size={8} color="#8E8E93" />
-                <Text style={{ color: '#8E8E93', fontSize: 8, fontWeight: '700', letterSpacing: 0.2, textTransform: 'uppercase' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, opacity: 0.65 }}>
+                <Clock size={8} color="#FFF" />
+                <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '700', letterSpacing: 0.2, textTransform: 'uppercase' }}>
                   {new Date(item.createdAt).toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric',
@@ -4083,15 +4178,15 @@ function CapsuleCard({
         {/* 绝对定位角标：星标、置顶（右上角） */}
         {(item.isStarred || item.isPinned) && (
           <View style={{ position: 'absolute', top: 6, right: isMulti ? 6 : 28, flexDirection: 'row', gap: 3, zIndex: 3 }}>
-            {item.isPinned && <Pin size={10} color="#8E8E93" />}
-            {item.isStarred && <Star size={10} color="#FFB800" fill="#FFB800" />}
+            {item.isPinned && <Pin size={10} color="rgba(255,255,255,0.9)" />}
+            {item.isStarred && <Star size={10} color="#FFD60A" fill="#FFD60A" />}
           </View>
         )}
 
         {/* 绝对定位角标：提醒铃铛 */}
         {hasActiveReminder(item) ? (
           <View style={{ position: 'absolute', bottom: 12, right: isMulti ? 8 : 28, zIndex: 3 }} pointerEvents="none">
-            <Bell size={10} color="#8E8E93" strokeWidth={2.5} />
+            <Bell size={10} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
           </View>
         ) : null}
 
@@ -4105,7 +4200,7 @@ function CapsuleCard({
               }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <MoreVertical size={14} color="#8E8E93" style={{ opacity: 0.7 }} />
+              <MoreVertical size={14} color="#FFF" style={{ opacity: 0.6 }} />
             </TouchableOpacity>
           </View>
         ) : null}
@@ -4120,13 +4215,10 @@ function CapsuleCard({
       onLongPress={onLongPress}
       style={[
         s.cardList,
-        { backgroundColor: '#FFFFFF', position: 'relative' as const, paddingLeft: 16 },
+        { backgroundColor: item.color || PRESET_COLORS[0], position: 'relative' as const },
         isSelected && { borderWidth: 2, borderColor: '#007AFF' },
       ]}
     >
-      {/* 左侧代表便签颜色的垂直小竖条 */}
-      <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4.5, backgroundColor: item.color || PRESET_COLORS[0] }} />
-
       {item.isTodo ? (
         <View style={s.cardCheckCol}>
           <TouchableOpacity
@@ -4136,7 +4228,7 @@ function CapsuleCard({
               onToggleTodo();
             }}
           >
-            {item.completed ? <Check size={11} color="#FFF" strokeWidth={3} /> : null}
+            {item.completed ? <Check size={11} color="rgba(0,0,0,0.62)" strokeWidth={3} /> : null}
           </TouchableOpacity>
         </View>
       ) : null}
@@ -4162,15 +4254,15 @@ function CapsuleCard({
           return (
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginTop: 5 }}>
               {item.category ? (
-                <View style={{ backgroundColor: 'rgba(0,122,255,0.08)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
-                  <Text style={{ color: '#007AFF', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 }}>
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 }}>
                     {item.category.toUpperCase()}
                   </Text>
                 </View>
               ) : null}
               {currentTag ? (
-                <View key={currentTag} style={{ backgroundColor: 'rgba(142,142,147,0.12)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
-                  <Text style={{ color: '#8E8E93', fontSize: 9, fontWeight: '900' }}>
+                <View key={currentTag} style={{ backgroundColor: 'rgba(0,0,0,0.1)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: '900' }}>
                     #{currentTag}
                   </Text>
                 </View>
@@ -4181,9 +4273,9 @@ function CapsuleCard({
 
         {/* Date Row */}
         {item.createdAt ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5, opacity: 0.75 }}>
-            <Clock size={9} color="#8E8E93" />
-            <Text style={{ color: '#8E8E93', fontSize: 9, fontWeight: '700', letterSpacing: 0.3, textTransform: 'uppercase' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5, opacity: 0.65 }}>
+            <Clock size={9} color="#FFF" />
+            <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '700', letterSpacing: 0.3, textTransform: 'uppercase' }}>
               {new Date(item.createdAt).toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
@@ -4195,14 +4287,14 @@ function CapsuleCard({
       {/* Star & Pin badges — top-right, aligned with PC Web */}
       {(item.isStarred || item.isPinned) && (
         <View style={{ position: 'absolute', top: 5, right: isMulti ? 5 : 36, flexDirection: 'row', gap: 3, zIndex: 3 }}>
-          {item.isPinned && <Pin size={10} color="#8E8E93" />}
-          {item.isStarred && <Star size={10} color="#FFB800" fill="#FFB800" />}
+          {item.isPinned && <Pin size={10} color="rgba(255,255,255,0.9)" />}
+          {item.isStarred && <Star size={10} color="#FFD60A" fill="#FFD60A" />}
         </View>
       )}
       {/* Reminder bell — bottom-right corner */}
       {hasActiveReminder(item) ? (
         <View style={s.cardBellCorner} pointerEvents="none">
-          <Bell size={10} color="#8E8E93" strokeWidth={2.5} />
+          <Bell size={10} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
         </View>
       ) : null}
       {!isMulti ? (
@@ -4214,7 +4306,7 @@ function CapsuleCard({
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <MoreVertical size={18} color="#8E8E93" style={{ opacity: 0.7 }} />
+            <MoreVertical size={18} color="#FFF" style={{ opacity: 0.6 }} />
           </TouchableOpacity>
         </View>
       ) : null}
@@ -4626,14 +4718,7 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'stretch',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    elevation: 4,
     overflow: 'hidden',
   },
   cardGridFill: { width: '100%', alignSelf: 'stretch' },
@@ -4646,14 +4731,6 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'stretch',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1.5,
     overflow: 'hidden',
   },
   cardCheckCol: {
@@ -4680,24 +4757,23 @@ const s = StyleSheet.create({
     height: 20,
     borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: '#C7C7CC',
+    borderColor: 'rgba(255,255,255,0.92)',
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkOuterDone: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderColor: 'rgba(255,255,255,0.92)',
   },
   cardText: {
-    color: '#1C1C1E',
+    color: 'rgba(255,255,255,0.96)',
     fontSize: 13,
     fontWeight: '500',
     lineHeight: 17,
   },
   cardTextDone: {
     textDecorationLine: 'line-through',
-    color: '#8E8E93',
     opacity: 0.72,
   },
   cardFoot: {

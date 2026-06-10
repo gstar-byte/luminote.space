@@ -4539,29 +4539,43 @@ const CapsuleItem = memo(function CapsuleItem({
     if (isHorizontalSwipe.current === true) {
       // 触发阈值设定为 100px
       if (swipeX > 100) {
-        // 右滑状态机递进：Note -> Active Todo -> Completed Todo -> Active Todo...
-        let updates: Partial<Capsule> = {};
-        let toastMsg = '';
-        if (!capsule.isTodo) {
-          updates = { isTodo: true, completed: false };
-          toastMsg = 'Task created!';
-        } else if (!capsule.completed) {
-          updates = { completed: true };
-          toastMsg = 'Task completed!';
+        if (capsule.isArchived) {
+          void onUpdate({ isArchived: false });
+          if (showToast) {
+            showToast('Note restored!', 'success');
+          }
         } else {
-          updates = { completed: false };
-          toastMsg = 'Task activated!';
-        }
-        void onUpdate(updates);
-        if (showToast) {
-          showToast(toastMsg, 'success');
+          // 右滑状态机递进：Note -> Active Todo -> Completed Todo...
+          let updates: Partial<Capsule> = {};
+          let toastMsg = '';
+          if (!capsule.isTodo) {
+            updates = { isTodo: true, completed: false };
+            toastMsg = 'Task created!';
+          } else if (!capsule.completed) {
+            updates = { completed: true };
+            toastMsg = 'Task completed!';
+          } else {
+            updates = { completed: false };
+            toastMsg = 'Task activated!';
+          }
+          void onUpdate(updates);
+          if (showToast) {
+            showToast(toastMsg, 'success');
+          }
         }
       } else if (swipeX < -100) {
-        // 左滑：归档/撤销归档
-        const nextArchivedStatus = !capsule.isArchived;
-        void onUpdate({ isArchived: nextArchivedStatus });
-        if (showToast) {
-          showToast(nextArchivedStatus ? 'Note archived!' : 'Note unarchived!', 'success');
+        if (capsule.isArchived) {
+          void onUpdate({ isDeleted: true });
+          if (showToast) {
+            showToast('Note deleted!', 'success');
+          }
+        } else {
+          // 左滑：归档/撤销归档
+          const nextArchivedStatus = !capsule.isArchived;
+          void onUpdate({ isArchived: nextArchivedStatus });
+          if (showToast) {
+            showToast(nextArchivedStatus ? 'Note archived!' : 'Note unarchived!', 'success');
+          }
         }
       }
     }
@@ -4709,10 +4723,10 @@ const CapsuleItem = memo(function CapsuleItem({
           style={{
             backgroundColor: swipeX > 0 
               ? '#30D158' 
-              : (swipeX < 0 ? '#007AFF' : 'transparent'),
+              : (swipeX < 0 ? (capsule.isArchived ? '#FF3B30' : '#007AFF') : 'transparent'),
           }}
         >
-          {/* 左侧提示（右滑触发完成待办） */}
+          {/* 左侧提示（右滑触发） */}
           <div 
             className={cn(
               "flex items-center gap-2 text-white transition-all duration-150",
@@ -4720,7 +4734,12 @@ const CapsuleItem = memo(function CapsuleItem({
               swipeX > 100 ? "scale-110 font-black text-white" : ""
             )}
           >
-            {!capsule.isTodo ? (
+            {capsule.isArchived ? (
+              <>
+                <RotateCcw size={18} className="shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider">Restore</span>
+              </>
+            ) : !capsule.isTodo ? (
               <>
                 <Check size={18} className="shrink-0" />
                 <span className="text-[10px] font-black uppercase tracking-wider">Todo</span>
@@ -4738,7 +4757,7 @@ const CapsuleItem = memo(function CapsuleItem({
             )}
           </div>
 
-          {/* 右侧提示（左滑触发归档） */}
+          {/* 右侧提示（左滑触发） */}
           <div 
             className={cn(
               "flex items-center gap-2 text-white transition-all duration-150",
@@ -4746,10 +4765,19 @@ const CapsuleItem = memo(function CapsuleItem({
               swipeX < -100 ? "scale-110 font-black text-white" : ""
             )}
           >
-            <span className="text-[10px] font-black uppercase tracking-wider">
-              {capsule.isArchived ? 'Unarchive' : 'Archive'}
-            </span>
-            {capsule.isArchived ? <Inbox size={18} className="shrink-0" /> : <Archive size={18} className="shrink-0" />}
+            {capsule.isArchived ? (
+              <>
+                <span className="text-[10px] font-black uppercase tracking-wider">Delete</span>
+                <Trash2 size={18} className="shrink-0" />
+              </>
+            ) : (
+              <>
+                <span className="text-[10px] font-black uppercase tracking-wider">
+                  {capsule.isArchived ? 'Unarchive' : 'Archive'}
+                </span>
+                {capsule.isArchived ? <Inbox size={18} className="shrink-0" /> : <Archive size={18} className="shrink-0" />}
+              </>
+            )}
           </div>
         </div>
       )}

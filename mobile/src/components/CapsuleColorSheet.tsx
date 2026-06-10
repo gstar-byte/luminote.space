@@ -11,6 +11,7 @@ type Props = {
   onReset: () => void;
   onCustomColor: (hex: string) => void;
   onClose: () => void;
+  hidePresets?: boolean;
 };
 
 /** 与 web CapsuleItem 颜色面板一致：Presets + Reset + Custom */
@@ -20,6 +21,7 @@ export function CapsuleColorSheet({
   onReset,
   onCustomColor,
   onClose,
+  hidePresets = false,
 }: Props) {
   const selected = capsule.color;
 
@@ -27,32 +29,34 @@ export function CapsuleColorSheet({
     <View style={s.sheet}>
       <Text style={s.title}>Change Color</Text>
       
-      <View style={s.presetGrid}>
-        {PRESET_COLORS.map((color) => (
+      {!hidePresets && (
+        <View style={s.presetGrid}>
+          {PRESET_COLORS.map((color) => (
+            <TouchableOpacity
+              key={color}
+              style={[
+                s.dot,
+                { backgroundColor: color },
+                selected === color && s.dotOn,
+              ]}
+              onPress={() => onSelectPreset(color)}
+              activeOpacity={0.8}
+            >
+              {selected === color && (
+                <Check size={14} color="#FFF" />
+              )}
+            </TouchableOpacity>
+          ))}
           <TouchableOpacity
-            key={color}
-            style={[
-              s.dot,
-              { backgroundColor: color },
-              selected === color && s.dotOn,
-            ]}
-            onPress={() => onSelectPreset(color)}
+            style={[s.resetDot, !selected && s.resetDotOn]}
+            onPress={onReset}
+            accessibilityLabel="Reset to default"
             activeOpacity={0.8}
           >
-            {selected === color && (
-              <Check size={14} color="#FFF" />
-            )}
+            <RotateCcw size={14} color="#8E8E93" />
           </TouchableOpacity>
-        ))}
-        <TouchableOpacity
-          style={[s.resetDot, !selected && s.resetDotOn]}
-          onPress={onReset}
-          accessibilityLabel="Reset to default"
-          activeOpacity={0.8}
-        >
-          <RotateCcw size={14} color="#8E8E93" />
-        </TouchableOpacity>
-      </View>
+        </View>
+      )}
       
       <CustomColorInput
         value={selected || '#6BCB77'}
