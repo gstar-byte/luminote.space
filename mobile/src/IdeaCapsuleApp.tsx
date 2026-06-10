@@ -2086,7 +2086,7 @@ export default function IdeaCapsuleApp() {
   );
   const menuSheetWidth = Math.min(236, windowWidth - 36);
   const filterMenuTop = insets.top + 60;
-  const listBottomPad = 14;
+  const listBottomPad = 86 + insets.bottom;
 
   const isSidebarScopeFilterActive =
     categoryFilter !== 'all' || tagFilter !== null || filter !== 'all';
@@ -2562,9 +2562,13 @@ export default function IdeaCapsuleApp() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom + 4 : 4}
           style={s.captureBarWrap}
+          pointerEvents="box-none"
         >
           {quickCaptureMode === 'buttons' ? (
-            <View style={[s.captureBar, { justifyContent: 'center', backgroundColor: 'transparent', borderWidth: 0, shadowColor: 'transparent', elevation: 0, paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 }]}>
+            <View 
+              pointerEvents="box-none"
+              style={[s.captureBar, { justifyContent: 'center', backgroundColor: 'transparent', borderWidth: 0, shadowColor: 'transparent', elevation: 0, paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 }]}
+            >
               <View
                 style={{
                   shadowColor: '#000',
@@ -2627,7 +2631,10 @@ export default function IdeaCapsuleApp() {
               </View>
             </View>
           ) : quickCaptureMode === 'text' ? (
-            <View style={[s.captureBar, { justifyContent: 'center', backgroundColor: 'transparent', borderWidth: 0, shadowColor: 'transparent', elevation: 0, paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 }]}>
+            <View 
+              pointerEvents="box-none"
+              style={[s.captureBar, { justifyContent: 'center', backgroundColor: 'transparent', borderWidth: 0, shadowColor: 'transparent', elevation: 0, paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 }]}
+            >
               <View
                 style={{
                   shadowColor: '#000',
@@ -2715,7 +2722,10 @@ export default function IdeaCapsuleApp() {
             </View>
           ) : (
             // quickCaptureMode === 'voice' 正在录音状态
-            <View style={[s.captureBar, { justifyContent: 'center', backgroundColor: 'transparent', borderWidth: 0, shadowColor: 'transparent', elevation: 0, paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 }]}>
+            <View 
+              pointerEvents="box-none"
+              style={[s.captureBar, { justifyContent: 'center', backgroundColor: 'transparent', borderWidth: 0, shadowColor: 'transparent', elevation: 0, paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 }]}
+            >
               <TouchableOpacity
                 activeOpacity={0.85}
                 onPress={() => {
@@ -4092,225 +4102,277 @@ function CapsuleCard({
   onMenu: (e: any) => void;
   onToggleTodo: () => void;
 }) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const onPressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      speed: 24,
+      bounciness: 3,
+    }).start();
+  };
+
+  const onPressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1.0,
+      useNativeDriver: true,
+      speed: 24,
+      bounciness: 3,
+    }).start();
+  };
+
+  const handlePress = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress();
+  };
+
   if (isGrid) {
     const currentTag = item.tag || (item.tags && item.tags.length > 0 ? item.tags[0] : undefined);
     return (
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={onPress}
-        onLongPress={onLongPress}
-        style={[
-          s.cardGrid,
-          s.cardGridFill,
-          { backgroundColor: item.color || PRESET_COLORS[0], position: 'relative' as const, flexDirection: 'column' },
-          isSelected && { borderWidth: 2, borderColor: '#007AFF' },
-        ]}
+      <Pressable
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        onPress={handlePress}
+        onLongPress={() => {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          onLongPress();
+        }}
+        delayLongPress={480}
+        style={s.cardWrapGrid}
       >
-        {/* 顶部：正文 / 标题文字 */}
-        <View style={{ flex: 1, width: '100%', minWidth: 0 }}>
-          <Text
-            style={[
-              s.cardText,
-              item.isTodo && item.completed ? s.cardTextDone : null,
-              { fontWeight: '700', fontSize: 13, lineHeight: 17 },
-            ]}
-            numberOfLines={4}
-            ellipsizeMode="tail"
-          >
-            {item.subject ? item.subject : plainTextFromContent(item.content)}
-          </Text>
-        </View>
+        <Animated.View
+          style={[
+            s.cardGrid,
+            s.cardGridFill,
+            { 
+              backgroundColor: item.color || PRESET_COLORS[0], 
+              position: 'relative' as const, 
+              flexDirection: 'column',
+              transform: [{ scale: scaleAnim }]
+            },
+            isSelected && { borderWidth: 2, borderColor: '#007AFF' },
+          ]}
+        >
+          {/* 顶部：正文 / 标题文字 */}
+          <View style={{ flex: 1, width: '100%', minWidth: 0 }}>
+            <Text
+              style={[
+                s.cardText,
+                item.isTodo && item.completed ? s.cardTextDone : null,
+                { fontWeight: '700', fontSize: 13, lineHeight: 18 },
+              ]}
+              numberOfLines={4}
+              ellipsizeMode="tail"
+            >
+              {item.subject ? item.subject : plainTextFromContent(item.content)}
+            </Text>
+          </View>
 
-        {/* 底部：一整行，包含左下角待办和底部的 category、tag、时间 */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'flex-start', marginTop: 'auto', width: '100%', minHeight: 32, paddingRight: 32 }}>
-          {/* 左下角待办方块 */}
-          {item.isTodo ? (
-            <View style={{ paddingBottom: 2, marginRight: 8 }}>
-              <TouchableOpacity
-                style={[s.checkOuter, item.completed && s.checkOuterDone]}
-                onPress={(e) => {
-                  e.stopPropagation?.();
-                  onToggleTodo();
-                }}
-              >
-                {item.completed ? <Check size={11} color="rgba(0,0,0,0.62)" strokeWidth={3} /> : null}
-              </TouchableOpacity>
+          {/* 底部：一整行，包含左下角待办和底部的 category、tag、时间 */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'flex-start', marginTop: 'auto', width: '100%', minHeight: 32, paddingRight: 32 }}>
+            {/* 左下角待办方块 */}
+            {item.isTodo ? (
+              <View style={{ paddingBottom: 2, marginRight: 8 }}>
+                <TouchableOpacity
+                  style={[s.checkOuter, item.completed && s.checkOuterDone]}
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    onToggleTodo();
+                  }}
+                >
+                  {item.completed ? <Check size={11} color="rgba(0,0,0,0.62)" strokeWidth={3} /> : null}
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {/* 待办方块右边：Category, Tag 以及创建时间 */}
+            <View style={{ alignItems: 'flex-start', gap: 3, flex: 1 }}>
+              {/* Category & Tag Row */}
+              {(item.category || currentTag) ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-start' }}>
+                  {item.category ? (
+                    <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                      <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 8, fontWeight: '900', letterSpacing: 0.2 }}>
+                        {item.category.toUpperCase()}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {currentTag ? (
+                    <View style={{ backgroundColor: 'rgba(0,0,0,0.1)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                      <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 8, fontWeight: '900' }}>
+                        #{currentTag}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {/* Date Row */}
+              {item.createdAt ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, opacity: 0.65 }}>
+                  <Clock size={8} color="#FFF" />
+                  <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '700', letterSpacing: 0.2, textTransform: 'uppercase' }}>
+                    {new Date(item.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+
+          {/* 绝对定位角标：星标、置顶（右上角） */}
+          {(item.isStarred || item.isPinned) && (
+            <View style={{ position: 'absolute', top: 6, right: isMulti ? 6 : 28, flexDirection: 'row', gap: 3, zIndex: 3 }}>
+              {item.isPinned && <Pin size={10} color="rgba(255,255,255,0.9)" />}
+              {item.isStarred && <Star size={10} color="#FFD60A" fill="#FFD60A" />}
+            </View>
+          )}
+
+          {/* 绝对定位角标：提醒铃铛 */}
+          {hasActiveReminder(item) ? (
+            <View style={{ position: 'absolute', bottom: 12, right: isMulti ? 8 : 28, zIndex: 3 }} pointerEvents="none">
+              <Bell size={10} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
             </View>
           ) : null}
 
-          {/* 待办方块右边：Category, Tag 以及创建时间 */}
-          <View style={{ alignItems: 'flex-start', gap: 3, flex: 1 }}>
-            {/* Category & Tag Row */}
-            {(item.category || currentTag) ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-start' }}>
+          {/* 绝对定位角标：三点菜单（右下角） */}
+          {!isMulti ? (
+            <View style={{ position: 'absolute', bottom: 10, right: 8, zIndex: 3 }}>
+              <TouchableOpacity
+                onPress={(e) => {
+                  (e as { stopPropagation?: () => void }).stopPropagation?.();
+                  onMenu(e);
+                }}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <MoreVertical size={14} color="#FFF" style={{ opacity: 0.6 }} />
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </Animated.View>
+      </Pressable>
+    );
+  }
+
+  return (
+    <Pressable
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      onPress={handlePress}
+      onLongPress={() => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        onLongPress();
+      }}
+      delayLongPress={480}
+      style={s.cardWrapList}
+    >
+      <Animated.View
+        style={[
+          s.cardList,
+          { 
+            backgroundColor: item.color || PRESET_COLORS[0], 
+            position: 'relative' as const,
+            transform: [{ scale: scaleAnim }]
+          },
+          isSelected && { borderWidth: 2, borderColor: '#007AFF' },
+        ]}
+      >
+        {item.isTodo ? (
+          <View style={s.cardCheckCol}>
+            <TouchableOpacity
+              style={[s.checkOuter, item.completed && s.checkOuterDone]}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onToggleTodo();
+              }}
+            >
+              {item.completed ? <Check size={11} color="rgba(0,0,0,0.62)" strokeWidth={3} /> : null}
+            </TouchableOpacity>
+          </View>
+        ) : null}
+        <View style={s.cardBody}>
+          <View style={s.cardHeaderRow}>
+            <Text
+              style={[
+                s.cardText,
+                item.isTodo && item.completed ? s.cardTextDone : null,
+                { fontWeight: '700', fontSize: 14, lineHeight: 19 },
+              ]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {item.subject ? item.subject : plainTextFromContent(item.content)}
+            </Text>
+          </View>
+
+          {/* Category & Tags Row */}
+          {(() => {
+            const currentTag = item.tag || (item.tags && item.tags.length > 0 ? item.tags[0] : undefined);
+            if (!item.category && !currentTag) return null;
+            return (
+              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginTop: 5 }}>
                 {item.category ? (
-                  <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                    <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 8, fontWeight: '900', letterSpacing: 0.2 }}>
+                  <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 }}>
                       {item.category.toUpperCase()}
                     </Text>
                   </View>
                 ) : null}
                 {currentTag ? (
-                  <View style={{ backgroundColor: 'rgba(0,0,0,0.1)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 8, fontWeight: '900' }}>
+                  <View key={currentTag} style={{ backgroundColor: 'rgba(0,0,0,0.1)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: '900' }}>
                       #{currentTag}
                     </Text>
                   </View>
                 ) : null}
               </View>
-            ) : null}
+            );
+          })()}
 
-            {/* Date Row */}
-            {item.createdAt ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, opacity: 0.65 }}>
-                <Clock size={8} color="#FFF" />
-                <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '700', letterSpacing: 0.2, textTransform: 'uppercase' }}>
-                  {new Date(item.createdAt).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </Text>
-              </View>
-            ) : null}
-          </View>
+          {/* Date Row */}
+          {item.createdAt ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5, opacity: 0.65 }}>
+              <Clock size={9} color="#FFF" />
+              <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '700', letterSpacing: 0.3, textTransform: 'uppercase' }}>
+                {new Date(item.createdAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </Text>
+            </View>
+          ) : null}
         </View>
-
-        {/* 绝对定位角标：星标、置顶（右上角） */}
+        {/* Star & Pin badges — top-right, aligned with PC Web */}
         {(item.isStarred || item.isPinned) && (
-          <View style={{ position: 'absolute', top: 6, right: isMulti ? 6 : 28, flexDirection: 'row', gap: 3, zIndex: 3 }}>
+          <View style={{ position: 'absolute', top: 5, right: isMulti ? 5 : 36, flexDirection: 'row', gap: 3, zIndex: 3 }}>
             {item.isPinned && <Pin size={10} color="rgba(255,255,255,0.9)" />}
             {item.isStarred && <Star size={10} color="#FFD60A" fill="#FFD60A" />}
           </View>
         )}
-
-        {/* 绝对定位角标：提醒铃铛 */}
+        {/* Reminder bell — bottom-right corner */}
         {hasActiveReminder(item) ? (
-          <View style={{ position: 'absolute', bottom: 12, right: isMulti ? 8 : 28, zIndex: 3 }} pointerEvents="none">
+          <View style={s.cardBellCorner} pointerEvents="none">
             <Bell size={10} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
           </View>
         ) : null}
-
-        {/* 绝对定位角标：三点菜单（右下角） */}
         {!isMulti ? (
-          <View style={{ position: 'absolute', bottom: 10, right: 8, zIndex: 3 }}>
+          <View style={s.cardMenuCol}>
             <TouchableOpacity
               onPress={(e) => {
                 (e as { stopPropagation?: () => void }).stopPropagation?.();
                 onMenu(e);
               }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <MoreVertical size={14} color="#FFF" style={{ opacity: 0.6 }} />
+              <MoreVertical size={18} color="#FFF" style={{ opacity: 0.6 }} />
             </TouchableOpacity>
           </View>
         ) : null}
-      </TouchableOpacity>
-    );
-  }
-
-  return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      style={[
-        s.cardList,
-        { backgroundColor: item.color || PRESET_COLORS[0], position: 'relative' as const },
-        isSelected && { borderWidth: 2, borderColor: '#007AFF' },
-      ]}
-    >
-      {item.isTodo ? (
-        <View style={s.cardCheckCol}>
-          <TouchableOpacity
-            style={[s.checkOuter, item.completed && s.checkOuterDone]}
-            onPress={(e) => {
-              e.stopPropagation?.();
-              onToggleTodo();
-            }}
-          >
-            {item.completed ? <Check size={11} color="rgba(0,0,0,0.62)" strokeWidth={3} /> : null}
-          </TouchableOpacity>
-        </View>
-      ) : null}
-      <View style={s.cardBody}>
-        <View style={s.cardHeaderRow}>
-          <Text
-            style={[
-              s.cardText,
-              item.isTodo && item.completed ? s.cardTextDone : null,
-              { fontWeight: '700', fontSize: 14 },
-            ]}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {item.subject ? item.subject : plainTextFromContent(item.content)}
-          </Text>
-        </View>
-
-        {/* Category & Tags Row */}
-        {(() => {
-          const currentTag = item.tag || (item.tags && item.tags.length > 0 ? item.tags[0] : undefined);
-          if (!item.category && !currentTag) return null;
-          return (
-            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginTop: 5 }}>
-              {item.category ? (
-                <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
-                  <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 }}>
-                    {item.category.toUpperCase()}
-                  </Text>
-                </View>
-              ) : null}
-              {currentTag ? (
-                <View key={currentTag} style={{ backgroundColor: 'rgba(0,0,0,0.1)', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 5 }}>
-                  <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: '900' }}>
-                    #{currentTag}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-          );
-        })()}
-
-        {/* Date Row */}
-        {item.createdAt ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5, opacity: 0.65 }}>
-            <Clock size={9} color="#FFF" />
-            <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '700', letterSpacing: 0.3, textTransform: 'uppercase' }}>
-              {new Date(item.createdAt).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-              })}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-      {/* Star & Pin badges — top-right, aligned with PC Web */}
-      {(item.isStarred || item.isPinned) && (
-        <View style={{ position: 'absolute', top: 5, right: isMulti ? 5 : 36, flexDirection: 'row', gap: 3, zIndex: 3 }}>
-          {item.isPinned && <Pin size={10} color="rgba(255,255,255,0.9)" />}
-          {item.isStarred && <Star size={10} color="#FFD60A" fill="#FFD60A" />}
-        </View>
-      )}
-      {/* Reminder bell — bottom-right corner */}
-      {hasActiveReminder(item) ? (
-        <View style={s.cardBellCorner} pointerEvents="none">
-          <Bell size={10} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
-        </View>
-      ) : null}
-      {!isMulti ? (
-        <View style={s.cardMenuCol}>
-          <TouchableOpacity
-            onPress={(e) => {
-              (e as { stopPropagation?: () => void }).stopPropagation?.();
-              onMenu(e);
-            }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MoreVertical size={18} color="#FFF" style={{ opacity: 0.6 }} />
-          </TouchableOpacity>
-        </View>
-      ) : null}
-    </TouchableOpacity>
+      </Animated.View>
+    </Pressable>
   );
 }
 
@@ -4702,6 +4764,12 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     marginBottom: 8,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -4710,6 +4778,12 @@ const s = StyleSheet.create({
   cardWrapGrid: {
     position: 'relative',
     marginBottom: 8,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardGrid: {
     aspectRatio: 1,
@@ -4718,8 +4792,9 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'stretch',
-    elevation: 4,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
   },
   cardGridFill: { width: '100%', alignSelf: 'stretch' },
   cardList: {
@@ -4732,6 +4807,8 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
   },
   cardCheckCol: {
     width: 32,
@@ -4770,7 +4847,7 @@ const s = StyleSheet.create({
     color: 'rgba(255,255,255,0.96)',
     fontSize: 13,
     fontWeight: '500',
-    lineHeight: 17,
+    lineHeight: 18,
   },
   cardTextDone: {
     textDecorationLine: 'line-through',
