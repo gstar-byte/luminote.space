@@ -2454,20 +2454,36 @@ export default function IdeaCapsuleApp() {
                 }
               };
 
+              const isListMulti = viewMode === 'list' && isMultiSelectMode;
               return (
                 <View
                   key={item.id}
-                  style={[
-                    viewMode === 'grid' ? s.cardWrapGrid : s.cardWrapList,
-                    viewMode === 'grid' && { width: gridColWidth },
-                  ]}
+                  style={
+                    isListMulti
+                      ? { width: '100%', position: 'relative', justifyContent: 'center', marginBottom: 8 }
+                      : [
+                          viewMode === 'grid' ? s.cardWrapGrid : s.cardWrapList,
+                          viewMode === 'grid' && { width: gridColWidth },
+                        ]
+                  }
                 >
                   {isMultiSelectMode && (
                     <TouchableOpacity
-                      style={[
-                        s.multiCheck,
-                        viewMode === 'grid' && s.multiCheckFloating,
-                      ]}
+                      style={
+                        viewMode === 'grid'
+                          ? s.multiCheckFloating
+                          : {
+                              position: 'absolute',
+                              left: 6,
+                              top: '50%',
+                              marginTop: -18,
+                              zIndex: 10,
+                              width: 36,
+                              height: 36,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }
+                      }
                       onPress={() => {
                         setSelectedIds((prev) =>
                           prev.includes(item.id)
@@ -2485,7 +2501,35 @@ export default function IdeaCapsuleApp() {
                       )}
                     </TouchableOpacity>
                   )}
-                  {viewMode === 'list' && !isMultiSelectMode && settings.swipeEnabled ? (
+                  {isListMulti ? (
+                    <View style={[s.cardWrapList, { flex: 1, marginBottom: 0, marginLeft: 3 }]}>
+                      <CapsuleCard
+                        item={item}
+                        isGrid={false}
+                        isSelected={selectedIds.includes(item.id)}
+                        isMulti={true}
+                        onPress={() =>
+                          setSelectedIds((prev) =>
+                            prev.includes(item.id)
+                              ? prev.filter((x) => x !== item.id)
+                              : [...prev, item.id],
+                          )
+                        }
+                        onLongPress={() => {
+                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          setIsMultiSelectMode(true);
+                          setSelectedIds((prev) =>
+                            prev.includes(item.id) ? prev : [...prev, item.id],
+                          );
+                        }}
+                        onMenu={(e) => openMenu(item, e)}
+                        onToggleTodo={() => {
+                          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          void updateCapsule(item.id, { completed: !item.completed });
+                        }}
+                      />
+                    </View>
+                  ) : viewMode === 'list' && !isMultiSelectMode && settings.swipeEnabled ? (
                     <SwipeableCardWrapper
                       item={item}
                       renderLeftActions={renderLeftActions}
@@ -3150,15 +3194,10 @@ export default function IdeaCapsuleApp() {
             accessibilityRole="button"
             accessibilityLabel="Close menu"
           >
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-              overScrollMode="never"
-              style={menuPosition ? menuStyle : { maxHeight: windowHeight * 0.85, width: menuSheetWidth }}
-              contentContainerStyle={{ paddingBottom: 6 }}
+            <View
+              style={menuPosition ? menuStyle : { width: menuSheetWidth }}
             >
-                <View style={[s.threeDotsBox, { width: menuPosition ? '100%' : menuSheetWidth }]}>
+              <View style={[s.threeDotsBox, { width: menuPosition ? '100%' : menuSheetWidth }]}>
                   {activeMenuCapsule && !activeMenuCapsule.isDeleted ? (
                     <View style={{ paddingVertical: 4 }}>
                       {/* Cancel To-do / Set To-do */}
@@ -3312,7 +3351,7 @@ export default function IdeaCapsuleApp() {
                     </View>
                   ) : null}
                 </View>
-            </ScrollView>
+            </View>
           </Pressable>
         </Modal>
 
@@ -5103,11 +5142,11 @@ const s = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 18,
     padding: 6,
-    elevation: 12,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
     overflow: 'hidden',
   },
   mItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 10, gap: 10 },
@@ -5211,16 +5250,17 @@ const s = StyleSheet.create({
   sideMenuFloating: {
     position: 'absolute',
     bottom: 100,
-    left: 20,
-    right: 20,
+    left: '50%',
+    marginLeft: -118,
+    width: 236,
     backgroundColor: '#FFF',
     borderRadius: 20,
     padding: 8,
-    elevation: 4,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.06)',
     zIndex: 1000,
