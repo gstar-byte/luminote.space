@@ -3152,6 +3152,9 @@ export default function IdeaCapsuleApp() {
           >
             <ScrollView
               keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              overScrollMode="never"
               style={menuPosition ? menuStyle : { maxHeight: windowHeight * 0.85, width: menuSheetWidth }}
               contentContainerStyle={{ paddingBottom: 6 }}
             >
