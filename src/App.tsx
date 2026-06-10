@@ -114,6 +114,7 @@ import 'driver.js/dist/driver.css';
 import { LandingPage } from './components/LandingPage';
 import { AppLogo } from './components/AppLogo';
 import { PremiumModal } from './components/PremiumModal';
+import { CustomColorPicker } from './components/CustomColorPicker';
 import { SettingsModal } from './components/SettingsModal';
 import { hasPremiumAccess, PAYWALL_ACTIVE } from './featureFlags';
 
@@ -4473,8 +4474,7 @@ const CapsuleItem = memo(function CapsuleItem({
   const [showReminderPicker, setShowReminderPicker] = useState(false);
   const [isConfiguringCustom, setIsConfiguringCustom] = useState(false);
   const [showTagCat, setShowTagCat] = useState(false);
-  // 自定义颜色（HEX）：恢复「色板 + 自定义取色」能力。
-  const [customColor, setCustomColor] = useState(capsule.color || '#FFD60A');
+  const [showCustomColorPanel, setShowCustomColorPanel] = useState(false);
   // Which menu the portal renders: 'actions' (left-click ⋮ → per-note quick
   // actions), 'batch' (multi-select / management), or 'context' (right-click / long-press).
   const [menuMode, setMenuMode] = useState<'actions' | 'batch' | 'context'>('actions');
@@ -4515,6 +4515,7 @@ const CapsuleItem = memo(function CapsuleItem({
     setShowReminderPicker(false);
     setIsConfiguringCustom(false);
     setShowColorPicker(false);
+    setShowCustomColorPanel(false);
     setShowTagCat(false);
     setMenuMode('actions');
     setMenuPos(null);
@@ -4533,6 +4534,7 @@ const CapsuleItem = memo(function CapsuleItem({
     setShowReminderPicker(false);
     setIsConfiguringCustom(false);
     setShowColorPicker(false);
+    setShowCustomColorPanel(false);
     setShowTagCat(false);
     setMenuMode(mode);
     setMenuPos({ left, top });
@@ -4717,6 +4719,7 @@ const CapsuleItem = memo(function CapsuleItem({
       }
       setShowOptions(false);
       setShowColorPicker(false);
+      setShowCustomColorPanel(false);
       setShowReminderPicker(false);
       setIsConfiguringCustom(false);
       setShowTagCat(false);
@@ -5152,27 +5155,27 @@ const CapsuleItem = memo(function CapsuleItem({
                     <RotateCcw size={12} />
                   </button>
                 </div>
-                <label
-                  className="flex items-center gap-2.5 py-1.5 px-2 hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] rounded-xl cursor-pointer transition-colors relative"
-                  onClick={(e) => e.stopPropagation()}
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2.5 py-1.5 px-2 hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] rounded-xl cursor-pointer transition-colors relative"
+                  onClick={(e) => { e.stopPropagation(); setShowCustomColorPanel(!showCustomColorPanel); }}
                 >
                   <span className="text-lg select-none shrink-0 leading-none">🎨</span>
                   <span className="text-xs font-bold text-[#1D1D1F] dark:text-[#F2F2F7]">Custom color</span>
 
-                  {/* 当前自定义颜色的圆形预览块，替代原生取色器外观 */}
                   <span
                     className="w-5 h-5 rounded-full border border-black/10 shadow-sm ml-auto shrink-0 transition-transform hover:scale-105"
                     style={{ backgroundColor: capsule.color || '#FFD60A' }}
                   />
-
-                  {/* 隐藏的真实 input：点击 label 时浏览器会自动调用其 click 动作 */}
-                  <input
-                    type="color"
-                    value={/^#[0-9a-fA-F]{6}$/.test(customColor) ? customColor : '#FFD60A'}
-                    onChange={(e) => { setCustomColor(e.target.value); void onUpdate({ color: e.target.value }); }}
-                    className="absolute opacity-0 pointer-events-none w-0 h-0"
-                  />
-                </label>
+                </button>
+                {showCustomColorPanel && (
+                  <div onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                    <CustomColorPicker
+                      color={capsule.color || '#FFD60A'}
+                      onChange={(hex) => void onUpdate({ color: hex })}
+                    />
+                  </div>
+                )}
               </div>
             ) : !showReminderPicker ? (
               /* 单条快捷操作菜单（左键 ⋮）：
