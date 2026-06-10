@@ -4477,8 +4477,9 @@ const s = StyleSheet.create({
   },
   swipeActionTxt: {
     color: '#FFF',
-    fontSize: 14,
-    fontWeight: '900',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   loadingRoot: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' },
   landingRoot: { flex: 1, backgroundColor: '#FFF' },
