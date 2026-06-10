@@ -2309,8 +2309,8 @@ export default function IdeaCapsuleApp() {
                   return (
                     <View style={s.swipeLeftAction}>
                       <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
-                        <RotateCcw size={15} color="#FFF" />
-                        <Text style={s.swipeActionTxt}>Restore</Text>
+                        <RotateCcw size={15} color="#007AFF" />
+                        <Text style={[s.swipeActionTxt, { color: '#007AFF' }]}>Restore</Text>
                       </Animated.View>
                     </View>
                   );
@@ -2323,8 +2323,8 @@ export default function IdeaCapsuleApp() {
                 return (
                   <View style={s.swipeLeftAction}>
                     <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
-                      <Icon size={15} color="#FFF" />
-                      <Text style={s.swipeActionTxt}>{label}</Text>
+                      <Icon size={15} color="#007AFF" />
+                      <Text style={[s.swipeActionTxt, { color: '#007AFF' }]}>{label}</Text>
                     </Animated.View>
                   </View>
                 );
@@ -2355,8 +2355,8 @@ export default function IdeaCapsuleApp() {
                   return (
                     <View style={s.swipeRightAction}>
                       <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, transform: [{ translateX: transX }, { scale }], opacity }}>
-                        <Trash2 size={15} color="#FFF" />
-                        <Text style={s.swipeActionTxt}>Delete</Text>
+                        <Trash2 size={15} color="#FF3B30" />
+                        <Text style={[s.swipeActionTxt, { color: '#FF3B30' }]}>Delete</Text>
                       </Animated.View>
                     </View>
                   );
@@ -4496,7 +4496,7 @@ function SidebarRow({
 
 const s = StyleSheet.create({
   swipeLeftAction: {
-    backgroundColor: '#34C759',
+    backgroundColor: 'transparent',
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingLeft: 24,
@@ -4507,7 +4507,7 @@ const s = StyleSheet.create({
     gap: 8,
   },
   swipeRightAction: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: 'transparent',
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingRight: 24,
