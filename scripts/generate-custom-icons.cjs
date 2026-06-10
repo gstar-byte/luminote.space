@@ -124,8 +124,9 @@ async function main() {
   await makeSvgSolidBgIcon(publicDir, 'favicon-maskable-192-v18.png', 192, 150, { r: 255, g: 251, b: 230, alpha: 1 });
   await makeSvgSolidBgIcon(publicDir, 'favicon-maskable-512-v18.png', 512, 400, { r: 255, g: 251, b: 230, alpha: 1 });
 
-  // --- B. 生成 Native 移动端目标图标 (全部保持倾斜，使用带有 .trim() 裁切的 favicon-512-v15.png) ---
-  await makePngSolidBgIcon(mobileDir, 'icon.png', 1024, 680, { r: 230, g: 244, b: 254, alpha: 1 });
+  // --- B. 生成 Native 移动端目标图标 与 PWA 启动屏 (全部保持倾斜，使用带有 .trim() 裁切的 favicon-512-v15.png) ---
+  await makePngSolidBgIcon(publicDir, 'pwa-splash.png', 1024, 380, { r: 255, g: 255, b: 255, alpha: 1 });
+  await makePngSolidBgIcon(mobileDir, 'icon.png', 1024, 680, { r: 255, g: 255, b: 255, alpha: 1 });
   await makePngSolidBgIcon(mobileDir, 'android-icon-foreground.png', 1024, 680, { r: 255, g: 255, b: 255, alpha: 0 });
 
   await sharp({
@@ -133,7 +134,7 @@ async function main() {
       width: 1024,
       height: 1024,
       channels: 4,
-      background: { r: 230, g: 244, b: 254, alpha: 1 }
+      background: { r: 255, g: 255, b: 255, alpha: 1 }
     }
   })
   .png({ palette: true, quality: 90 })

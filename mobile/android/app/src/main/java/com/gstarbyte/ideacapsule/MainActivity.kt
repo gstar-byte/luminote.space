@@ -21,48 +21,6 @@ class MainActivity : ReactActivity() {
     SplashScreenManager.registerOnActivity(this)
     // @generated end expo-splashscreen
     super.onCreate(null)
-    showOngoingNotification()
-  }
-
-  private fun showOngoingNotification() {
-    val channelId = "lumi_ongoing_notes"
-    val channelName = "Lumi Note Active Capture"
-    
-    val notificationManager = getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-    
-    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-        val channel = android.app.NotificationChannel(
-            channelId, 
-            channelName, 
-            android.app.NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = "Keep Lumi Note quick access in notification drawer"
-            setShowBadge(false)
-        }
-        notificationManager.createNotificationChannel(channel)
-    }
-
-    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("ideacapsule://quick-capture")).apply {
-        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-    
-    val pendingIntent = android.app.PendingIntent.getActivity(
-        this, 
-        0, 
-        intent, 
-        android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-    )
-
-    val notification = androidx.core.app.NotificationCompat.Builder(this, channelId)
-        .setContentTitle("Lumi Note 🍟")
-        .setContentText("Tap to quick capture your thoughts instantly")
-        .setSmallIcon(android.R.drawable.ic_menu_edit)
-        .setOngoing(true)
-        .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
-        .setContentIntent(pendingIntent)
-        .build()
-
-    notificationManager.notify(1099, notification)
   }
 
   /**

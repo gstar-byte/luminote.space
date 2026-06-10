@@ -731,6 +731,8 @@ export default function IdeaCapsuleApp() {
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
 
   const [colorPickerCapsule, setColorPickerCapsule] = useState<Capsule | null>(null);
+  const [colorPickerHidePresets, setColorPickerHidePresets] = useState(false);
+  const [showLocalColors, setShowLocalColors] = useState(false);
   const [reminderTarget, setReminderTarget] = useState<Capsule | null>(null);
 
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
@@ -1175,6 +1177,13 @@ export default function IdeaCapsuleApp() {
             return bump ? { ...merged, updatedAt: now } : merged;
           });
         }
+        if (colorPickerCapsule?.id === id) {
+          setColorPickerCapsule((prev) => {
+            if (!prev) return null;
+            const merged = mergeCapsuleUpdates(prev, updates);
+            return bump ? { ...merged, updatedAt: now } : merged;
+          });
+        }
         return;
       }
 
@@ -1194,6 +1203,13 @@ export default function IdeaCapsuleApp() {
           return bump ? { ...merged, updatedAt: now } : merged;
         });
       }
+      if (colorPickerCapsule?.id === id) {
+        setColorPickerCapsule((prev) => {
+          if (!prev) return null;
+          const merged = mergeCapsuleUpdates(prev, updates);
+          return bump ? { ...merged, updatedAt: now } : merged;
+        });
+      }
       try {
         const docRef = doc(db, 'capsules', id);
         const clean = capsulePartialToFirestoreData(updates);
@@ -1206,7 +1222,7 @@ export default function IdeaCapsuleApp() {
         Alert.alert('Sync failed', 'Could not update the note. Check your network.');
       }
     },
-    [user, editingCapsule?.id, capsules, requireAuth],
+    [user, editingCapsule?.id, colorPickerCapsule?.id, capsules, requireAuth],
   );
 
   const updateCapsuleRef = useRef(updateCapsule);
@@ -2367,7 +2383,7 @@ export default function IdeaCapsuleApp() {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     void updateCapsule(item.id, { isArchived: false });
                     showToast('Note restored!', 'success');
-                  } else {
+                  } else if (direction === 'right') {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                     void updateCapsule(item.id, { isDeleted: true });
                     showToast('Note deleted!', 'success');
@@ -2380,7 +2396,7 @@ export default function IdeaCapsuleApp() {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     void updateCapsule(item.id, { isDeleted: false });
                     showToast('Note restored!', 'success');
-                  } else {
+                  } else if (direction === 'right') {
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                     Alert.alert(
                       'Confirm Delete',
@@ -3161,7 +3177,10 @@ export default function IdeaCapsuleApp() {
                       <TouchableOpacity
                         style={s.mItem}
                         onPress={() => {
-                          if (activeMenuCapsule) setColorPickerCapsule(activeMenuCapsule);
+                          if (activeMenuCapsule) {
+                            setColorPickerCapsule(activeMenuCapsule);
+                            setColorPickerHidePresets(false);
+                          }
                           setActiveMenuCapsule(null);
                         }}
                       >
@@ -3290,6 +3309,7 @@ export default function IdeaCapsuleApp() {
                 {colorPickerCapsule ? (
                   <CapsuleColorSheet
                     capsule={colorPickerCapsule}
+                    hidePresets={colorPickerHidePresets}
                     onSelectPreset={(hex) => {
                       void updateCapsule(colorPickerCapsule.id, { color: hex });
                       setColorPickerCapsule(null);
@@ -3633,60 +3653,144 @@ export default function IdeaCapsuleApp() {
         />
 
         <Modal transparent visible={!!editingCapsule} animationType="fade">
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 15 : 0}
-            style={s.editKeyboardWrap}
-          >
-            <Pressable
-              style={[StyleSheet.absoluteFillObject, s.editBackdropTint]}
-              onPress={saveEdit}
-            />
-            <View
-              style={[
-                s.editBoxCenter,
-                {
-                  justifyContent: 'flex-start',
-                  paddingTop: insets.top > 0 ? insets.top : (Platform.OS === 'ios' ? 20 : 10),
-                  paddingBottom: isKeyboardActive ? 0 : Math.max(insets.bottom, 8),
-                }
-              ]}
+          <View style={{ flex: 1, backgroundColor: '#FFF' }}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 15 : 0}
+              style={s.editKeyboardWrap}
             >
-              <View style={[
-                s.editBox,
-                {
-                  width: '100%',
-                  borderRadius: 0,
-                  minHeight: '100%',
-                  maxHeight: '100%',
-                  elevation: 0,
-                  shadowOpacity: 0,
-                }
-              ]}>
-                <View style={s.editHeader}>
-                  <View style={s.editHeaderLeft}>
-                    {/* Color dot indicator */}
-                    <View
-                      style={[
-                        s.editColorDot,
-                        { backgroundColor: editingCapsule?.color || '#FFB900' },
-                      ]}
-                    />
-                    {/* Note Title Input */}
-                    <TextInput
-                      style={s.editTitleInput}
-                      value={editSubjectDraft}
-                      onChangeText={setEditSubjectDraft}
-                      placeholder="Note Title"
-                      placeholderTextColor="#C7C7CC"
-                      returnKeyType="done"
-                      onBlur={saveEditSilent}
-                    />
+              <Pressable
+                style={[StyleSheet.absoluteFillObject, s.editBackdropTint]}
+                onPress={saveEdit}
+              />
+              <View
+                style={[
+                  s.editBoxCenter,
+                  {
+                    justifyContent: 'flex-start',
+                    paddingTop: insets.top > 0 ? insets.top : (Platform.OS === 'ios' ? 20 : 10),
+                    paddingBottom: isKeyboardActive ? 0 : Math.max(insets.bottom, 8),
+                  }
+                ]}
+              >
+                <View style={[
+                  s.editBox,
+                  {
+                    width: '100%',
+                    borderRadius: 0,
+                    minHeight: '100%',
+                    maxHeight: '100%',
+                    elevation: 0,
+                    shadowOpacity: 0,
+                  }
+                ]}>
+                  <View style={s.editHeader}>
+                    <View style={s.editHeaderLeft}>
+                      {/* Color dot indicator — 点击可直接在下方展开 Preset 颜色面板 */}
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => setShowLocalColors(!showLocalColors)}
+                        hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                        style={[
+                          s.editColorDot,
+                          { backgroundColor: editingCapsule?.color || '#FFB900' },
+                        ]}
+                      />
+                      {/* Note Title Input */}
+                      <TextInput
+                        style={s.editTitleInput}
+                        value={editSubjectDraft}
+                        onChangeText={setEditSubjectDraft}
+                        placeholder="Note Title"
+                        placeholderTextColor="#C7C7CC"
+                        returnKeyType="done"
+                        onBlur={saveEditSilent}
+                      />
+                    </View>
+                    <TouchableOpacity onPress={saveEdit} style={s.editCloseBtn}>
+                      <X size={20} color="#8E8E93" />
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity onPress={saveEdit} style={s.editCloseBtn}>
-                    <X size={20} color="#8E8E93" />
-                  </TouchableOpacity>
-                </View>
+
+                  {/* 详情页内嵌调色栏：极其小巧、避免双 Modal 冲突 */}
+                  {showLocalColors && (
+                    <View style={{
+                      flexDirection: 'row',
+                      gap: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      backgroundColor: '#F2F2F7',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                      borderBottomColor: '#E5E5EA',
+                    }}>
+                      {PRESET_COLORS.map(c => (
+                        <TouchableOpacity
+                          key={c}
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: 12,
+                            backgroundColor: c,
+                            borderWidth: (editingCapsule?.color || '#FFB900') === c ? 2 : 0,
+                            borderColor: '#007AFF',
+                          }}
+                          onPress={() => {
+                            if (editingCapsule) {
+                              void updateCapsule(editingCapsule.id, { color: c });
+                              setEditingCapsule({ ...editingCapsule, color: c });
+                              showToast('Color updated', 'success');
+                            }
+                            setShowLocalColors(false);
+                          }}
+                        />
+                      ))}
+                      <TouchableOpacity
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 12,
+                          backgroundColor: '#FFF',
+                          borderWidth: 1,
+                          borderColor: '#E5E5EA',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        onPress={() => {
+                          if (editingCapsule) {
+                            setColorPickerCapsule(editingCapsule);
+                            setColorPickerHidePresets(true);
+                          }
+                          setShowLocalColors(false);
+                        }}
+                      >
+                        <Text style={{ fontSize: 11 }}>🎨</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 12,
+                          backgroundColor: '#FFF',
+                          borderWidth: 1,
+                          borderColor: '#E5E5EA',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        onPress={() => {
+                          if (editingCapsule) {
+                            void updateCapsule(editingCapsule.id, { color: undefined });
+                            setEditingCapsule({ ...editingCapsule, color: undefined });
+                            showToast('Color reset', 'success');
+                          }
+                          setShowLocalColors(false);
+                        }}
+                      >
+                        <X size={12} color="#8E8E93" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
 
                 {/* Plain / Markdown switcher — Aligned with Web */}
                 <View style={s.editModeTabWrap}>
@@ -3708,7 +3812,7 @@ export default function IdeaCapsuleApp() {
 
                 <View style={{ flex: 1, backgroundColor: '#FFFBE6' }}>
                   <CapsuleEditorMobile
-                    key="capsule-editor-global"
+                    key={editingCapsule?.id || 'new'}
                     content={editContent}
                     onChange={(json) => setEditContent(json)}
                     placeholder="Type your brilliant thought here..."
@@ -3807,8 +3911,9 @@ export default function IdeaCapsuleApp() {
                   </TouchableOpacity>
                 </View>
               </View>
-            </View>
-          </KeyboardAvoidingView>
+              </View>
+            </KeyboardAvoidingView>
+          </View>
         </Modal>
 
         <Modal transparent visible={isSortMenuOpen} animationType="fade">
@@ -3953,7 +4058,8 @@ function SwipeableCardWrapper({
       childrenContainerStyle={{ width: '100%' }}
       renderLeftActions={renderLeftActions}
       renderRightActions={renderRightActions}
-      onSwipeableOpen={handleSwipeOpen}
+      onSwipeableLeftOpen={() => handleSwipeOpen('left')}
+      onSwipeableRightOpen={() => handleSwipeOpen('right')}
       onSwipeableWillOpen={() => {
         // 在即将滑开的物理临界点触发清脆轻微的原生震动反馈
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

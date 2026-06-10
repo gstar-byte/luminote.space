@@ -1,5 +1,4 @@
 <resources>
-  <string name="app_name">Idea Capsule</string>
+  <string name="app_name">Lumi Note</string>
   <string name="expo_system_ui_user_interface_style" translatable="false">automatic</string>
-  <string name="accessibility_desc">Allows physical volume key long-press detection to launch Idea Capsule quick capture window.</string>
 </resources>
