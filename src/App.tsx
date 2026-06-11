@@ -741,7 +741,8 @@ export default function App() {
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     const container = document.getElementById('scroll-container');
     if (!container) return;
-    if (container.scrollTop === 0) {
+    // On some mobile browsers, scrollTop can be slightly negative due to bounce.
+    if (container.scrollTop <= 0) {
       setIsPulling(true);
       touchStartY.current = e.touches[0].clientY;
     }
@@ -765,9 +766,12 @@ export default function App() {
     if (!isPulling) return;
     setIsPulling(false);
     if (pullY >= 50 && !isSyncing) {
-      setPullY(50);
-      await handleSync();
-      setPullY(0);
+      try {
+        setPullY(50);
+        await handleSync();
+      } finally {
+        setPullY(0);
+      }
     } else {
       setPullY(0);
     }
@@ -3461,13 +3465,14 @@ export default function App() {
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          className="flex-1 overflow-x-hidden overflow-y-auto p-3 md:p-6 custom-scrollbar scroll-smooth relative"
+          onTouchCancel={handleTouchEnd}
+          className="flex-1 overflow-x-hidden overflow-y-auto p-3 md:p-6 custom-scrollbar relative"
         >
           {/* Pull to refresh indicator */}
           {(pullY > 0 || isSyncing) && (
             <div 
               style={{ height: `${isSyncing ? 50 : pullY}px` }}
-              className="w-full overflow-hidden transition-all duration-75 select-none relative"
+              className={`w-full overflow-hidden select-none relative ${!isPulling ? "transition-all duration-200" : ""}`}
             >
               <div 
                 style={{ height: '50px', position: 'absolute', bottom: 0, left: 0, right: 0 }}

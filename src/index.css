@@ -146,3 +146,8 @@
   line-height: 2rem !important;
   font-style: italic;
 }
+
+/* Disable native browser pull-to-refresh to avoid conflict with custom implementation */
+#scroll-container {
+  overscroll-behavior-y: contain;
+}
