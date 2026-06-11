@@ -86,7 +86,7 @@ function CustomColorBoard({
   onRelease: () => void;
 }) {
   const [boardWidth, setBoardWidth] = useState(0);
-  const boardHeight = 150;
+  const boardHeight = 110;
 
   const handleTouch = (evt: any) => {
     if (boardWidth <= 0) return;
@@ -387,7 +387,7 @@ const s = StyleSheet.create({
 
 const boardStyles = StyleSheet.create({
   board: {
-    height: 150,
+    height: 110,
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
@@ -409,8 +409,8 @@ const boardStyles = StyleSheet.create({
 
 const sliderStyles = StyleSheet.create({
   container: {
-    marginVertical: 4,
-    marginBottom: 10,
+    marginVertical: 2,
+    marginBottom: 8,
   },
   header: {
     flexDirection: 'row',

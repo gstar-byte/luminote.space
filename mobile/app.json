@@ -8,6 +8,15 @@
     "scheme": "luminote",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#E6F4FE"
+    },
+    "notification": {
+      "icon": "./assets/images/android-icon-monochrome.png",
+      "color": "#007AFF"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gstarbyte.ideacapsule"

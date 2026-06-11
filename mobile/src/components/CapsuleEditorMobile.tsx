@@ -659,6 +659,55 @@ const getHtmlTemplate = (placeholder: string) => `
     }
 
     document.getElementById('editor-container').addEventListener('scroll', hideImageBubble);
+    
+    // 监听来自 React Native 端的安全消息通信通道
+    function handleReceiveMessage(event) {
+      try {
+        var data = JSON.parse(event.data);
+        if (data.type === 'setContent') {
+          if (window.setContent) {
+            window.setContent(data.html);
+          }
+        } else if (data.type === 'execFormat') {
+          if (window.execFormat) {
+            window.execFormat(data.command, data.value);
+          }
+        } else if (data.type === 'applyHeadingToggle') {
+          if (window.applyHeadingToggle) {
+            window.applyHeadingToggle();
+          }
+        } else if (data.type === 'insertImage') {
+          if (window.insertImage) {
+            window.insertImage(data.base64Url);
+          }
+        }
+      } catch (err) {
+        console.warn('WebView parse message error:', err);
+      }
+    }
+    
+    window.addEventListener('message', handleReceiveMessage);
+    document.addEventListener('message', handleReceiveMessage);
+    
+    // 安全发送 ready 信号：轮询确保 window.ReactNativeWebView 已经成功被原生层注入，避免同步抛错崩溃
+    function sendReadyWhenAvailable() {
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        try {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready' }));
+        } catch (err) {
+          console.warn('postMessage failed, retrying...', err);
+          setTimeout(sendReadyWhenAvailable, 30);
+        }
+      } else {
+        setTimeout(sendReadyWhenAvailable, 30);
+      }
+    }
+    
+    if (document.readyState === 'complete') {
+      sendReadyWhenAvailable();
+    } else {
+      window.addEventListener('load', sendReadyWhenAvailable);
+    }
   </script>
 </body>
 </html>
@@ -747,19 +796,19 @@ export function CapsuleEditorMobile({
       if (!isWebViewLoaded.current || !webviewRef.current) return;
       
       if (type === 'heading') {
-        webviewRef.current.injectJavaScript(`window.applyHeadingToggle();`);
+        webviewRef.current.postMessage(JSON.stringify({ type: 'applyHeadingToggle' }));
       } else if (type === 'bold') {
-        webviewRef.current.injectJavaScript(`execFormat('bold');`);
+        webviewRef.current.postMessage(JSON.stringify({ type: 'execFormat', command: 'bold' }));
       } else if (type === 'italic') {
-        webviewRef.current.injectJavaScript(`execFormat('italic');`);
+        webviewRef.current.postMessage(JSON.stringify({ type: 'execFormat', command: 'italic' }));
       } else if (type === 'strike') {
-        webviewRef.current.injectJavaScript(`execFormat('strikeThrough');`);
+        webviewRef.current.postMessage(JSON.stringify({ type: 'execFormat', command: 'strikeThrough' }));
       } else if (type === 'quote') {
-        webviewRef.current.injectJavaScript(`execFormat('formatBlock', '<blockquote>');`);
+        webviewRef.current.postMessage(JSON.stringify({ type: 'execFormat', command: 'formatBlock', value: '<blockquote>' }));
       } else if (type === 'bullet') {
-        webviewRef.current.injectJavaScript(`execFormat('insertUnorderedList');`);
+        webviewRef.current.postMessage(JSON.stringify({ type: 'execFormat', command: 'insertUnorderedList' }));
       } else if (type === 'ordered') {
-        webviewRef.current.injectJavaScript(`execFormat('insertOrderedList');`);
+        webviewRef.current.postMessage(JSON.stringify({ type: 'execFormat', command: 'insertOrderedList' }));
       } else if (type === 'image') {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!permissionResult.granted) {
@@ -776,7 +825,7 @@ export function CapsuleEditorMobile({
           return;
         }
         const base64Url = `data:image/jpeg;base64,${pickerResult.assets[0].base64 || ''}`;
-        webviewRef.current.injectJavaScript(`window.insertImage(${JSON.stringify(base64Url)});`);
+        webviewRef.current.postMessage(JSON.stringify({ type: 'insertImage', base64Url: base64Url }));
       }
     }
   };
@@ -932,6 +981,25 @@ export function CapsuleEditorMobile({
   const handleMessage = (event: any) => {
     try {
       const msg = JSON.parse(event.nativeEvent.data);
+      if (msg.type === 'ready') {
+        isWebViewLoaded.current = true;
+        const initialHtml = tiptapJsonToHtml(content);
+        lastHtmlSent.current = initialHtml;
+        
+        webviewRef.current?.postMessage(JSON.stringify({
+          type: 'setContent',
+          html: initialHtml
+        }));
+
+        if (autoFocus) {
+          webviewRef.current?.injectJavaScript(`
+            if (window.focusEditor) {
+              window.focusEditor();
+            }
+          `);
+        }
+        return;
+      }
       if (msg.type === 'change') {
         lastHtmlSent.current = msg.html;
         latestContentRef.current = { html: msg.html, text: msg.text };
@@ -972,8 +1040,11 @@ export function CapsuleEditorMobile({
           }
           const asset = pickerResult.assets[0];
           const base64Url = `data:image/jpeg;base64,${asset.base64 || ''}`;
-          // 极速注入 WebView 并就地插入图片，焦点不发生变化
-          webviewRef.current?.injectJavaScript(`window.insertImage(${JSON.stringify(base64Url)});`);
+          // 极速注入 WebView 并就地插入图片，焦点不发生变化，改用安全 postMessage 通道
+          webviewRef.current?.postMessage(JSON.stringify({
+            type: 'insertImage',
+            base64Url: base64Url
+          }));
         })();
       }
     } catch (e) {
@@ -983,14 +1054,6 @@ export function CapsuleEditorMobile({
 
   const handleWebViewLoadEnd = () => {
     isWebViewLoaded.current = true;
-    const initialHtml = tiptapJsonToHtml(content);
-    lastHtmlSent.current = initialHtml;
-    webviewRef.current?.injectJavaScript(`
-      window.setContent(${JSON.stringify(initialHtml)});
-      if (${autoFocus}) {
-        window.focusEditor();
-      }
-    `);
   };
 
   const isBtnActive = (type: string) => {

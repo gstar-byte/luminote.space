@@ -11,6 +11,7 @@ import {
   View,
   Platform,
   Linking,
+  NativeModules,
 } from 'react-native';
 import { User as UserIcon, X, Sliders, Hand, Smartphone, Layers } from 'lucide-react-native';
 import type { UserProfile, AppSettings } from '../types';
@@ -135,36 +136,7 @@ export function SettingsModalMobile({
                 />
               </View>
 
-              {/* Swipe Right Mapping */}
-              {settings.swipeEnabled && (
-                <View style={styles.rowDivider}>
-                  <View style={styles.row}>
-                    <View style={styles.rowMeta}>
-                      <Text style={styles.rowTitle}>Right Swipe Trigger</Text>
-                      <Text style={styles.rowSub}>Action triggered when swiping card to the right</Text>
-                    </View>
-                    <View style={styles.segmentContainer}>
-                      {(['archive', 'delete'] as const).map((opt) => (
-                        <TouchableOpacity
-                          key={opt}
-                          style={[
-                            styles.segmentBtn,
-                            settings.swipeRightAction === opt && styles.segmentBtnActive,
-                          ]}
-                          onPress={() => handleSegmentChange('swipeRightAction', opt)}
-                        >
-                          <Text style={[
-                            styles.segmentBtnTxt,
-                            settings.swipeRightAction === opt && styles.segmentBtnTxtActive
-                          ]}>
-                            {opt === 'archive' ? 'Archive' : 'Delete'}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                </View>
-              )}
+
             </View>
 
             {/* Section: Floating Panels */}
@@ -257,7 +229,49 @@ export function SettingsModalMobile({
                       </View>
                       <Switch
                         value={settings.edgePanelEnabled}
-                        onValueChange={(val) => handleToggle('edgePanelEnabled', val)}
+                        onValueChange={async (val) => {
+                          if (val) {
+                            const { EdgePanelModule } = NativeModules;
+                            if (EdgePanelModule) {
+                              try {
+                                const hasPerm = await EdgePanelModule.hasOverlayPermission();
+                                if (hasPerm) {
+                                  void handleToggle('edgePanelEnabled', true);
+                                } else {
+                                  Alert.alert(
+                                    'Overlay Permission Required',
+                                    'To enable the Edge Panel globally, Lumi Note needs permission to draw over other apps. Please authorize this in your Android settings.',
+                                    [
+                                      { text: 'Cancel', style: 'cancel' },
+                                      { 
+                                        text: 'Go to Settings', 
+                                        onPress: async () => {
+                                          await EdgePanelModule.requestOverlayPermission();
+                                          void handleToggle('edgePanelEnabled', true);
+                                        } 
+                                      },
+                                    ]
+                                  );
+                                }
+                              } catch (e) {
+                                console.warn('[Overlay Permission] Check failed:', e);
+                                void handleToggle('edgePanelEnabled', true);
+                              }
+                            } else {
+                              void handleToggle('edgePanelEnabled', true);
+                            }
+                          } else {
+                            const { EdgePanelModule } = NativeModules;
+                            if (EdgePanelModule) {
+                              try {
+                                EdgePanelModule.enableEdgePanel(false);
+                              } catch (e) {
+                                console.warn('[Edge Panel Service] Stop failed:', e);
+                              }
+                            }
+                            void handleToggle('edgePanelEnabled', false);
+                          }
+                        }}
                         trackColor={{ false: '#E5E5EA', true: '#34C759' }}
                         thumbColor="#FFF"
                         ios_backgroundColor="#E5E5EA"
