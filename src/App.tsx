@@ -761,13 +761,16 @@ export default function App() {
     }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = async () => {
     if (!isPulling) return;
     setIsPulling(false);
     if (pullY >= 50 && !isSyncing) {
-      void handleSync();
+      setPullY(50);
+      await handleSync();
+      setPullY(0);
+    } else {
+      setPullY(0);
     }
-    setPullY(0);
   };
 
   useEffect(() => {
@@ -3461,17 +3464,17 @@ export default function App() {
           className="flex-1 overflow-x-hidden overflow-y-auto p-3 md:p-6 custom-scrollbar scroll-smooth relative"
         >
           {/* Pull to refresh indicator */}
-          {pullY > 0 && (
+          {(pullY > 0 || isSyncing) && (
             <div 
-              style={{ height: `${pullY}px` }} 
+              style={{ height: `${isSyncing ? 50 : pullY}px` }}
               className="w-full overflow-hidden transition-all duration-75 select-none relative"
             >
               <div 
                 style={{ height: '50px', position: 'absolute', bottom: 0, left: 0, right: 0 }}
                 className="w-full flex items-center justify-center text-xs text-[#8E8E93] dark:text-[#AEAEB2] font-bold gap-2"
               >
-                <RefreshCw size={14} className={pullY >= 50 ? "animate-spin text-[#007AFF]" : "text-[#8E8E93]"} />
-                <span>{pullY >= 50 ? "Release to sync notes..." : "Pull down to sync..."}</span>
+                <RefreshCw size={14} className={(pullY >= 50 || isSyncing) ? "animate-spin text-[#007AFF]" : "text-[#8E8E93]"} />
+                <span>{isSyncing ? "Syncing notes..." : pullY >= 50 ? "Release to sync notes..." : "Pull down to sync..."}</span>
               </div>
             </div>
           )}
