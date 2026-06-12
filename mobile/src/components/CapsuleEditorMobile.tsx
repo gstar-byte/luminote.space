@@ -370,6 +370,47 @@ const getHtmlTemplate = (placeholder: string) => `
   </div>
 
   <script>
+    // 捕获页面上的未捕获异常并传回 React Native
+    window.onerror = function(message, source, lineno, colno, error) {
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'webview-error',
+          message: message,
+          line: lineno,
+          column: colno
+        }));
+      }
+      return false;
+    };
+
+    // 重写 console.log, console.warn, console.error，把它们发送给 React Native
+    const originalConsole = {
+      log: console.log,
+      warn: console.warn,
+      error: console.error
+    };
+    console.log = function() {
+      originalConsole.log.apply(console, arguments);
+      const args = Array.from(arguments).map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'webview-log', level: 'log', message: args }));
+      }
+    };
+    console.warn = function() {
+      originalConsole.warn.apply(console, arguments);
+      const args = Array.from(arguments).map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'webview-log', level: 'warn', message: args }));
+      }
+    };
+    console.error = function() {
+      originalConsole.error.apply(console, arguments);
+      const args = Array.from(arguments).map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'webview-log', level: 'error', message: args }));
+      }
+    };
+
     const editor = document.getElementById('editor');
     let hasBeenEdited = false;
     let isFirstLoad = true;
@@ -547,19 +588,21 @@ const getHtmlTemplate = (placeholder: string) => `
         return;
       }
       let processed = html || '';
-      // 如果是非 HTML 的纯文本，将其进行段落化换行处理，防止断行丢失
       if (processed && !processed.trim().startsWith('<') && !processed.includes('</')) {
         processed = processed
-          .split('\n')
+          .split('\\n')
           .map(line => '<p>' + (line ? line : '<br>') + '</p>')
           .join('');
       } else {
-        // 兜底：将非标签交界处的 \n 替换为 <br> 以防止浏览器合并换行
-        processed = processed.replace(/([^>])\n([^<])/g, '$1<br>$2');
+        processed = processed.replace(/([^>])\\n([^<])/g, '$1<br>$2');
       }
       editor.innerHTML = processed;
       sendContent();
       isFirstLoad = false;
+    };
+
+    window.setContentEncoded = function(encodedHtml) {
+      window.setContent(decodeURIComponent(encodedHtml));
     };
 
     window.focusEditor = function() {
@@ -568,6 +611,10 @@ const getHtmlTemplate = (placeholder: string) => `
 
     window.insertImage = function(base64Url) {
       execFormat('insertHTML', '<img src="' + base64Url + '" style="width: 100%; max-width: 100%; border-radius: 8px; display: block; margin: 8px 0;" />');
+    };
+
+    window.insertImageEncoded = function(encodedImg) {
+      window.insertImage(decodeURIComponent(encodedImg));
     };
 
     // 图片气泡与大小缩放功能对齐 Web 端
@@ -796,19 +843,19 @@ export function CapsuleEditorMobile({
       if (!isWebViewLoaded.current || !webviewRef.current) return;
       
       if (type === 'heading') {
-        webviewRef.current.postMessage(JSON.stringify({ type: 'applyHeadingToggle' }));
+        webviewRef.current.injectJavaScript(`if(window.applyHeadingToggle){window.applyHeadingToggle();} true;`);
       } else if (type === 'bold') {
-        webviewRef.current.postMessage(JSON.stringify({ type: 'execFormat', command: 'bold' }));
+        webviewRef.current.injectJavaScript(`if(window.execFormat){window.execFormat("bold");} true;`);
       } else if (type === 'italic') {
-        webviewRef.current.postMessage(JSON.stringify({ type: 'execFormat', command: 'italic' }));
+        webviewRef.current.injectJavaScript(`if(window.execFormat){window.execFormat("italic");} true;`);
       } else if (type === 'strike') {
-        webviewRef.current.postMessage(JSON.stringify({ type: 'execFormat', command: 'strikeThrough' }));
+        webviewRef.current.injectJavaScript(`if(window.execFormat){window.execFormat("strikeThrough");} true;`);
       } else if (type === 'quote') {
-        webviewRef.current.postMessage(JSON.stringify({ type: 'execFormat', command: 'formatBlock', value: '<blockquote>' }));
+        webviewRef.current.injectJavaScript(`if(window.execFormat){window.execFormat("formatBlock", "<blockquote>");} true;`);
       } else if (type === 'bullet') {
-        webviewRef.current.postMessage(JSON.stringify({ type: 'execFormat', command: 'insertUnorderedList' }));
+        webviewRef.current.injectJavaScript(`if(window.execFormat){window.execFormat("insertUnorderedList");} true;`);
       } else if (type === 'ordered') {
-        webviewRef.current.postMessage(JSON.stringify({ type: 'execFormat', command: 'insertOrderedList' }));
+        webviewRef.current.injectJavaScript(`if(window.execFormat){window.execFormat("insertOrderedList");} true;`);
       } else if (type === 'image') {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!permissionResult.granted) {
@@ -825,7 +872,8 @@ export function CapsuleEditorMobile({
           return;
         }
         const base64Url = `data:image/jpeg;base64,${pickerResult.assets[0].base64 || ''}`;
-        webviewRef.current.postMessage(JSON.stringify({ type: 'insertImage', base64Url: base64Url }));
+        const encodedImg = encodeURIComponent(base64Url);
+        webviewRef.current.injectJavaScript(`if(window.insertImageEncoded){window.insertImageEncoded("${encodedImg}");} true;`);
       }
     }
   };
@@ -981,15 +1029,26 @@ export function CapsuleEditorMobile({
   const handleMessage = (event: any) => {
     try {
       const msg = JSON.parse(event.nativeEvent.data);
+      if (msg.type === 'webview-error') {
+        console.error('🔴 [WebView Error]', msg.message, `at line ${msg.line}:${msg.column}`);
+        return;
+      }
+      if (msg.type === 'webview-log') {
+        console.log(`[WebView Console ${msg.level.toUpperCase()}]`, msg.message);
+        return;
+      }
       if (msg.type === 'ready') {
         isWebViewLoaded.current = true;
         const initialHtml = tiptapJsonToHtml(content);
         lastHtmlSent.current = initialHtml;
         
-        webviewRef.current?.postMessage(JSON.stringify({
-          type: 'setContent',
-          html: initialHtml
-        }));
+        const encodedHtml = encodeURIComponent(initialHtml);
+        webviewRef.current?.injectJavaScript(`
+          if (window.setContentEncoded) {
+            window.setContentEncoded("${encodedHtml}");
+          }
+          true;
+        `);
 
         if (autoFocus) {
           webviewRef.current?.injectJavaScript(`
@@ -1040,11 +1099,8 @@ export function CapsuleEditorMobile({
           }
           const asset = pickerResult.assets[0];
           const base64Url = `data:image/jpeg;base64,${asset.base64 || ''}`;
-          // 极速注入 WebView 并就地插入图片，焦点不发生变化，改用安全 postMessage 通道
-          webviewRef.current?.postMessage(JSON.stringify({
-            type: 'insertImage',
-            base64Url: base64Url
-          }));
+          const encodedImg = encodeURIComponent(base64Url);
+          webviewRef.current?.injectJavaScript(`if(window.insertImageEncoded){window.insertImageEncoded("${encodedImg}");} true;`);
         })();
       }
     } catch (e) {
@@ -1174,6 +1230,8 @@ export function CapsuleEditorMobile({
               originWhitelist={['*']}
               keyboardDisplayRequiresUserAction={false}
               scrollEnabled={true}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
             />
           </View>
 

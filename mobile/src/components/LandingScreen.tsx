@@ -124,7 +124,7 @@ export function LandingScreen({ onEmailAuth, onGuestPress }: Props) {
           </Text>
           <View style={styles.philosophyContainer}>
             <Text style={styles.philosophyText}>
-              Monochrome lists make all your thoughts look identical. But a fleeting inspiration shouldn't look exactly like a grocery list. Your brain naturally prioritizes by color, and your notes should do the same.
+              {"Monochrome lists make all your thoughts look identical. But a fleeting inspiration shouldn't look exactly like a grocery list. Your brain naturally prioritizes by color, and your notes should do the same."}
             </Text>
             <Text style={[styles.philosophyText, { marginTop: 12 }]}>
               Lumi Note combines minimalist card layouts with intuitive color keys. Categorize and prioritize instantly with beautiful chromative cues, keeping your daily capture fast, natural, and highly visual.

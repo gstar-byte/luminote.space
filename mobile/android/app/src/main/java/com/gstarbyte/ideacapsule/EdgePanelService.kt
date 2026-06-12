@@ -50,7 +50,8 @@ class EdgePanelService : Service() {
     private fun createEdgeBar() {
         val ctx = this
         val density = resources.displayMetrics.density
-        val barWidth = (4 * density).toInt()
+        val barTouchWidth = (16 * density).toInt()
+        val barLineWidth = (3 * density).toInt()
         val barHeight = (90 * density).toInt()
 
         edgeBar = FrameLayout(ctx)
@@ -68,12 +69,14 @@ class EdgePanelService : Service() {
             alpha = 0.25f
         }
         
-        val layoutParams = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
+        val innerParams = FrameLayout.LayoutParams(
+            barLineWidth,
             FrameLayout.LayoutParams.MATCH_PARENT
-        )
+        ).apply {
+            gravity = Gravity.END
+        }
         
-        edgeBar?.addView(innerBar, layoutParams)
+        edgeBar?.addView(innerBar, innerParams)
 
         val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -83,7 +86,7 @@ class EdgePanelService : Service() {
         }
 
         params = WindowManager.LayoutParams(
-            barWidth,
+            barTouchWidth,
             barHeight,
             layoutType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
@@ -92,6 +95,16 @@ class EdgePanelService : Service() {
             gravity = Gravity.END or Gravity.CENTER_VERTICAL
             x = 0
             y = 0
+        }
+
+        // 注册 Layout 监听，以防拖拽/渲染发生变化时，能够动态刷新系统手势排除矩形，彻底解决全面屏手势拦截滑动的问题
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            edgeBar?.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                edgeBar?.let { bar ->
+                    val rect = android.graphics.Rect(0, 0, bar.width, bar.height)
+                    bar.systemGestureExclusionRects = listOf(rect)
+                }
+            }
         }
 
         // 根据前后台状态设置初始可见性

@@ -23,6 +23,7 @@ import {
   Keyboard as RNKeyboard,
   NativeModules,
   AppState,
+  PanResponder,
 } from 'react-native';
 import { LogBox } from 'react-native';
 
@@ -585,33 +586,6 @@ export default function IdeaCapsuleApp() {
     initNotifications();
   }, []);
 
-  // Listener for tap notification action to trigger Quick Capture
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
-      if (data && data.action === 'open_quick_capture') {
-        setIsOnlyQuickCaptureView(true);
-        setShowQuickCapture(true);
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      } else if (data && data.capsuleId) {
-        const found = capsules.find(c => c.id === data.capsuleId);
-        if (found) {
-          setEditingCapsule(found);
-          setEditContent(found.content);
-          setEditSubjectDraft(found.subject || '');
-          setEditCategoryDraft(found.category || '');
-          setEditTagDraft(found.tag || (found.tags && found.tags.length > 0 ? found.tags[0] : ''));
-        }
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [capsules]);
-
   useEffect(() => {
     const handleUrl = (event: { url: string }) => {
       try {
@@ -707,22 +681,26 @@ export default function IdeaCapsuleApp() {
     }
   }, []);
 
+  const scrollViewRef = useRef<ScrollView>(null);
+
   const [refreshTitle, setRefreshTitle] = useState('Pull to sync');
   const [mobilePullY, setMobilePullY] = useState(0);
   const pullReachedRef = useRef(false);
+  const currentScrollY = useRef(0);
 
   const handleScroll = (event: any) => {
+    if (Platform.OS === 'web') return;
     const y = event.nativeEvent.contentOffset.y;
-    if (y < 0) {
-      setMobilePullY(-y);
-    } else {
-      setMobilePullY(0);
-    }
+    currentScrollY.current = y;
 
-    if (y < -75) {
+    // 默认在 70 隐藏，小于 70 则是被拉出来的距离
+    const pullDist = Math.max(0, 70 - y);
+    setMobilePullY(pullDist);
+
+    if (y <= 12) {
       if (!pullReachedRef.current && !refreshing && !isSyncing) {
         pullReachedRef.current = true;
-        setRefreshTitle('Release to sync…');
+        setRefreshTitle('Release to sync');
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     } else {
@@ -740,20 +718,85 @@ export default function IdeaCapsuleApp() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setRefreshTitle('Syncing…');
-    showToast('Syncing notes...', 'info');
+    // 强制将列表拉回最顶部，展示刷新中
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
     try {
       await syncCapsules();
       setShowSyncComplete(true);
-      showToast('Sync complete!', 'success');
-      setTimeout(() => {
-        setShowSyncComplete(false);
-      }, 1500);
     } finally {
       setRefreshing(false);
       setRefreshTitle('Pull to sync');
       pullReachedRef.current = false;
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 70, animated: true });
+        // 等待 350ms 列表完全滚回 70 隐藏后再清除“完成”状态，杜绝回弹过程中的 Release to sync 闪烁
+        setTimeout(() => {
+          setShowSyncComplete(false);
+        }, 350);
+      }, 1000);
     }
-  }, [syncCapsules, showToast]);
+  }, [syncCapsules]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const timer = setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 70, animated: false });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (refreshing || isSyncing) {
+      Animated.loop(
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        })
+      ).start();
+    } else {
+      rotateAnim.setValue(0);
+    }
+  }, [refreshing, isSyncing, rotateAnim]);
+
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const syncBarState = useMemo(() => {
+    const textColor = '#4E3B30'; // 统一优雅的墨香焦茶色
+    const iconColor = '#4E3B30';
+
+    if (showSyncComplete) {
+      return {
+        text: 'Sync complete',
+        color: textColor,
+        icon: <CheckCircle2 size={13} color={iconColor} />,
+      };
+    }
+    if (refreshing || isSyncing) {
+      return {
+        text: 'Syncing…',
+        color: textColor,
+        icon: (
+          <Animated.View style={{ transform: [{ rotate: spin }] }}>
+            <RotateCw size={13} color={iconColor} />
+          </Animated.View>
+        ),
+      };
+    }
+    if (Platform.OS !== 'web' && mobilePullY >= 58) {
+      return {
+        text: 'Release to sync',
+        color: textColor,
+        icon: <RotateCw size={13} color={iconColor} />,
+      };
+    }
+    return null;
+  }, [showSyncComplete, refreshing, isSyncing, mobilePullY, spin]);
 
   const [editingCapsule, setEditingCapsule] = useState<Capsule | null>(null);
   const [editContent, setEditContent] = useState('');
@@ -2024,6 +2067,15 @@ export default function IdeaCapsuleApp() {
     setEditingCapsule(null);
   }, [saveEditSilent]);
 
+  const openEditor = useCallback((item: Capsule) => {
+    setEditingCapsule(item);
+    setEditContent(item.content);
+    setEditSubjectDraft(item.subject || '');
+    setEditCategoryDraft(item.category || '');
+    setEditTagDraft(item.tag || (item.tags && item.tags.length > 0 ? item.tags[0] : ''));
+    editModalCapsuleIdRef.current = item.id;
+  }, [setEditingCapsule, setEditContent, setEditSubjectDraft, setEditCategoryDraft, setEditTagDraft]);
+
   useEffect(() => {
     if (!editingCapsule) {
       editModalCapsuleIdRef.current = null;
@@ -2037,6 +2089,29 @@ export default function IdeaCapsuleApp() {
       setEditTagDraft(editingCapsule.tag || (editingCapsule.tags && editingCapsule.tags.length > 0 ? editingCapsule.tags[0] : ''));
     }
   }, [editingCapsule]);
+
+  // Listener for tap notification action to trigger Quick Capture
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      if (data && data.action === 'open_quick_capture') {
+        setIsOnlyQuickCaptureView(true);
+        setShowQuickCapture(true);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } else if (data && data.capsuleId) {
+        const found = capsules.find(c => c.id === data.capsuleId);
+        if (found) {
+          openEditor(found);
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [capsules, openEditor]);
 
   if (authLoading) {
     return (
@@ -2273,7 +2348,7 @@ export default function IdeaCapsuleApp() {
             <TextInput
               ref={searchInputRef}
               style={s.searchIn}
-              placeholder="Search inspiration…"
+              placeholder="Search ideas"
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor="#8E8E93"
@@ -2307,54 +2382,58 @@ export default function IdeaCapsuleApp() {
 
         <View style={{ flex: 1, position: 'relative' }}>
           {/* 下拉刷新文字提示：以绝对定位漂浮在最顶层，不遮挡手势，绝对防止滚动抖动 */}
-          {(mobilePullY >= 45 || refreshing || isSyncing || showSyncComplete) && (
+          {((mobilePullY >= 58 || refreshing || isSyncing || showSyncComplete) && syncBarState !== null) && (
             <View
               pointerEvents="none"
               style={{
                 position: 'absolute',
-                top: 10,
+                top: 15,
                 left: 0,
                 right: 0,
                 height: 40,
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 999,
+                opacity: (refreshing || isSyncing || showSyncComplete) ? 1 : Math.min(1, Math.max(0, mobilePullY - 50) / 8),
               }}
             >
-              <Text style={{
-                color: showSyncComplete ? '#34C759' : '#8E8E93',
-                fontSize: 10,
-                fontWeight: '900',
-                letterSpacing: 0.5,
-                textTransform: 'uppercase',
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
                 backgroundColor: '#FFFBE6', // 保持和纸张背景底色一致
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 4,
+                paddingHorizontal: 12,
+                paddingVertical: 5,
+                borderRadius: 6,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: 0.05,
                 shadowRadius: 2,
                 elevation: 1,
               }}>
-                {showSyncComplete
-                  ? 'Sync complete'
-                  : refreshing || isSyncing
-                  ? 'Syncing…'
-                  : mobilePullY >= 75
-                  ? 'Release to sync notes…'
-                  : 'Pull down to sync…'}
-              </Text>
+                {syncBarState.icon}
+                <Text style={{
+                  color: syncBarState.color,
+                  fontSize: 10,
+                  fontWeight: '900',
+                  letterSpacing: 0.5,
+                  textTransform: 'uppercase',
+                }}>
+                  {syncBarState.text}
+                </Text>
+              </View>
             </View>
           )}
 
           <ScrollView
-            style={s.scrollFill}
+            ref={scrollViewRef}
+            contentOffset={Platform.OS === 'web' ? undefined : { x: 0, y: 70 }}
+            style={[s.scrollFill, Platform.OS === 'web' && { height: '100%' }]}
             contentContainerStyle={[
               s.scrollBody, 
               { 
-                paddingBottom: listBottomPad, 
-                paddingTop: (refreshing || isSyncing || showSyncComplete) ? 42 : 0 
+                paddingBottom: listBottomPad,
+                minHeight: Platform.OS === 'web' ? '100%' : windowHeight + 70,
               }
             ]}
             keyboardShouldPersistTaps="handled"
@@ -2362,16 +2441,26 @@ export default function IdeaCapsuleApp() {
             removeClippedSubviews={Platform.OS === 'android'}
             onScroll={handleScroll}
             scrollEventThrottle={16}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing || isSyncing}
-                onRefresh={onRefresh}
-                tintColor="transparent"
-                colors={['transparent']}
-              />
-            }
+            onScrollEndDrag={Platform.OS === 'web' ? undefined : (e) => {
+              const y = e.nativeEvent.contentOffset.y;
+              if (y <= 15 && !refreshing && !isSyncing) {
+                void onRefresh();
+              } else if (y < 70) {
+                scrollViewRef.current?.scrollTo({ y: 70, animated: true });
+              }
+            }}
+            onMomentumScrollEnd={Platform.OS === 'web' ? undefined : (e) => {
+              const y = e.nativeEvent.contentOffset.y;
+              if (y < 70 && !refreshing && !isSyncing) {
+                scrollViewRef.current?.scrollTo({ y: 70, animated: true });
+              }
+            }}
           >
-            {(() => {
+            {/* 顶部占位，配合 contentOffset.y = 70 默认隐藏，下拉时作为拉伸缓冲空间 */}
+            {Platform.OS !== 'web' && <View style={{ height: 70, backgroundColor: 'transparent' }} />}
+
+            <View style={{ flex: 1, transform: Platform.OS === 'web' ? [] : [{ translateY: -((mobilePullY * mobilePullY) / (mobilePullY + 70)) }] }}>
+              {(() => {
               const renderCardItem = (item: Capsule) => {
                 const renderLeftActions = (
                   progress: Animated.AnimatedInterpolation<number>,
@@ -2619,7 +2708,7 @@ export default function IdeaCapsuleApp() {
                           isGrid={false}
                           isSelected={selectedIds.includes(item.id)}
                           isMulti={false}
-                          onPress={() => setEditingCapsule(item)}
+                          onPress={() => openEditor(item)}
                           onLongPress={() => {
                             void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                             setIsMultiSelectMode(true);
@@ -2647,7 +2736,7 @@ export default function IdeaCapsuleApp() {
                                   ? prev.filter((x) => x !== item.id)
                                   : [...prev, item.id],
                               )
-                            : setEditingCapsule(item)
+                            : openEditor(item)
                         }
                         onLongPress={() => {
                           void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -2706,6 +2795,7 @@ export default function IdeaCapsuleApp() {
                 )}
               </View>
             )}
+            </View>
           </ScrollView>
         </View>
 
