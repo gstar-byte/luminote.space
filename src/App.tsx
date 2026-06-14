@@ -3855,7 +3855,6 @@ export default function App() {
                   } else {
                     setSelectedIds(new Set(filteredCapsules.map(c => c.id)));
                   }
-                  setBatchMenuPos(null);
                 }}
                 className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] text-[#1D1D1F] dark:text-[#F2F2F7] font-medium rounded-lg transition-colors text-left"
               >
