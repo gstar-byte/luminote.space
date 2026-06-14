@@ -1476,6 +1476,24 @@ export default function App() {
   const allCategories = Array.from(new Set(allCapsules.map(c => c.category).filter(Boolean) as string[])).sort();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchMenuPos, setBatchMenuPos] = useState<{ left: number; top: number } | null>(null);
+  
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (document.getElementById('portal-batch-menu')?.contains(target)) return;
+      setBatchMenuPos(null);
+    };
+    if (batchMenuPos) {
+      document.addEventListener('mousedown', handleOutsideClick);
+      document.addEventListener('touchstart', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, [batchMenuPos]);
+
   // 批量「分类 & 标签」面板（批量场景下的唯一弹层，颜色/提醒已从批量中移除）
   const [batchTagCatOpen, setBatchTagCatOpen] = useState(false);
   const [batchCat, setBatchCat] = useState('');
@@ -3518,6 +3536,7 @@ export default function App() {
                       showToast={showToast}
                       onSelectAll={() => setSelectedIds(new Set(filteredCapsules.map(c => c.id)))}
                       setNotificationPermission={setNotificationPermission}
+                      onShowBatchMenu={(x, y) => setBatchMenuPos({ left: x, top: y })}
                     />
                   </div>
                 </div>
@@ -3576,7 +3595,7 @@ export default function App() {
 
         <AnimatePresence>
           {editingCapsule && (
-            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[120] flex items-center justify-center p-2 px-3 md:p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3589,7 +3608,7 @@ export default function App() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98, y: 20 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="relative bg-white rounded-3xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden flex flex-col h-[90vh] md:h-[85vh]"
+                className="relative bg-white rounded-3xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden flex flex-col h-[93vh] md:h-[85vh]"
                 style={{ resize: isMobile ? 'none' : 'horizontal', minWidth: isMobile ? 'auto' : '460px', maxWidth: '95vw', width: isMobile ? '100%' : '768px' }}
               >
                 <div 
@@ -3683,9 +3702,9 @@ export default function App() {
                     </div>
 
                     {/* 分类与标签输入框：双向绑定已有的 editDetailCategory & editDetailTags */}
-                    <div className="flex flex-col sm:flex-row gap-3 mt-2.5 shrink-0">
-                      <div className="flex-1">
-                        <label className="block text-[10px] font-black text-[#8E8E93] uppercase tracking-widest mb-1 ml-1">Category</label>
+                    <div className="flex flex-row gap-2.5 mt-2.5 shrink-0">
+                      <div className="flex-1 min-w-0">
+                        <label className="block text-[10px] font-black text-[#8E8E93] dark:text-[#AEAEB2] uppercase tracking-widest mb-1 ml-1 truncate">Category</label>
                         <input
                           type="text"
                           placeholder="e.g. Work, Ideas"
@@ -3694,11 +3713,11 @@ export default function App() {
                             setEditDetailCategory(e.target.value);
                             editDetailCategoryRef.current = e.target.value;
                           }}
-                          className="w-full px-3.5 py-2 bg-[#F2F2F7] border border-transparent focus:border-[#007AFF] focus:bg-white rounded-2xl text-xs font-bold transition-all outline-none text-[#1D1D1F] dark:text-white dark:bg-[#2C2C2E] dark:focus:bg-[#1C1C1E]"
+                          className="w-full px-3 py-1.5 bg-[#F2F2F7] border border-transparent focus:border-[#007AFF] focus:bg-white rounded-xl text-xs font-bold transition-all outline-none text-[#1D1D1F] dark:text-white dark:bg-[#2C2C2E] dark:focus:bg-[#1C1C1E]"
                         />
                       </div>
-                      <div className="flex-[2]">
-                        <label className="block text-[10px] font-black text-[#8E8E93] uppercase tracking-widest mb-1 ml-1">Tag</label>
+                      <div className="flex-1 min-w-0">
+                        <label className="block text-[10px] font-black text-[#8E8E93] dark:text-[#AEAEB2] uppercase tracking-widest mb-1 ml-1 truncate">Tag</label>
                         <input
                           type="text"
                           placeholder="e.g. design"
@@ -3708,7 +3727,7 @@ export default function App() {
                             setEditDetailTag(val);
                             editDetailTagRef.current = val;
                           }}
-                          className="w-full px-3.5 py-2 bg-[#F2F2F7] border border-transparent focus:border-[#007AFF] focus:bg-white rounded-2xl text-xs font-bold transition-all outline-none text-[#1D1D1F] dark:text-white dark:bg-[#2C2C2E] dark:focus:bg-[#1C1C1E]"
+                          className="w-full px-3 py-1.5 bg-[#F2F2F7] border border-transparent focus:border-[#007AFF] focus:bg-white rounded-xl text-xs font-bold transition-all outline-none text-[#1D1D1F] dark:text-white dark:bg-[#2C2C2E] dark:focus:bg-[#1C1C1E]"
                         />
                       </div>
                     </div>
@@ -3795,83 +3814,160 @@ export default function App() {
           </AnimatePresence>
         </div>
 
-        {/* Batch Actions Overlay */}
-        <AnimatePresence>
-          {selectedIds.size > 0 && (
-            <motion.div 
-              initial={{ x: 100, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 100, opacity: 0 }}
-              className="fixed right-4 md:right-8 top-24 z-[100] pointer-events-none"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex flex-col items-stretch py-2 bg-white/90 backdrop-blur-3xl border border-[#E5E5EA] shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-xl pointer-events-auto w-32 md:w-40 overflow-hidden">
-                <span className="font-black text-[#1D1D1F] text-xs px-3 pb-2 border-b border-[#E5E5EA] w-full">{selectedIds.size} Selected</span>
-                
-                <button onClick={() => {
+        {/* 跟随长按位置的批量操作 Portal 菜单 */}
+        {selectedIds.size > 0 && batchMenuPos && createPortal(
+          <motion.div
+            id="portal-batch-menu"
+            initial={{ opacity: 0, scale: 0.96, y: -6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="fixed z-[2000] w-[230px] max-w-[calc(100vw-16px)] max-h-[calc(100vh-16px)] overflow-y-auto bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-white/10 rounded-2xl shadow-2xl text-[#1D1D1F] dark:text-[#F2F2F7] flex flex-col p-1.5"
+            style={{ 
+              left: (() => {
+                let left = batchMenuPos.left;
+                if (left + 230 > window.innerWidth - 8) left = window.innerWidth - 230 - 8;
+                if (left < 8) left = 8;
+                return left;
+              })(),
+              top: (() => {
+                let top = batchMenuPos.top;
+                const budgetH = 260;
+                if (top + budgetH > window.innerHeight - 8) {
+                  top = Math.max(8, top - budgetH);
+                }
+                if (top < 8) top = 8;
+                return top;
+              })()
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
+            <div className="p-1.5 space-y-0.5">
+              <span className="font-black text-[#1D1D1F] dark:text-[#F2F2F7] text-[10px] px-2.5 py-1.5 uppercase tracking-wider text-[#8E8E93] dark:text-[#AEAEB2] block border-b border-[#F2F2F7] dark:border-white/5 mb-1 text-center">
+                {selectedIds.size} Selected
+              </span>
+              
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (selectedIds.size === filteredCapsules.length) {
                     setSelectedIds(new Set());
                   } else {
                     setSelectedIds(new Set(filteredCapsules.map(c => c.id)));
                   }
-                }} className="flex items-center gap-2 px-3 py-2.5 text-[#007AFF] hover:bg-[#F2F2F7] transition-colors mt-1 w-full text-left">
-                  <CheckSquare size={16} className="shrink-0" />
-                  <span className="text-xs font-medium truncate">{selectedIds.size === filteredCapsules.length ? 'Deselect All' : 'Select All'}</span>
+                  setBatchMenuPos(null);
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] text-[#1D1D1F] dark:text-[#F2F2F7] font-medium rounded-lg transition-colors text-left"
+              >
+                <CheckSquare size={16} className="text-[#007AFF] shrink-0" />
+                {selectedIds.size === filteredCapsules.length ? 'Deselect All' : 'Select All'}
+              </button>
+
+              {filter !== 'archived' && filter !== 'trash' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const first = allCapsules.find((c) => selectedIds.has(c.id));
+                    setBatchCat(first?.category || '');
+                    setBatchTag(first ? (first.tag || (first.tags && first.tags.length > 0 ? first.tags[0] : '')) : '');
+                    setBatchTagCatOpen(true);
+                    setBatchMenuPos(null);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] text-[#1D1D1F] dark:text-[#F2F2F7] font-medium rounded-lg transition-colors text-left"
+                >
+                  <TagLucideIcon size={16} className="text-[#007AFF] shrink-0" />
+                  Category &amp; Tag
                 </button>
+              )}
 
-                {filter !== 'archived' && filter !== 'trash' ? (
+              {filter === 'archived' ? (
+                <>
                   <button
-                    type="button"
-                    onClick={() => {
-                      const first = allCapsules.find((c) => selectedIds.has(c.id));
-                      setBatchCat(first?.category || '');
-                      setBatchTag(first ? (first.tag || (first.tags && first.tags.length > 0 ? first.tags[0] : '')) : '');
-                      setBatchTagCatOpen(true);
-                    }}
-                    className="flex items-center gap-2 px-3 py-2.5 text-[#007AFF] hover:bg-[#F2F2F7] transition-colors w-full text-left"
+                    onClick={(e) => { e.stopPropagation(); batchUpdate({ isArchived: false }); setBatchMenuPos(null); }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] text-[#4CAF50] font-medium rounded-lg transition-colors text-left"
                   >
-                    <TagLucideIcon size={16} className="shrink-0" />
-                    <span className="text-xs font-medium truncate">Category &amp; Tag</span>
+                    <RotateCcw size={16} className="shrink-0" />
+                    Restore
                   </button>
-                ) : null}
-
-                {filter === 'archived' ? (
-                  <>
-                    <button onClick={() => batchUpdate({ isArchived: false })} className="flex items-center gap-2 px-3 py-2.5 text-[#4CAF50] hover:bg-[#F2F2F7] transition-colors w-full text-left"><RotateCcw size={16} className="shrink-0" /><span className="text-xs font-medium">Restore</span></button>
-                    <button onClick={() => batchUpdate({ isDeleted: true })} className="flex items-center gap-2 px-3 py-2.5 text-[#FF3B30] hover:bg-[#F2F2F7] transition-colors w-full text-left"><Trash2 size={16} className="shrink-0" /><span className="text-xs font-medium">Delete</span></button>
-                  </>
-                ) : filter === 'trash' ? (
-                  <>
-                    <button onClick={() => batchUpdate({ isDeleted: false })} className="flex items-center gap-2 px-3 py-2.5 text-[#4CAF50] hover:bg-[#F2F2F7] transition-colors w-full text-left"><RotateCcw size={16} className="shrink-0" /><span className="text-xs font-medium">Restore</span></button>
-                    <button onClick={() => {
+                  <button
+                    onClick={(e) => { e.stopPropagation(); batchUpdate({ isDeleted: true }); setBatchMenuPos(null); }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] text-[#FF3B30] font-medium rounded-lg transition-colors text-left"
+                  >
+                    <Trash2 size={16} className="shrink-0" />
+                    Delete
+                  </button>
+                </>
+              ) : filter === 'trash' ? (
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); batchUpdate({ isDeleted: false }); setBatchMenuPos(null); }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] text-[#4CAF50] font-medium rounded-lg transition-colors text-left"
+                  >
+                    <RotateCcw size={16} className="shrink-0" />
+                    Restore
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (confirm('Are you sure you want to permanently delete the selected notes? This cannot be undone.')) {
                         batchRemovePermanently();
                       }
-                    }} className="flex items-center gap-2 px-3 py-2.5 text-[#FF3B30] hover:bg-[#F2F2F7] transition-colors w-full text-left"><Trash2 size={16} className="shrink-0" /><span className="text-xs font-medium">Delete Forever</span></button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => batchUpdate({ isArchived: true })} className="flex items-center gap-2 px-3 py-2.5 text-[#8E8E93] hover:text-[#1D1D1F] hover:bg-[#F2F2F7] transition-colors w-full text-left"><Archive size={16} className="shrink-0" /><span className="text-xs font-medium">Archive</span></button>
-                    <button onClick={() => batchUpdate({ isDeleted: true })} className="flex items-center gap-2 px-3 py-2.5 text-[#FF3B30] hover:bg-[#F2F2F7] transition-colors w-full text-left"><Trash2 size={16} className="shrink-0" /><span className="text-xs font-medium">Delete</span></button>
-                    <button onClick={async () => {
+                      setBatchMenuPos(null);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] text-[#FF3B30] font-medium rounded-lg transition-colors text-left"
+                  >
+                    <Trash2 size={16} className="shrink-0" />
+                    Delete Forever
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); batchUpdate({ isArchived: true }); setBatchMenuPos(null); }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] text-[#8E8E93] dark:text-[#AEAEB2] font-medium rounded-lg transition-colors text-left"
+                  >
+                    <Archive size={16} className="shrink-0" />
+                    Archive
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); batchUpdate({ isDeleted: true }); setBatchMenuPos(null); }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] text-[#FF3B30] font-medium rounded-lg transition-colors text-left"
+                  >
+                    <Trash2 size={16} className="shrink-0" />
+                    Delete
+                  </button>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
                       const selectedNotes = allCapsules.filter(c => selectedIds.has(c.id));
                       const text = selectedNotes.map(c => `[${c.category || 'Note'}] ${plainTextFromContent(c.content)}`).join('\n\n---\n\n');
-                      if (navigator.share) {
+                      if (typeof navigator !== 'undefined' && navigator.share) {
                         try { await navigator.share({ title: 'Shared Lumi Notes', text }); } catch (err) { console.log('Share error', err); }
                       } else {
-                        navigator.clipboard.writeText(text);
-                        alert('Copied all selected notes to clipboard!');
+                        try { await navigator.clipboard.writeText(text); showToast('Copied all selected notes to clipboard!', 'success'); } catch (err) { console.log('Copy error', err); }
                       }
-                    }} className="flex items-center gap-2 px-3 py-2.5 text-[#007AFF] hover:bg-[#F2F2F7] transition-colors w-full text-left"><Share2 size={16} className="shrink-0" /><span className="text-xs font-medium">Share</span></button>
-                  </>
-                )}
+                      setBatchMenuPos(null);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] text-[#1D1D1F] dark:text-[#F2F2F7] font-medium rounded-lg transition-colors text-left"
+                  >
+                    <Share2 size={16} className="text-[#8E8E93] dark:text-[#AEAEB2] shrink-0" />
+                    Share
+                  </button>
+                </>
+              )}
 
-                <div className="h-px bg-[#E5E5EA] w-full my-1" />
-                <button onClick={() => setSelectedIds(new Set())} className="flex items-center gap-2 px-3 py-2.5 text-[#8E8E93] hover:text-[#1D1D1F] hover:bg-[#F2F2F7] transition-colors w-full text-left"><X size={16} className="shrink-0" /><span className="text-xs font-medium">Cancel</span></button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <div className="h-px bg-[#F2F2F7] dark:bg-white/5 mx-2 my-1" />
+              <button 
+                onClick={(e) => { e.stopPropagation(); setSelectedIds(new Set()); setBatchMenuPos(null); }} 
+                className="w-full flex items-center justify-center gap-1.5 px-2.5 py-2 text-sm font-bold text-[#FF3B30] hover:bg-red-50 dark:hover:bg-red-950/35 rounded-lg transition-colors mt-0.5"
+              >
+                <X size={16} className="shrink-0 text-[#FF3B30]" />
+                Cancel
+              </button>
+            </div>
+          </motion.div>,
+          document.body
+        )}
 
         {batchTagCatOpen && selectedIds.size > 0 ? (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 pointer-events-auto">
@@ -4435,6 +4531,7 @@ interface CapsuleItemProps {
   showToast?: (msg: string, type?: 'info' | 'success' | 'error') => void;
   onSelectAll?: () => void;
   setNotificationPermission?: (permission: NotificationPermission) => void;
+  onShowBatchMenu?: (x: number, y: number) => void;
 }
 
 const formatNoteDateTime = (ts: number) => new Date(ts).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -4470,6 +4567,7 @@ const CapsuleItem = memo(function CapsuleItem({
   showToast,
   onSelectAll,
   setNotificationPermission,
+  onShowBatchMenu,
 }: CapsuleItemProps) {
   const capsuleColor = capsule.color || PRESET_COLORS[index % PRESET_COLORS.length] || '#E65100';
   const [showOptions, setShowOptions] = useState(false);
@@ -4512,7 +4610,7 @@ const CapsuleItem = memo(function CapsuleItem({
     }
   }, []);
 
-  const MENU_WIDTH = 200;
+  const MENU_WIDTH = 230;
   const closeMenu = useCallback(() => {
     setShowOptions(false);
     setShowReminderPicker(false);
@@ -4566,7 +4664,13 @@ const CapsuleItem = memo(function CapsuleItem({
     // 长按 ~480ms 弹出就近操作菜单。
     clearLongPress();
     longPressTimer.current = setTimeout(() => {
-      onToggleSelection();
+      if (!isSelected) {
+        onToggleSelection();
+      }
+      const x = touchStartPos.current?.x ?? window.innerWidth / 2;
+      const y = touchStartPos.current?.y ?? window.innerHeight / 2;
+      onShowBatchMenu?.(x, y);
+
       // 吞掉长按后紧随的 click，避免立刻又被切回（取消选中）或打开详情。
       suppressNextClickRef.current = true;
       setIsSwiping(false);
@@ -4670,7 +4774,10 @@ const CapsuleItem = memo(function CapsuleItem({
     mouseDownPos.current = { x: clientX, y: clientY };
     clearLongPress();
     longPressTimer.current = setTimeout(() => {
-      openMenuAt(clientX, clientY, 'context');
+      if (!isSelected) {
+        onToggleSelection();
+      }
+      onShowBatchMenu?.(clientX, clientY);
       suppressNextClickRef.current = true;
       mouseDownPos.current = null;
     }, 480);
@@ -4790,10 +4897,23 @@ const CapsuleItem = memo(function CapsuleItem({
   };
 
   return (
-    <div 
-      id={`capsule-item-${index}`}
-      className="relative overflow-hidden w-full rounded-2xl md:rounded-[24px]"
+    <div
+      id={`capsule-item-wrapper-${index}`}
+      className={cn(
+        "w-full rounded-2xl md:rounded-[24px] capsule-item-wrapper relative transition-all duration-200",
+        isSelected 
+          ? "is-selected ring-2 ring-[#007AFF] border-transparent" 
+          : "",
+        (showOptions || showColorPicker || showReminderPicker) ? "z-[70]" : "z-10"
+      )}
+      style={{ 
+        backgroundColor: capsuleColor,
+      }}
     >
+      <div 
+        id={`capsule-item-${index}`}
+        className="relative overflow-hidden w-full rounded-2xl md:rounded-[24px] border border-black/5 dark:border-white/5"
+      >
       {window.innerWidth <= 768 && isSwiping && Math.abs(swipeX) > 10 && (
         <div 
           className="absolute inset-0 flex items-center justify-between px-6 z-0 rounded-2xl md:rounded-[24px] bg-[#F2F2F7] dark:bg-[#1C1C1E]"
@@ -4859,17 +4979,15 @@ const CapsuleItem = memo(function CapsuleItem({
       <div
         ref={cardRootRef}
         className={cn(
-          "group w-full shrink-0 flex relative select-none border-b border-black/5",
+          "group w-full shrink-0 flex relative select-none",
           viewMode === 'grid'
             ? "flex-col justify-between"
             : "items-center gap-1.5 p-2.5 md:gap-3 md:p-6",
-          isSelected ? "border-[#007AFF] shadow-xl ring-4 ring-[#007AFF]/10" : "border-black/5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-black/10 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]",
           capsule.isTodo &&
           capsule.completed &&
           !(showOptions || showColorPicker || showReminderPicker)
             ? "opacity-60"
             : "",
-          (showOptions || showColorPicker || showReminderPicker) ? "z-[70]" : "z-10",
           isSwiping ? "transition-none" : "transition-transform duration-200 ease-out"
         )}
         style={{ 
@@ -4899,7 +5017,10 @@ const CapsuleItem = memo(function CapsuleItem({
           if (isTouchRef.current) {
             return;
           }
-          openMenuAt(e.clientX, e.clientY, 'context');
+          if (!isSelected) {
+            onToggleSelection();
+          }
+          onShowBatchMenu?.(e.clientX, e.clientY);
           suppressNextClickRef.current = true;
         }}
         onClick={(e) => {
@@ -5353,6 +5474,7 @@ const CapsuleItem = memo(function CapsuleItem({
         )}
       </div>
     </div>
+  </div>
   );
 });
 

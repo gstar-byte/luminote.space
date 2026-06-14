@@ -146,3 +146,31 @@
   line-height: 2rem !important;
   font-style: italic;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* Card Wrapper Base CSS & Dynamic Shadows                                     */
+/* ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.05), 0 1px 4px rgba(0, 0, 0, 0.03);
+  --card-shadow-hover: 0 16px 36px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  --card-shadow-selected: 0 16px 36px rgba(0, 122, 255, 0.22);
+}
+
+.dark {
+  --card-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --card-shadow-hover: 0 16px 36px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --card-shadow-selected: 0 16px 36px rgba(0, 122, 255, 0.45);
+}
+
+.capsule-item-wrapper {
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.capsule-item-wrapper:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+.capsule-item-wrapper.is-selected {
+  box-shadow: var(--card-shadow-selected);
+}
