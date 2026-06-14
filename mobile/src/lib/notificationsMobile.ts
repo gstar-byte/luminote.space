@@ -112,6 +112,7 @@ export async function scheduleCapsuleNotification(capsule: Capsule) {
         sound: true,
         priority: Notifications.AndroidNotificationPriority.HIGH,
         data: { capsuleId: capsule.id },
+        ...(Platform.OS === 'android' ? { android: { channelId: 'reminders' } } : {}),
       },
       trigger: {
         type: 'date',

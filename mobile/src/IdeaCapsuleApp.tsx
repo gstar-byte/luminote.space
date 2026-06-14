@@ -511,10 +511,13 @@ export default function IdeaCapsuleApp() {
           content: {
             title: 'Lumi Note 🚀',
             body: 'Tap here to capture your thought instantly',
-            sticky: true,
-            autoDismiss: false,
             color: '#007AFF',
             data: { action: 'open_quick_capture' },
+            ...(Platform.OS === 'android' ? {
+              sticky: true,
+              autoDismiss: false,
+              android: { channelId: 'ongoing-channel' },
+            } : {}),
           },
           trigger: null,
         });
@@ -3538,13 +3541,11 @@ export default function IdeaCapsuleApp() {
                         <ShareIcon size={18} color="#8E8E93" />
                         <Text style={s.mItemTxt}>Share</Text>
                       </TouchableOpacity>
-                      <View style={s.menuHairline} />
                       <TouchableOpacity
-                        style={s.mItem}
+                        style={{ paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }}
                         onPress={closeNotesMenu}
                       >
-                        <X size={18} color="#8E8E93" />
-                        <Text style={[s.mItemTxt, { color: '#8E8E93' }]}>Cancel</Text>
+                        <Text style={{ color: '#FF3B30', fontSize: 15, fontWeight: '700', textAlign: 'center' }}>Cancel</Text>
                       </TouchableOpacity>
                     </View>
                   ) : activeMenuCapsule?.isDeleted ? (
@@ -3571,13 +3572,11 @@ export default function IdeaCapsuleApp() {
                         <Trash2 size={18} color="#FF3B30" />
                         <Text style={[s.mItemTxt, { color: '#FF3B30' }]}>Delete Forever</Text>
                       </TouchableOpacity>
-                      <View style={s.menuHairline} />
                       <TouchableOpacity
-                        style={s.mItem}
+                        style={{ paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }}
                         onPress={closeNotesMenu}
                       >
-                        <X size={18} color="#8E8E93" />
-                        <Text style={[s.mItemTxt, { color: '#8E8E93' }]}>Cancel</Text>
+                        <Text style={{ color: '#FF3B30', fontSize: 15, fontWeight: '700', textAlign: 'center' }}>Cancel</Text>
                       </TouchableOpacity>
                     </View>
                   ) : null}
@@ -3909,17 +3908,14 @@ export default function IdeaCapsuleApp() {
               </>
             ) : null}
 
-            <View style={s.menuDivider} />
-
             <TouchableOpacity
-              style={s.mItem}
+              style={{ paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }}
               onPress={() => {
                 setIsMultiSelectMode(false);
                 setSelectedIds([]);
               }}
             >
-              <X size={18} color="#8E8E93" />
-              <Text style={s.mItemTxt}>Cancel</Text>
+              <Text style={{ color: '#FF3B30', fontSize: 15, fontWeight: '700', textAlign: 'center' }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -3944,7 +3940,7 @@ export default function IdeaCapsuleApp() {
         />
 
         <Modal transparent visible={!!editingCapsule} animationType="fade">
-          <View style={{ flex: 1, backgroundColor: '#FFF' }}>
+          <View style={{ flex: 1, backgroundColor: 'transparent' }}>
             <KeyboardAvoidingView
               behavior="padding"
               keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 15 : 0}
@@ -3959,8 +3955,9 @@ export default function IdeaCapsuleApp() {
                   s.editBoxCenter,
                   {
                     justifyContent: 'flex-start',
-                    paddingTop: insets.top > 0 ? insets.top : (Platform.OS === 'ios' ? 20 : 10),
-                    paddingBottom: isKeyboardActive ? 0 : Math.max(insets.bottom, 8),
+                    paddingTop: 6,
+                    paddingBottom: isKeyboardActive ? 0 : 1,
+                    paddingHorizontal: 10,
                   }
                 ]}
               >
@@ -3968,11 +3965,8 @@ export default function IdeaCapsuleApp() {
                   s.editBox,
                   {
                     width: '100%',
-                    borderRadius: 0,
                     minHeight: '100%',
                     maxHeight: '100%',
-                    elevation: 0,
-                    shadowOpacity: 0,
                   }
                 ]}>
                   <View style={s.editHeader}>
@@ -4112,7 +4106,8 @@ export default function IdeaCapsuleApp() {
                   />
                 </View>
 
-                {/* 并排紧凑的 Category & Tags —— 紧靠在 Done 按钮之上，背景保持一致的纯白色以形成悬浮纸卡质感 */}
+                {/* 并排紧凑的 Category & Tags —— 键盘弹出时自动隐藏以最大化编辑空间 */}
+                {(!isKeyboardActive || isMetaFocused) && (
                 <View style={{
                   flexDirection: 'row',
                   paddingHorizontal: 16,
@@ -4151,8 +4146,10 @@ export default function IdeaCapsuleApp() {
                     />
                   </View>
                 </View>
+                )}
 
-                <View style={[s.editFooter, { backgroundColor: '#FFF', paddingLeft: 8 }]}>
+                <View style={[s.editFooter, { backgroundColor: '#FFF', paddingLeft: 8, ...(isKeyboardActive && !isMetaFocused ? { paddingVertical: 6 } : {}) }]}>
+                  {(!isKeyboardActive || isMetaFocused) && (
                   <View style={{ flex: 1, paddingHorizontal: 12, gap: 4 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                       <Clock size={10} color="#AEAEB2" />
@@ -4186,6 +4183,8 @@ export default function IdeaCapsuleApp() {
                       </View>
                     )}
                   </View>
+                  )}
+                  {isKeyboardActive && !isMetaFocused && <View style={{ flex: 1 }} />}
 
                   <TouchableOpacity style={[s.doneBtnBlack, { borderRadius: 18, paddingHorizontal: 22 }]} onPress={saveEdit}>
                     <Text style={{ color: '#FFF', fontWeight: '800' }}>Done</Text>
@@ -4423,7 +4422,7 @@ function CapsuleCard({
               flexDirection: 'column',
               transform: [{ scale: scaleAnim }]
             },
-            isSelected && { borderWidth: 2, borderColor: '#007AFF' },
+
           ]}
         >
           {/* 顶部：正文 / 标题文字 */}
@@ -4551,7 +4550,7 @@ function CapsuleCard({
             position: 'relative' as const,
             transform: [{ scale: scaleAnim }]
           },
-          isSelected && { borderWidth: 2, borderColor: '#007AFF' },
+
         ]}
       >
         {item.isTodo ? (

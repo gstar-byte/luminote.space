@@ -80,7 +80,7 @@ export function CapsuleReminderSheet({ capsule, onSave, onClose }: Props) {
     }
   };
 
-  const buildAndSave = () => {
+  const buildAndSave = async () => {
     const tempReminderDate = dateMs;
     const tempReminderType = repeatType;
 
@@ -91,7 +91,7 @@ export function CapsuleReminderSheet({ capsule, onSave, onClose }: Props) {
     }
 
     if (Platform.OS !== 'web') {
-      void requestNotificationPermissions();
+      await requestNotificationPermissions();
     }
 
     const next: ReminderConfig = {
