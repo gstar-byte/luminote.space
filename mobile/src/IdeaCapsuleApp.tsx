@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import * as Updates from 'expo-updates';
 import { Svg, Rect, Circle, Ellipse, Path, Defs, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -396,6 +397,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
 };
 
 export default function IdeaCapsuleApp() {
+  const { isUpdatePending } = Updates.useUpdates();
   const searchInputRef = useRef<TextInput>(null);
   const autoStartVoiceRef = useRef(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
@@ -4269,6 +4271,32 @@ export default function IdeaCapsuleApp() {
         />
 
 
+        {/* OTA Update Relaunch Prompt */}
+        {isUpdatePending && (
+          <View style={s.otaUpdateWrapper}>
+            <View style={s.otaUpdateContainer}>
+              <View style={s.otaUpdateTextContainer}>
+                <Text style={s.otaUpdateTitle}>Update Available</Text>
+                <Text style={s.otaUpdateSubtitle}>Lumi Note has been updated. Tap to relaunch.</Text>
+              </View>
+              <TouchableOpacity
+                style={s.otaUpdateButton}
+                activeOpacity={0.8}
+                onPress={async () => {
+                  try {
+                    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    await Updates.reloadAsync();
+                  } catch (err) {
+                    console.error('Relaunch failed:', err);
+                  }
+                }}
+              >
+                <Text style={s.otaUpdateButtonText}>Relaunch</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Floating Toast Notification */}
         {toastMessage && (
           <View style={s.toastWrapper} pointerEvents="none">
@@ -5919,6 +5947,54 @@ const s = StyleSheet.create({
     maxWidth: '85%',
   },
   toastText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  otaUpdateWrapper: {
+    position: 'absolute',
+    bottom: 90,
+    left: 16,
+    right: 16,
+    zIndex: 9999,
+  },
+  otaUpdateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(29, 29, 31, 0.95)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  otaUpdateTextContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  otaUpdateTitle: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  otaUpdateSubtitle: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+  },
+  otaUpdateButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  otaUpdateButtonText: {
     color: '#FFF',
     fontSize: 13,
     fontWeight: '700',
