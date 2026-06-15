@@ -112,12 +112,12 @@ export async function scheduleCapsuleNotification(capsule: Capsule) {
         sound: true,
         priority: Notifications.AndroidNotificationPriority.HIGH,
         data: { capsuleId: capsule.id },
-        ...(Platform.OS === 'android' ? { android: { channelId: 'reminders' } } : {}),
+        ...(Platform.OS === 'android' ? { channelId: 'reminders' } : {}),
       },
       trigger: {
-        type: 'date',
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: new Date(reminderTime),
-      } as any,
+      },
       identifier: capsule.id,
     });
     console.log(`[Notifications] Scheduled alarm for note [${capsule.id}] at ${new Date(reminderTime).toLocaleString()}`);

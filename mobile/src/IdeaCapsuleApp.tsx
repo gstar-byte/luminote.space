@@ -516,7 +516,7 @@ export default function IdeaCapsuleApp() {
             ...(Platform.OS === 'android' ? {
               sticky: true,
               autoDismiss: false,
-              android: { channelId: 'ongoing-channel' },
+              channelId: 'ongoing-channel',
             } : {}),
           },
           trigger: null,
@@ -4714,6 +4714,7 @@ function SidebarRow({
       <Text
         style={[
           s.sideLabelPrimary,
+          { flex: 1 },
           active && { color: '#FFF' },
           !active && { color: '#1D1D1F' }
         ]}
@@ -5340,7 +5341,7 @@ const s = StyleSheet.create({
   sideActive: { backgroundColor: '#007AFF' },
   mark: { width: 6, height: 6, borderRadius: 3 },
   sideLabel: { flex: 1, marginLeft: 6, fontSize: 13, fontWeight: '500', color: '#8E8E93' },
-  sideCount: { fontSize: 10, fontWeight: '800', color: '#C7C7CC', marginRight: 2 },
+  sideCount: { fontSize: 10, fontWeight: '700', color: '#D1D1D6', marginLeft: 8, marginRight: 4 },
   modalRoot: { flex: 1, backgroundColor: 'transparent' },
   modalBackdrop: { backgroundColor: 'rgba(0,0,0,0.35)' },
   modalBackdropStrong: { backgroundColor: 'rgba(0,0,0,0.45)' },

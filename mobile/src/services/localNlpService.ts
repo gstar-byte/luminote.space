@@ -460,10 +460,16 @@ function parseReminder(text: string): {
     };
   }
 
-  // If todo intent but no date/time/recurring → ambiguous
+  // If todo intent but no date/time/recurring → auto-set a smart default reminder
+  // instead of marking ambiguous (since DeepSeek/Gemini may not be available)
   if (isTodo && !reminder) {
-    isAmbiguous = true;
-    clarificationPrompt = `Would you like to set a reminder for "${refinedContent}", or keep it as a plain note?`;
+    const defaultMs = hasReminderIntent
+      ? 60 * 60 * 1000        // 提醒意图 → 1小时后
+      : 2 * 60 * 60 * 1000;   // 活动/社交意图 → 2小时后
+    reminder = {
+      type: 'once',
+      date: now.getTime() + defaultMs,
+    };
   }
 
   return {
