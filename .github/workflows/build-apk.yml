@@ -37,6 +37,8 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Build Android Release APK
+        env:
+          GRADLE_OPTS: -Xmx4096m -XX:MaxMetaspaceSize=1024m
         run: |
           cd mobile/android
           chmod +x gradlew
