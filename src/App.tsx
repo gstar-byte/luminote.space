@@ -2397,8 +2397,8 @@ export default function App() {
         // When FCM is active, the Cron backend already sends a push notification via FCM,
         // so we only show an in-app toast + sound to avoid double system notifications.
         const reminderText = cap.subject || plainTextFromContent(cap.content) || 'You have an active reminder.';
-        if (notificationPermission !== 'granted') {
-          // No FCM active, use local system notification as fallback
+        if (notificationPermission === 'granted') {
+          // Permission granted: show local system notification
           showSystemNotification('Lumi Note Reminder', { body: reminderText });
         }
 

@@ -259,10 +259,9 @@ function parseReminder(text: string): {
   if (cnDurationMatch) {
     const numStr = cnDurationMatch[1];
     const unit = cnDurationMatch[2];
-    const after = cnDurationMatch[3];
-    const hasRelativeKeyword = after || /提醒|记得|别忘了|remind/i.test(text);
-
-    if (hasRelativeKeyword && unit !== '号' && unit !== '日') {
+    // Treat "X分钟/小时/天" as a relative time offset unconditionally
+    // (previously required "后" or reminder keyword — too restrictive)
+    if (unit !== '号' && unit !== '日') {
       let num = parseInt(numStr);
       if (isNaN(num)) {
         num = parseChineseNumber(numStr) || 0;
