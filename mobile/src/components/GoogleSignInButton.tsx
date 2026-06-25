@@ -10,8 +10,7 @@ import {
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { auth } from '../lib/firebaseMobile';
+import { auth, supabase } from '../lib/firebaseMobile';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -97,8 +96,11 @@ function GoogleSignInConfigured({
     }
     (async () => {
       try {
-        const credential = GoogleAuthProvider.credential(idToken);
-        await signInWithCredential(auth, credential);
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: 'google',
+          token: idToken,
+        });
+        if (error) throw error;
       } catch (e) {
         console.error(e);
         Alert.alert('Google sign-in failed', e instanceof Error ? e.message : String(e));

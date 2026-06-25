@@ -11,7 +11,7 @@ export default defineConfig(({mode}) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+            supabase: ['@supabase/supabase-js'],
             editor: [
               '@tiptap/react', 
               '@tiptap/starter-kit', 

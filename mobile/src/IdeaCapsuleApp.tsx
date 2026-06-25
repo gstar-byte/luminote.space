@@ -84,7 +84,7 @@ import {
   Keyboard,
   Clock,
 } from 'lucide-react-native';
-import { onAuthStateChanged, type User } from 'firebase/auth';
+import { onAuthStateChanged, type User } from './lib/firebaseMobile';
 import type { Capsule, FilterType, ReminderConfig, ReminderType, UserProfile, AppSettings } from './types';
 import { PRESET_COLORS } from './constants';
 import { categorizeThought, categorizeThoughtFromAudio } from './services/geminiService';
@@ -975,12 +975,12 @@ export default function IdeaCapsuleApp() {
     if (!user) return;
     const uid = user.uid;
     const q = query(collection(db, 'capsules'), where('userId', '==', uid));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map((d) => ({
+    const unsub = onSnapshot(q, (snapshot: any) => {
+      const docs = snapshot.docs.map((d: any) => ({
         ...(d.data() as Omit<Capsule, 'id'>),
         id: d.id,
       }));
-      const sorted = docs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      const sorted = docs.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
       setCapsules(sorted);
 
       if (sorted.length > 0) {

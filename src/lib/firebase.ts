@@ -1,208 +1,398 @@
-import firebaseConfig from '../../firebase-applet-config.json';
+import { supabase } from './supabaseClient';
 
-let app: any = null;
-let dbInstance: any = null;
-let authInstance: any = null;
-let googleProviderInstance: any = null;
-let appleProviderInstance: any = null;
+// 缓存当前登录用户，以支持同步的 getAuth().currentUser 获取
+let currentAuthUser: any = null;
 
-let firebaseAppModule: any = null;
-let firebaseAuthModule: any = null;
-let firebaseFirestoreModule: any = null;
+// 在文件初始化时异步拉取一次当前 Session，确保同步获取的准确性
+supabase.auth.getSession().then(({ data: { session } }) => {
+  if (session) {
+    currentAuthUser = mapSupabaseUserToFirebase(session.user);
+  }
+});
 
-export async function ensureFirebaseReady() {
-  if (firebaseAppModule && firebaseAuthModule && firebaseFirestoreModule) {
-    return;
-  }
-  
-  // 并行动态导入 Firebase SDK，极大降低首屏未登录包体积
-  const [appMod, authMod, firestoreMod] = await Promise.all([
-    import('firebase/app'),
-    import('firebase/auth'),
-    import('firebase/firestore')
-  ]);
-  
-  firebaseAppModule = appMod;
-  firebaseAuthModule = authMod;
-  firebaseFirestoreModule = firestoreMod;
-  
-  if (!app) {
-    app = firebaseAppModule.initializeApp(firebaseConfig);
-  }
-  if (!dbInstance) {
-    dbInstance = firebaseFirestoreModule.initializeFirestore(app, {
-      localCache: firebaseFirestoreModule.persistentLocalCache({})
-    }, firebaseConfig.firestoreDatabaseId);
-  }
-  if (!authInstance) {
-    authInstance = firebaseAuthModule.getAuth(app);
-  }
-  if (!googleProviderInstance) {
-    googleProviderInstance = new firebaseAuthModule.GoogleAuthProvider();
-  }
-  if (!appleProviderInstance) {
-    appleProviderInstance = new firebaseAuthModule.OAuthProvider('apple.com');
-  }
+function mapSupabaseUserToFirebase(user: any): any {
+  if (!user) return null;
+  return {
+    uid: user.id,
+    email: user.email,
+    displayName: user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Lumi User',
+    photoURL: user.user_metadata?.avatar_url || null,
+  };
 }
 
-// 导出获取实例的同步函数，以保持与 App.tsx 原生同步调用的绝对兼容性
-export function getDb() {
-  if (!dbInstance) {
-    if (!firebaseFirestoreModule) {
-      // 尚未加载就绪时的回退代理（防止抛出 undefined 崩溃）
-      return null as any;
+// 辅助方法：生成随机小写字母+数字的随机ID
+const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
+// 辅助方法：驼峰式命名与蛇形命名互转
+const camelToSnake = (str: string) => str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+const snakeToCamel = (str: string) => str.replace(/([-_][a-z])/g, group => group.toUpperCase().replace('-', '').replace('_', ''));
+
+function toCamelCaseKeys(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(toCamelCaseKeys);
+  const newObj: any = {};
+  for (const key of Object.keys(obj)) {
+    newObj[snakeToCamel(key)] = toCamelCaseKeys(obj[key]);
+  }
+  return newObj;
+}
+
+function toSnakeCaseKeys(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(toSnakeCaseKeys);
+  const newObj: any = {};
+  for (const key of Object.keys(obj)) {
+    if (key === 'reminder' || key === 'tags') {
+      newObj[camelToSnake(key)] = obj[key];
+    } else {
+      newObj[camelToSnake(key)] = toSnakeCaseKeys(obj[key]);
     }
-    dbInstance = firebaseFirestoreModule.getFirestore(app, firebaseConfig.firestoreDatabaseId);
   }
-  return dbInstance;
+  return newObj;
 }
 
-export function getAuth() {
-  if (!authInstance) {
-    if (!firebaseAuthModule) {
-      // 尚未加载就绪时的回退代理（防止抛出 undefined.currentUser 崩溃）
-      return {
-        currentUser: null,
-      } as any;
+export async function ensureFirebaseReady(): Promise<any> {
+  return Promise.resolve();
+}
+
+export function getDb(): any {
+  return supabase;
+}
+
+export function getAuth(): any {
+  return {
+    get currentUser() {
+      return currentAuthUser;
     }
-    authInstance = firebaseAuthModule.getAuth(app);
-  }
-  return authInstance;
+  } as any;
 }
 
-export function getGoogleProvider() {
-  if (!googleProviderInstance) {
-    if (!firebaseAuthModule) {
-      return null as any;
-    }
-    googleProviderInstance = new firebaseAuthModule.GoogleAuthProvider();
-  }
-  return googleProviderInstance;
+// Mock Provider 以兼容原有的 Google / Apple Provider 初始化
+export function getGoogleProvider(): any {
+  return { providerId: 'google.com' };
 }
 
-export function getAppleProvider() {
-  if (!appleProviderInstance) {
-    if (!firebaseAuthModule) {
-      return null as any;
-    }
-    appleProviderInstance = new firebaseAuthModule.OAuthProvider('apple.com');
-  }
-  return appleProviderInstance;
+export function getAppleProvider(): any {
+  return { providerId: 'apple.com' };
 }
 
-// 辅助方法：确保 Firestore 模块已就绪的快捷获取
-function getFirestoreModule() {
-  if (!firebaseFirestoreModule) {
-    throw new Error('Firestore is not loaded yet. Make sure you await ensureFirebaseReady() first.');
+// 模拟 Firestore 引用模型，兼容 doc(db, path, id) 和 doc(collectionRef, id?) 两种形式
+export const doc = (parent: any, path?: string, id?: string): any => {
+  if (parent && parent.collection) {
+    // 形式是 doc(collectionRef, id?)
+    const collectionName = parent.collection;
+    const docId = path || generateId();
+    return {
+      collection: collectionName,
+      id: docId,
+      path: `${collectionName}/${docId}`
+    };
+  } else {
+    // 形式是 doc(db, path, id?)
+    const parts = path ? path.split('/') : [];
+    const collectionName = parts[0];
+    const docId = id || parts[1] || generateId();
+    return {
+      collection: collectionName,
+      id: docId,
+      path: docId ? `${collectionName}/${docId}` : collectionName
+    };
   }
-  return firebaseFirestoreModule;
-}
-
-// 同步辅助函数：这些在已登录的组件渲染中是同步调用的。
-// 因为组件是在 ensureFirebaseReady() 完成后才真正激活数据操作，所以它们可以安全地同步调用已就绪的模块。
-export const doc = (...args: any[]) => getFirestoreModule().doc(...args);
-export const collection = (...args: any[]) => getFirestoreModule().collection(...args);
-export const query = (...args: any[]) => getFirestoreModule().query(...args);
-export const where = (...args: any[]) => getFirestoreModule().where(...args);
-export const writeBatch = (...args: any[]) => getFirestoreModule().writeBatch(...args);
-export const serverTimestamp = () => getFirestoreModule().serverTimestamp();
-export const deleteField = () => getFirestoreModule().deleteField();
-
-// 异步写/查操作：直接包装成 async 函数，对外界完全透明且更加安全
-export const setDoc = async (...args: any[]) => {
-  await ensureFirebaseReady();
-  return firebaseFirestoreModule.setDoc(...args);
 };
 
-export const getDocs = async (...args: any[]) => {
-  await ensureFirebaseReady();
-  return firebaseFirestoreModule.getDocs(...args);
-};
-
-export const addDoc = async (...args: any[]) => {
-  await ensureFirebaseReady();
-  return firebaseFirestoreModule.addDoc(...args);
-};
-
-export const updateDoc = async (...args: any[]) => {
-  await ensureFirebaseReady();
-  return firebaseFirestoreModule.updateDoc(...args);
-};
-
-export const deleteDoc = async (...args: any[]) => {
-  await ensureFirebaseReady();
-  return firebaseFirestoreModule.deleteDoc(...args);
-};
-
-// 带有事件解绑的订阅操作：返回一个可以同步注销的代理函数
-export const onSnapshot = (reference: any, callback: any, onError?: any) => {
-  let unsub: (() => void) | null = null;
-  let isCancelled = false;
-
-  ensureFirebaseReady().then(() => {
-    if (isCancelled) return;
-    unsub = firebaseFirestoreModule.onSnapshot(reference, callback, onError);
-  });
-
-  return () => {
-    isCancelled = true;
-    if (unsub) unsub();
+export const collection = (dbInstance: any, path: string): any => {
+  return {
+    collection: path,
+    path: path
   };
 };
 
-// Auth 相关异步操作
-export const signInWithPopup = async (...args: any[]) => {
-  await ensureFirebaseReady();
-  // 无论外界传进来的是什么，都使用真正实例化后的 getAuth()
-  return firebaseAuthModule.signInWithPopup(getAuth(), getGoogleProvider());
+// 模拟查询构造器
+export const query = (colRef: any, ...constraints: any[]): any => {
+  return {
+    collection: colRef.collection,
+    constraints: constraints
+  };
 };
 
-export const signInWithRedirect = async (...args: any[]) => {
-  await ensureFirebaseReady();
-  return firebaseAuthModule.signInWithRedirect(getAuth(), getGoogleProvider());
+export const where = (field: string, op: string, value: any): any => {
+  return {
+    field: camelToSnake(field),
+    op,
+    value
+  };
 };
 
-export const getRedirectResult = async (...args: any[]) => {
-  await ensureFirebaseReady();
-  return firebaseAuthModule.getRedirectResult(getAuth());
+// 用以删除字段的占位标识
+export const deleteField = (): any => {
+  return '__DELETE_FIELD__';
 };
 
-export const signOut = async (...args: any[]) => {
-  await ensureFirebaseReady();
-  return firebaseAuthModule.signOut(getAuth());
+// 写操作
+export const setDoc = async (docRef: any, data: any, options?: { merge?: boolean }): Promise<any> => {
+  const tableName = docRef.collection === 'users' ? 'profiles' : docRef.collection;
+  const rawPayload = { ...data };
+  
+  // 清理 deleteField 的字段
+  for (const key of Object.keys(rawPayload)) {
+    if (rawPayload[key] === '__DELETE_FIELD__') {
+      delete rawPayload[key];
+    }
+  }
+
+  const payload = toSnakeCaseKeys(rawPayload);
+  payload.id = docRef.id;
+
+  const { error } = await supabase.from(tableName).upsert(payload);
+  if (error) throw error;
 };
 
-export const createUserWithEmailAndPassword = async (ignoredAuth: any, ...args: any[]) => {
-  await ensureFirebaseReady();
-  return firebaseAuthModule.createUserWithEmailAndPassword(getAuth(), ...args);
+export const updateDoc = async (docRef: any, data: any): Promise<any> => {
+  const tableName = docRef.collection === 'users' ? 'profiles' : docRef.collection;
+  const payload = toSnakeCaseKeys(data);
+  
+  const { error } = await supabase.from(tableName).update(payload).eq('id', docRef.id);
+  if (error) throw error;
 };
 
-export const signInWithEmailAndPassword = async (ignoredAuth: any, ...args: any[]) => {
-  await ensureFirebaseReady();
-  return firebaseAuthModule.signInWithEmailAndPassword(getAuth(), ...args);
+export const deleteDoc = async (docRef: any): Promise<any> => {
+  const tableName = docRef.collection === 'users' ? 'profiles' : docRef.collection;
+  const { error } = await supabase.from(tableName).delete().eq('id', docRef.id);
+  if (error) throw error;
 };
 
-export const sendPasswordResetEmail = async (ignoredAuth: any, ...args: any[]) => {
-  await ensureFirebaseReady();
-  return firebaseAuthModule.sendPasswordResetEmail(getAuth(), ...args);
+export const addDoc = async (colRef: any, data: any): Promise<any> => {
+  const tableName = colRef.collection === 'users' ? 'profiles' : colRef.collection;
+  const payload = toSnakeCaseKeys(data);
+  const { data: insertedData, error } = await supabase.from(tableName).insert(payload).select().single();
+  if (error) throw error;
+  return {
+    id: insertedData.id,
+    data: () => toCamelCaseKeys(insertedData),
+    get ref() {
+      return doc(supabase, tableName === 'profiles' ? 'users' : tableName, insertedData.id);
+    }
+  };
 };
 
-export const updateProfile = async (ignoredAuth: any, ...args: any[]) => {
-  await ensureFirebaseReady();
-  return firebaseAuthModule.updateProfile(getAuth(), ...args);
+export const getDocs = async (queryRef: any): Promise<any> => {
+  const tableName = queryRef.collection === 'users' ? 'profiles' : queryRef.collection;
+  let builder: any = supabase.from(tableName).select();
+
+  if (queryRef.constraints) {
+    for (const c of queryRef.constraints) {
+      if (c.op === '==') {
+        builder = builder.eq(c.field, c.value);
+      }
+    }
+  }
+
+  const { data, error } = await builder;
+  if (error) throw error;
+
+  return {
+    docs: (data || []).map(item => {
+      const docData = toCamelCaseKeys(item);
+      return {
+        id: item.id,
+        data: () => docData,
+        get ref() {
+          return doc(supabase, tableName === 'profiles' ? 'users' : tableName, item.id);
+        }
+      };
+    })
+  };
 };
 
-export const onAuthStateChanged = (ignoredAuth: any, callback: any) => {
-  let unsub: (() => void) | null = null;
-  let isCancelled = false;
+// 模拟 writeBatch
+export const writeBatch = (dbInstance?: any): any => {
+  const operations: Array<() => Promise<void>> = [];
+  return {
+    set(docRef: any, data: any, options?: any) {
+      operations.push(() => setDoc(docRef, data, options));
+    },
+    update(docRef: any, data: any) {
+      operations.push(() => updateDoc(docRef, data));
+    },
+    delete(docRef: any) {
+      operations.push(() => deleteDoc(docRef));
+    },
+    async commit() {
+      await Promise.all(operations.map(op => op()));
+    }
+  };
+};
 
-  ensureFirebaseReady().then(() => {
-    if (isCancelled) return;
-    unsub = firebaseAuthModule.onAuthStateChanged(getAuth(), callback);
+// 实时快照订阅适配
+export const onSnapshot = (ref: any, callback: (snapshot: any) => void, onError?: (error: any) => void): any => {
+  let isUnsubscribed = false;
+  const tableName = ref.collection === 'users' ? 'profiles' : ref.collection;
+  
+  // 建立一次初次拉取函数
+  const fetchData = async () => {
+    try {
+      let builder: any = supabase.from(tableName).select();
+      
+      // 单个文档监听场景
+      if (ref.id) {
+        builder = builder.eq('id', ref.id);
+      } else if (ref.constraints) {
+        // 条件查询监听场景
+        for (const c of ref.constraints) {
+          if (c.op === '==') {
+            builder = builder.eq(c.field, c.value);
+          }
+        }
+      }
+
+      const { data, error } = await builder;
+      if (error) {
+        if (onError) onError(error);
+        return;
+      }
+
+      if (isUnsubscribed) return;
+
+      if (ref.id) {
+        // 模拟单一文档快照
+        const docItem = data && data[0];
+        callback({
+          exists: () => !!docItem,
+          data: () => docItem ? toCamelCaseKeys(docItem) : null
+        });
+      } else {
+        // 模拟查询快照
+        callback({
+          metadata: { fromCache: false },
+          docs: (data || []).map(item => {
+            const docData = toCamelCaseKeys(item);
+            return {
+              id: item.id,
+              data: () => docData,
+              get ref() {
+                return doc(supabase, tableName === 'profiles' ? 'users' : tableName, item.id);
+              }
+            };
+          })
+        });
+      }
+    } catch (e) {
+      if (onError) onError(e);
+    }
+  };
+
+  // 初次拉取
+  fetchData();
+
+  // 建立实时通道以订阅变更并重新拉取
+  const channel = supabase
+    .channel(`${tableName}-changes`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, () => {
+      if (!isUnsubscribed) {
+        fetchData();
+      }
+    })
+    .subscribe();
+
+  return () => {
+    isUnsubscribed = true;
+    supabase.removeChannel(channel);
+  };
+};
+
+// Auth 鉴权适配
+export const signInWithPopup = async (authInstance: any, provider: any): Promise<any> => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: provider.providerId === 'google.com' ? 'google' : 'apple',
+    options: {
+      redirectTo: window.location.origin
+    }
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const signInWithRedirect = async (authInstance: any, provider: any): Promise<any> => {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: provider.providerId === 'google.com' ? 'google' : 'apple',
+    options: {
+      redirectTo: window.location.origin
+    }
+  });
+  if (error) throw error;
+};
+
+export const getRedirectResult = async (...args: any[]): Promise<any> => {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  if (!session) return null;
+  return {
+    user: mapSupabaseUserToFirebase(session.user)
+  };
+};
+
+export const signOut = async (...args: any[]): Promise<any> => {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+  currentAuthUser = null;
+};
+
+export const createUserWithEmailAndPassword = async (authInst: any, email: string, pass: string): Promise<any> => {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password: pass
+  });
+  if (error) throw error;
+  currentAuthUser = mapSupabaseUserToFirebase(data.user);
+  return {
+    user: currentAuthUser
+  };
+};
+
+export const signInWithEmailAndPassword = async (authInst: any, email: string, pass: string): Promise<any> => {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password: pass
+  });
+  if (error) throw error;
+  currentAuthUser = mapSupabaseUserToFirebase(data.user);
+  return {
+    user: currentAuthUser
+  };
+};
+
+export const sendPasswordResetEmail = async (authInst: any, email: string): Promise<any> => {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`
+  });
+  if (error) throw error;
+};
+
+export const updateProfile = async (authInst: any, data: { displayName?: string; photoURL?: string }): Promise<any> => {
+  const { error } = await supabase.auth.updateUser({
+    data: {
+      display_name: data.displayName,
+      avatar_url: data.photoURL
+    }
+  });
+  if (error) throw error;
+  if (currentAuthUser) {
+    currentAuthUser.displayName = data.displayName || currentAuthUser.displayName;
+    currentAuthUser.photoURL = data.photoURL || currentAuthUser.photoURL;
+  }
+};
+
+export const onAuthStateChanged = (authInst: any, callback: (user: any) => void): any => {
+  // 初次触发当前缓存用户
+  callback(currentAuthUser);
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const firebaseUser = session ? mapSupabaseUserToFirebase(session.user) : null;
+    currentAuthUser = firebaseUser;
+    callback(firebaseUser);
   });
 
   return () => {
-    isCancelled = true;
-    if (unsub) unsub();
+    subscription.unsubscribe();
   };
 };
