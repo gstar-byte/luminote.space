@@ -5,15 +5,7 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
-    },
-    {
-      "source": "/__/auth/:path*",
-      "destination": "https://ai-studio-applet-webapp-e17fe.firebaseapp.com/__/auth/:path*"
-    },
-    {
-      "source": "/((?!api/|__/auth/|.*\\.).*)",
+      "source": "/((?!.*\\.).*)",
       "destination": "/index.html"
     }
   ],
