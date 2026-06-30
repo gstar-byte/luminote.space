@@ -2,11 +2,25 @@ import { supabase } from './supabaseClient';
 
 let currentAuthUser: any = null;
 
+let initialSessionPromise: Promise<any> | null = null;
+
 supabase.auth.getSession().then(({ data: { session } }) => {
   if (session) {
     currentAuthUser = mapSupabaseUser(session.user);
   }
 });
+
+function ensureInitialSession(): Promise<any> {
+  if (!initialSessionPromise) {
+    initialSessionPromise = supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        currentAuthUser = mapSupabaseUser(session.user);
+      }
+      return currentAuthUser;
+    });
+  }
+  return initialSessionPromise;
+}
 
 function mapSupabaseUser(user: any): any {
   if (!user) return null;
@@ -363,7 +377,13 @@ export const updateProfile = async (authInst: any, data: { displayName?: string;
 };
 
 export const onAuthStateChanged = (authInst: any, callback: (user: any) => void): any => {
-  callback(currentAuthUser);
+  let isUnsubscribed = false;
+
+  ensureInitialSession().then((user) => {
+    if (!isUnsubscribed) {
+      callback(user);
+    }
+  });
 
   const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
     const mappedUser = session ? mapSupabaseUser(session.user) : null;
@@ -372,6 +392,7 @@ export const onAuthStateChanged = (authInst: any, callback: (user: any) => void)
   });
 
   return () => {
+    isUnsubscribed = true;
     subscription.unsubscribe();
   };
 };
