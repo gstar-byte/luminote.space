@@ -1,16 +1,14 @@
 import { supabase } from './supabaseClient';
 
-// 缓存当前登录用户，以支持同步的 getAuth().currentUser 获取
 let currentAuthUser: any = null;
 
-// 在文件初始化时异步拉取一次当前 Session，确保同步获取的准确性
 supabase.auth.getSession().then(({ data: { session } }) => {
   if (session) {
-    currentAuthUser = mapSupabaseUserToFirebase(session.user);
+    currentAuthUser = mapSupabaseUser(session.user);
   }
 });
 
-function mapSupabaseUserToFirebase(user: any): any {
+function mapSupabaseUser(user: any): any {
   if (!user) return null;
   return {
     uid: user.id,
@@ -51,7 +49,7 @@ function toSnakeCaseKeys(obj: any): any {
   return newObj;
 }
 
-export async function ensureFirebaseReady(): Promise<any> {
+export async function ensureReady(): Promise<any> {
   return Promise.resolve();
 }
 
@@ -67,7 +65,6 @@ export function getAuth(): any {
   } as any;
 }
 
-// Mock Provider 以兼容原有的 Google / Apple Provider 初始化
 export function getGoogleProvider(): any {
   return { providerId: 'google.com' };
 }
@@ -76,10 +73,8 @@ export function getAppleProvider(): any {
   return { providerId: 'apple.com' };
 }
 
-// 模拟 Firestore 引用模型，兼容 doc(db, path, id) 和 doc(collectionRef, id?) 两种形式
 export const doc = (parent: any, path?: string, id?: string): any => {
   if (parent && parent.collection) {
-    // 形式是 doc(collectionRef, id?)
     const collectionName = parent.collection;
     const docId = path || generateId();
     return {
@@ -88,7 +83,6 @@ export const doc = (parent: any, path?: string, id?: string): any => {
       path: `${collectionName}/${docId}`
     };
   } else {
-    // 形式是 doc(db, path, id?)
     const parts = path ? path.split('/') : [];
     const collectionName = parts[0];
     const docId = id || parts[1] || generateId();
@@ -107,7 +101,6 @@ export const collection = (dbInstance: any, path: string): any => {
   };
 };
 
-// 模拟查询构造器
 export const query = (colRef: any, ...constraints: any[]): any => {
   return {
     collection: colRef.collection,
@@ -123,17 +116,14 @@ export const where = (field: string, op: string, value: any): any => {
   };
 };
 
-// 用以删除字段的占位标识
 export const deleteField = (): any => {
   return '__DELETE_FIELD__';
 };
 
-// 写操作
 export const setDoc = async (docRef: any, data: any, options?: { merge?: boolean }): Promise<any> => {
   const tableName = docRef.collection === 'users' ? 'profiles' : docRef.collection;
   const rawPayload = { ...data };
   
-  // 清理 deleteField 的字段
   for (const key of Object.keys(rawPayload)) {
     if (rawPayload[key] === '__DELETE_FIELD__') {
       delete rawPayload[key];
@@ -204,7 +194,6 @@ export const getDocs = async (queryRef: any): Promise<any> => {
   };
 };
 
-// 模拟 writeBatch
 export const writeBatch = (dbInstance?: any): any => {
   const operations: Array<() => Promise<void>> = [];
   return {
@@ -223,21 +212,17 @@ export const writeBatch = (dbInstance?: any): any => {
   };
 };
 
-// 实时快照订阅适配
 export const onSnapshot = (ref: any, callback: (snapshot: any) => void, onError?: (error: any) => void): any => {
   let isUnsubscribed = false;
   const tableName = ref.collection === 'users' ? 'profiles' : ref.collection;
   
-  // 建立一次初次拉取函数
   const fetchData = async () => {
     try {
       let builder: any = supabase.from(tableName).select();
       
-      // 单个文档监听场景
       if (ref.id) {
         builder = builder.eq('id', ref.id);
       } else if (ref.constraints) {
-        // 条件查询监听场景
         for (const c of ref.constraints) {
           if (c.op === '==') {
             builder = builder.eq(c.field, c.value);
@@ -254,14 +239,12 @@ export const onSnapshot = (ref: any, callback: (snapshot: any) => void, onError?
       if (isUnsubscribed) return;
 
       if (ref.id) {
-        // 模拟单一文档快照
         const docItem = data && data[0];
         callback({
           exists: () => !!docItem,
           data: () => docItem ? toCamelCaseKeys(docItem) : null
         });
       } else {
-        // 模拟查询快照
         callback({
           metadata: { fromCache: false },
           docs: (data || []).map(item => {
@@ -281,10 +264,8 @@ export const onSnapshot = (ref: any, callback: (snapshot: any) => void, onError?
     }
   };
 
-  // 初次拉取
   fetchData();
 
-  // 建立实时通道以订阅变更并重新拉取
   const channel = supabase
     .channel(`${tableName}-changes`)
     .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, () => {
@@ -300,7 +281,6 @@ export const onSnapshot = (ref: any, callback: (snapshot: any) => void, onError?
   };
 };
 
-// Auth 鉴权适配
 export const signInWithPopup = async (authInstance: any, provider: any): Promise<any> => {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: provider.providerId === 'google.com' ? 'google' : 'apple',
@@ -327,7 +307,7 @@ export const getRedirectResult = async (...args: any[]): Promise<any> => {
   if (error) throw error;
   if (!session) return null;
   return {
-    user: mapSupabaseUserToFirebase(session.user)
+    user: mapSupabaseUser(session.user)
   };
 };
 
@@ -343,7 +323,7 @@ export const createUserWithEmailAndPassword = async (authInst: any, email: strin
     password: pass
   });
   if (error) throw error;
-  currentAuthUser = mapSupabaseUserToFirebase(data.user);
+  currentAuthUser = mapSupabaseUser(data.user);
   return {
     user: currentAuthUser
   };
@@ -355,7 +335,7 @@ export const signInWithEmailAndPassword = async (authInst: any, email: string, p
     password: pass
   });
   if (error) throw error;
-  currentAuthUser = mapSupabaseUserToFirebase(data.user);
+  currentAuthUser = mapSupabaseUser(data.user);
   return {
     user: currentAuthUser
   };
@@ -383,13 +363,12 @@ export const updateProfile = async (authInst: any, data: { displayName?: string;
 };
 
 export const onAuthStateChanged = (authInst: any, callback: (user: any) => void): any => {
-  // 初次触发当前缓存用户
   callback(currentAuthUser);
 
   const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-    const firebaseUser = session ? mapSupabaseUserToFirebase(session.user) : null;
-    currentAuthUser = firebaseUser;
-    callback(firebaseUser);
+    const mappedUser = session ? mapSupabaseUser(session.user) : null;
+    currentAuthUser = mappedUser;
+    callback(mappedUser);
   });
 
   return () => {

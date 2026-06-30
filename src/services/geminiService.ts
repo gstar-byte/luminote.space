@@ -62,7 +62,7 @@ export async function categorizeThought(text: string): Promise<{ title?: string 
           }
         }
         
-        // Final sanity check to avoid corrupt NaN values in Firestore
+        // Final sanity check to avoid corrupt NaN values in DB
         if (isNaN(finalReminder.date)) {
           finalReminder = undefined;
         }
