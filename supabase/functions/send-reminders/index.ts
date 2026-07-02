@@ -6,6 +6,7 @@ const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY")!;
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const CRON_SECRET = Deno.env.get("CRON_SECRET") || "lumi-cron-2026";
 
 webpush.setVapidDetails(
   "mailto:admin@luminote.space",
@@ -14,9 +15,9 @@ webpush.setVapidDetails(
 );
 
 Deno.serve(async (req) => {
-  // 允许来自 pg_cron / 内部调用
+  // 使用自定义 CRON_SECRET 验证，避免新旧 JWT 密钥不匹配
   const authHeader = req.headers.get("Authorization");
-  if (authHeader !== `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`) {
+  if (authHeader !== `Bearer ${CRON_SECRET}`) {
     return new Response("Unauthorized", { status: 401 });
   }
 
