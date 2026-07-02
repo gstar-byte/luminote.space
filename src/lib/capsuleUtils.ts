@@ -28,7 +28,11 @@ interface DbErrorInfo {
 }
 
 export function handleDbError(error: unknown, operationType: OperationType, path: string | null) {
-  const errorMsg = error instanceof Error ? error.message : String(error);
+  const errorMsg = error instanceof Error
+    ? error.message
+    : (error && typeof error === 'object' && 'message' in error)
+      ? String((error as any).message)
+      : String(error);
 
   const errInfo: DbErrorInfo = {
     error: errorMsg,

@@ -1522,6 +1522,7 @@ export default function App() {
         console.log('[handleCreate] saved successfully to Firestore:', docRef.id);
       }).catch(err => {
         console.error('[handleCreate] Firestore setDoc failed:', err);
+        handleDbError(err, OperationType.CREATE, 'capsules');
       });
       
       // Manage ClarificationPill state
