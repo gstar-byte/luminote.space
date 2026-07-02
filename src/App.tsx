@@ -3228,9 +3228,17 @@ export default function App() {
                 </div>
               ) : (
                 <div className="h-64 flex flex-col items-center justify-center text-[#8E8E93] col-span-full">
-                  <div className="w-16 h-16 bg-[#E5E5EA] rounded-full flex items-center justify-center mb-4">
+                  <button
+                    type="button"
+                    title="Create a new capsule"
+                    onClick={() => {
+                      setIsCaptureCollapsed(false);
+                      setQuickCaptureMode('text');
+                    }}
+                    className="w-16 h-16 bg-[#E5E5EA] hover:bg-[#D1D1D6] dark:bg-[#3A3A3C] dark:hover:bg-[#48484A] rounded-full flex items-center justify-center mb-4 cursor-pointer active:scale-95 transition-all"
+                  >
                     <Plus size={32} />
-                  </div>
+                  </button>
                   <p className="text-sm font-medium mb-4">No capsules found in this view.</p>
                   <div className="flex gap-3">
                     {/* 仅在数据同步完成、确认该用户从未创建过笔记时才显示 Generate Demo */}
