@@ -123,3 +123,33 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
+// ========================
+// Web Push 服务端推送支持
+// ========================
+// 当 Supabase Edge Function 通过 Web Push API 发来推送时触发
+// 即使页面关闭、浏览器在后台也能接收
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  let data;
+  try {
+    data = event.data.json();
+  } catch {
+    data = { title: 'Lumi Note Reminder', body: event.data.text() };
+  }
+
+  const title = data.title || 'Lumi Note Reminder';
+  const options = {
+    body: data.body || '',
+    tag: data.tag || 'lumi-push-' + Date.now(),
+    icon: data.icon || '/favicon-192-v18.png',
+    badge: data.badge || '/favicon-48-v18.png',
+    data: data.data || {},
+    requireInteraction: true
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
+});

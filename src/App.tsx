@@ -112,6 +112,7 @@ export interface User {
 void ensureReady();
 
 import { showSystemNotification } from './lib/notifications';
+import { subscribeToPush } from './lib/webPush';
 import { cn } from './lib/utils';
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
@@ -2202,15 +2203,15 @@ export default function App() {
     };
   }, [allCapsules, updateCapsule, user]);
 
-  // FCM Web Push Token Registration (Disabled since migrating to Supabase)
+  // Web Push 订阅 — 用户登录且授权通知后自动订阅，实现关闭页面也能收到提醒
   useEffect(() => {
     if (!user || notificationPermission !== 'granted') return;
-
-    const setupWebPush = async () => {
-      console.log('[Supabase Migration] Native Web Push is disabled or handled by browser worker.');
-    };
-
-    const timer = setTimeout(setupWebPush, 2000);
+    // 延迟 2 秒等 SW 就绪
+    const timer = setTimeout(() => {
+      subscribeToPush(user.uid).catch(err =>
+        console.warn('[WebPush] 自动订阅失败:', err)
+      );
+    }, 2000);
     return () => clearTimeout(timer);
   }, [user, notificationPermission]);
 

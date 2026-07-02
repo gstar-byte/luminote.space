@@ -12,3 +12,6 @@ coverage/
 serviceAccountKey.json
 scratch/
 
+
+# VAPID private keys
+.vapid-keys
