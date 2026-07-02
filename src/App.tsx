@@ -1169,7 +1169,8 @@ export default function App() {
     };
 
     // Auto-repair onboarding status for old users who already have notes
-    if (user && (allCapsules.length > 0 || hasSeededOrCreated) && !hasSeenTutorial && isDbReady) {
+    // isSyncFinished 后才执行，确保数据已加载，避免 0 条 notes 的误判窗口期
+    if (user && isSyncFinished && (allCapsules.length > 0 || hasSeededOrCreated) && !hasSeenTutorial && isDbReady) {
       safeLocalStorageSet(ONBOARDING_STORAGE_KEY, 'true');
       const updatedUser = { ...user, onboarded: true };
       setUser(updatedUser);
@@ -1182,12 +1183,14 @@ export default function App() {
 
     // Only trigger tour if fully loaded, user is logged in, has not seen tutorial, has 0 notes, and cloud sync finished
     // 额外增加 !hasSeededOrCreated 检查：老用户即使暂时 capsules 为空也不触发 tour
-    if (!authLoading && !dataLoading && user && !hasSeenTutorial && !hasSeededOrCreated && !tourActive.current && allCapsules.length === 0 && isSyncFinished) {
+    // 追加 !dataLoading 双重保险：确保数据加载完毕再判断
+    if (!authLoading && !dataLoading && isSyncFinished && user && !hasSeenTutorial && !hasSeededOrCreated && !tourActive.current && allCapsules.length === 0) {
        setTimeout(() => {
-         if ((window as any).startTour && !tourActive.current) {
+         // 再次检查，防止延迟期间状态已变化
+         if ((window as any).startTour && !tourActive.current && !hasSeenTutorial) {
            (window as any).startTour();
          }
-       }, 1500); // 1.5s delay for stable trigger
+       }, 2000); // 延长到 2s，等待 Supabase 数据完全稳定
     }
   }, [user, authLoading, dataLoading, allCapsules.length, hasSeenTutorial, hasSeededOrCreated, isSyncFinished, isDbReady]);
 
@@ -2171,21 +2174,30 @@ export default function App() {
     syncRemindersToSW();
 
     const interval = setInterval(checkReminders, 8000);
-    
-    // Listen to foreground/visibility focus transitions to instantly trigger reminders (no background lag)
+
+    // 防抖锁：切回标签时 visibilitychange + focus 会同时触发，
+    // 用时间戳保证 2 秒内只执行一次，避免弹出两张提醒卡片
+    let lastForegroundCheck = 0;
+    const debouncedForegroundCheck = () => {
+      const now = Date.now();
+      if (now - lastForegroundCheck < 2000) return;
+      lastForegroundCheck = now;
+      checkReminders();
+      syncRemindersToSW();
+    };
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        checkReminders();
-        syncRemindersToSW();
+        debouncedForegroundCheck();
       }
     };
-    
-    window.addEventListener('focus', checkReminders);
+
+    window.addEventListener('focus', debouncedForegroundCheck);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+
     return () => {
       clearInterval(interval);
-      window.removeEventListener('focus', checkReminders);
+      window.removeEventListener('focus', debouncedForegroundCheck);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [allCapsules, updateCapsule, user]);
