@@ -41,15 +41,21 @@ async function scheduleReminder(reminder) {
   const delay = reminder.date - now;
   // Ensure the delay doesn't overflow standard 32-bit signed integer (approx. 24.8 days)
   if (delay < 2147483647) {
-    const timerId = setTimeout(() => {
-      self.registration.showNotification(title, {
-        body: options.body,
-        tag: options.tag,
-        icon: options.icon,
-        badge: options.badge,
-        data: options.data,
-        requireInteraction: options.requireInteraction
-      });
+    const timerId = setTimeout(async () => {
+      // 如果页面当前处于前台（用户正在看），则跳过系统通知
+      // 前台由应用内白色卡片处理，避免重复通知
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const hasFocusedClient = clients.some(c => c.visibilityState === 'visible');
+      if (!hasFocusedClient) {
+        self.registration.showNotification(title, {
+          body: options.body,
+          tag: options.tag,
+          icon: options.icon,
+          badge: options.badge,
+          data: options.data,
+          requireInteraction: options.requireInteraction
+        });
+      }
       // Remove from active list once fired
       activeTimers = activeTimers.filter(t => t.id !== reminder.id);
     }, delay);

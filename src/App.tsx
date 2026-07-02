@@ -2083,14 +2083,11 @@ export default function App() {
         // If it's active (expired within last 60 seconds) and hasn't been fired yet:
         if (notifiedIdsRef.current.has(cap.id)) return;
 
-        // Trigger notifications — only show system notification if FCM push is NOT active.
-        // When FCM is active, the Cron backend already sends a push notification via FCM,
-        // so we only show an in-app toast + sound to avoid double system notifications.
+        // 前台时仅展示应用内白色卡片（下方 setFiredReminders）。
+        // 原生系统通知（黑色OS弹窗）由 notification-sw.js 在后台独立处理，
+        // 避免前台同时出现两套通知。
         const reminderText = cap.subject || plainTextFromContent(cap.content) || 'You have an active reminder.';
-        if (notificationPermission === 'granted') {
-          // Permission granted: show local system notification
-          showSystemNotification('Lumi Note Reminder', { body: reminderText });
-        }
+        void reminderText; // 保留变量供未来使用，防止 lint unused 警告
 
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
           navigator.vibrate([150, 80, 150]);
