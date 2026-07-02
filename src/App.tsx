@@ -320,6 +320,41 @@ export default function App() {
   const appStartTime = useRef(Date.now());
   const recentColorsRef = useRef<number[]>([]); // track last used color indices
 
+  // 12-color shuffle queue: 打乱顺序循环取色，12个内永不重复，localStorage 持久化
+  const colorQueueRef = useRef<number[]>((() => {
+    try {
+      const saved = localStorage.getItem('luminote_color_queue');
+      if (saved) {
+        const parsed = JSON.parse(saved) as number[];
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed.every(n => n >= 0 && n < PRESET_COLORS.length)) {
+          return parsed;
+        }
+      }
+    } catch {}
+    // 初始化：Fisher-Yates 洗牌
+    const arr = PRESET_COLORS.map((_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  })());
+
+  const pickNextColor = (): string => {
+    if (colorQueueRef.current.length === 0) {
+      // 队列用完，重新洗牌
+      const arr = PRESET_COLORS.map((_, i) => i);
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      colorQueueRef.current = arr;
+    }
+    const idx = colorQueueRef.current.shift()!;
+    try { localStorage.setItem('luminote_color_queue', JSON.stringify(colorQueueRef.current)); } catch {}
+    return PRESET_COLORS[idx];
+  };
+
   // Dynamically update document title based on fired (unread) reminders count
   useEffect(() => {
     const count = firedReminders.length;
@@ -1400,16 +1435,8 @@ export default function App() {
       console.log('[handleCreate] parsed result:', JSON.stringify(parsed));
       const { title, category, tags, refinedContent, isTodo, reminder, isStarred, isPinned } = parsed;
       
-      // Select a color ensuring differentiation within last 8 notes
-      const recent = recentColorsRef.current;
-      const avoidSet = new Set(recent.slice(-7)); // avoid last 7 used colors
-      const available = PRESET_COLORS.map((_, i) => i).filter((i) => !avoidSet.has(i));
-      const colorIndex = available.length > 0
-        ? available[Math.floor(Math.random() * available.length)]
-        : Math.floor(Math.random() * PRESET_COLORS.length);
-      recent.push(colorIndex);
-      if (recent.length > 7) recent.shift(); // keep last 7
-      const randomColor = PRESET_COLORS[colorIndex];
+      // 从洗牌队列中取下一个颜色，12个内不重复
+      const randomColor = pickNextColor();
       
       const hasReminder = Boolean(reminder && typeof reminder === 'object' && reminder.type && reminder.type !== 'none');
       const hasStar = Boolean(isStarred);
