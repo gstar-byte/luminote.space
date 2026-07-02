@@ -331,8 +331,9 @@ export const onSnapshot = (ref: any, callback: (snapshot: any) => void, onError?
 
   fetchData();
 
+  const channelId = `${tableName}-changes-${Math.random().toString(36).slice(2, 9)}`;
   const channel = supabase
-    .channel(`${tableName}-changes`)
+    .channel(channelId)
     .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, () => {
       if (!isUnsubscribed) {
         fetchData();
