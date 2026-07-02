@@ -1460,6 +1460,8 @@ export default function App() {
       const hasClearIntent = (isTodo && hasReminder) || hasStar || hasPin;
       const shouldShowPill = !hasClearIntent;
 
+      // isAmbiguous / clarificationPrompt 是纯前端 UI 状态，不存在于 Supabase capsules 表中，
+      // 仅保存在 createdCapsule 本地对象中，不发送到数据库。
       const newCapsuleData: Record<string, unknown> = {
         userId: user?.uid,
         content: refinedContent,
@@ -1477,9 +1479,7 @@ export default function App() {
         isArchived: false,
         isDeleted: false,
         reminder: reminder || null,
-        color: randomColor,
-        isAmbiguous: shouldShowPill,
-        clarificationPrompt: shouldShowPill ? 'Quickly set a reminder, star, pin, or keep as note?' : null
+        color: randomColor
       };
       if (tags && tags.length > 0) newCapsuleData.tag = tags[0];
       if (isStarred) newCapsuleData.isStarred = true;
@@ -1622,8 +1622,11 @@ export default function App() {
 
       try {
         const docRef = doc(getDb(), 'capsules', id);
+        // 纯前端 UI 状态字段，不存在于 Supabase capsules 表中，发送前过滤掉
+        const FRONTEND_ONLY_KEYS = new Set(['isAmbiguous', 'clarificationPrompt', 'id']);
         const cleanUpdates: Record<string, unknown> = {};
         Object.entries(updates).forEach(([key, value]) => {
+          if (FRONTEND_ONLY_KEYS.has(key)) return;
           if (key === 'category') {
             if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
               cleanUpdates[key] = deleteField();
