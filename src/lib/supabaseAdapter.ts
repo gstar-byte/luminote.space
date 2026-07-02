@@ -134,6 +134,51 @@ export const deleteField = (): any => {
   return '__DELETE_FIELD__';
 };
 
+// capsules 表实际存在的列（蛇形命名）
+const CAPSULES_COLUMNS = new Set([
+  'id', 'user_id', 'content', 'category', 'tags', 'timestamp',
+  'color', 'is_todo', 'completed', 'is_archived', 'is_deleted',
+  'reminder', 'created_at', 'updated_at'
+]);
+
+// profiles 表实际存在的列
+const PROFILES_COLUMNS = new Set([
+  'id', 'email', 'display_name', 'photo_url', 'created_at'
+]);
+
+/**
+ * 根据表的实际 schema 过滤 payload，只保留存在的列。
+ * 同时处理字段映射（如 created_at 数值 → timestamp）。
+ */
+function filterPayloadForTable(tableName: string, payload: Record<string, any>): Record<string, any> {
+  const allowedColumns = tableName === 'profiles' ? PROFILES_COLUMNS : CAPSULES_COLUMNS;
+  const filtered: Record<string, any> = {};
+
+  for (const [key, value] of Object.entries(payload)) {
+    if (value === '__DELETE_FIELD__') continue; // 不发送删除标记
+
+    if (allowedColumns.has(key)) {
+      filtered[key] = value;
+    }
+  }
+
+  // 字段映射：代码发送 created_at（数值时间戳），DB 中对应 timestamp 列
+  if (tableName !== 'profiles' && !filtered.timestamp && filtered.created_at && typeof filtered.created_at === 'number') {
+    filtered.timestamp = filtered.created_at;
+    delete filtered.created_at; // created_at 在 DB 中是自动的 timestamptz，不需要手动发送数值
+  }
+
+  // DB 中 created_at / updated_at 是 timestamptz 类型，如果代码传的是数值则移除让 DB 自动处理
+  if (typeof filtered.created_at === 'number') {
+    delete filtered.created_at;
+  }
+  if (typeof filtered.updated_at === 'number') {
+    delete filtered.updated_at;
+  }
+
+  return filtered;
+}
+
 export const setDoc = async (docRef: any, data: any, options?: { merge?: boolean }): Promise<any> => {
   const tableName = docRef.collection === 'users' ? 'profiles' : docRef.collection;
   const rawPayload = { ...data };
@@ -144,8 +189,9 @@ export const setDoc = async (docRef: any, data: any, options?: { merge?: boolean
     }
   }
 
-  const payload = toSnakeCaseKeys(rawPayload);
-  payload.id = docRef.id;
+  const snaked = toSnakeCaseKeys(rawPayload);
+  snaked.id = docRef.id;
+  const payload = filterPayloadForTable(tableName, snaked);
 
   const { error } = await supabase.from(tableName).upsert(payload);
   if (error) throw error;
@@ -153,8 +199,12 @@ export const setDoc = async (docRef: any, data: any, options?: { merge?: boolean
 
 export const updateDoc = async (docRef: any, data: any): Promise<any> => {
   const tableName = docRef.collection === 'users' ? 'profiles' : docRef.collection;
-  const payload = toSnakeCaseKeys(data);
+  const snaked = toSnakeCaseKeys(data);
+  const payload = filterPayloadForTable(tableName, snaked);
   
+  // 如果过滤后没有有效字段要更新，直接跳过
+  if (Object.keys(payload).length === 0) return;
+
   const { error } = await supabase.from(tableName).update(payload).eq('id', docRef.id);
   if (error) throw error;
 };
@@ -167,7 +217,8 @@ export const deleteDoc = async (docRef: any): Promise<any> => {
 
 export const addDoc = async (colRef: any, data: any): Promise<any> => {
   const tableName = colRef.collection === 'users' ? 'profiles' : colRef.collection;
-  const payload = toSnakeCaseKeys(data);
+  const snaked = toSnakeCaseKeys(data);
+  const payload = filterPayloadForTable(tableName, snaked);
   const { data: insertedData, error } = await supabase.from(tableName).insert(payload).select().single();
   if (error) throw error;
   return {
