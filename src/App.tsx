@@ -228,50 +228,7 @@ export default function App() {
     return typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default';
   });
   const [authLoading, setAuthLoading] = useState(true);
-  const [capsules, setCapsules] = useState<Capsule[]>([
-    {
-      id: 'mock-1', 
-      content: 'Brainstorming for the new Lumi Note design language. Focusing on glassmorphism and capsule shapes.', 
-      category: 'WORK', 
-      tags: ['design', 'app'], 
-      color: '#007AFF', 
-      createdAt: Date.now() - 3600000, 
-      updatedAt: Date.now() - 3600000, 
-      userId: 'mock-user', 
-      isArchived: false, 
-      isDeleted: false,
-      isTodo: false,
-      completed: false
-    },
-    { 
-      id: 'mock-2', 
-      content: 'Buy milk and eggs on the way home.', 
-      category: 'LIFE', 
-      tags: ['grocery'], 
-      color: '#FF2D55', 
-      createdAt: Date.now() - 7200000, 
-      updatedAt: Date.now() - 7200000, 
-      userId: 'mock-user', 
-      isArchived: false, 
-      isDeleted: false,
-      isTodo: true,
-      completed: false
-    },
-    { 
-      id: 'mock-3', 
-      content: 'Researching Gemini Pro API capabilities for smart categorization.', 
-      category: 'TECH', 
-      tags: ['ai', 'api'], 
-      color: '#AF52DE', 
-      createdAt: Date.now() - 10800000, 
-      updatedAt: Date.now() - 10800000, 
-      userId: 'mock-user', 
-      isArchived: false, 
-      isDeleted: false,
-      isTodo: false,
-      completed: false
-    }
-  ]);
+  const [capsules, setCapsules] = useState<Capsule[]>([]);
   const [demoCapsules, setDemoCapsules] = useState<Capsule[]>([]);
   const [sortBy, setSortBy] = useState<'createdAt' | 'updatedAt'>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
