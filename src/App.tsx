@@ -1333,7 +1333,7 @@ export default function App() {
       recognition.current = new (window as any).webkitSpeechRecognition();
       recognition.current.continuous = true;
       recognition.current.interimResults = true;
-      recognition.current.lang = 'zh-CN';
+      recognition.current.lang = navigator.language || 'zh-CN';
 
       recognition.current.onresult = (event: any) => {
         let interim = '';
