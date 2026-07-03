@@ -228,6 +228,13 @@ export default function App() {
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => {
     return typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default';
   });
+  // PWA 安装提示和开机启动引导
+  const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
+  const [isPWA] = useState(() => window.matchMedia('(display-mode: standalone)').matches);
+  const [showStartupBanner, setShowStartupBanner] = useState(() =>
+    isPWA && safeLocalStorageGet('luminote_startup_banner_dismissed') !== 'true'
+  );
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [capsules, setCapsules] = useState<Capsule[]>([]);
   const [demoCapsules, setDemoCapsules] = useState<Capsule[]>([]);
@@ -1012,6 +1019,17 @@ export default function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // 拦截 PWA 安装事件，用于自定义安装按鈕
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPromptEvent(e);
+      if (!isPWA) setShowInstallBanner(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler as EventListener);
+    return () => window.removeEventListener('beforeinstallprompt', handler as EventListener);
+  }, [isPWA]);
 
   const tourActive = useRef(false);
 
@@ -2523,7 +2541,88 @@ export default function App() {
 
   return (
     <div id="app-container" className="flex h-[100dvh] bg-[#F8F9FA] text-[#1D1D1F] font-sans overflow-hidden">
-      {/* Sidebar Overlay for Mobile */}
+
+      {/* PWA 安装引导 Banner — 浏览器模式且支持安装时显示 */}
+      {showInstallBanner && !isPWA && (
+        <div
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+            background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
+            color: '#fff', display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', padding: '10px 16px',
+            fontSize: '13px', boxShadow: '0 2px 12px rgba(99,102,241,0.4)'
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            📲 <strong>Install Lumi Note</strong> as an app for the best experience &amp; startup reminders
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={async () => {
+                if (!installPromptEvent) return;
+                installPromptEvent.prompt();
+                const result = await installPromptEvent.userChoice;
+                if (result.outcome === 'accepted') {
+                  setShowInstallBanner(false);
+                  setInstallPromptEvent(null);
+                }
+              }}
+              style={{
+                background: '#fff', color: '#6366f1', border: 'none',
+                borderRadius: 8, padding: '5px 14px', fontWeight: 700,
+                cursor: 'pointer', fontSize: 13
+              }}
+            >
+              Install
+            </button>
+            <button
+              onClick={() => setShowInstallBanner(false)}
+              style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 18 }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 开机启动引导 Banner — PWA 模式下一次性显示 */}
+      {showStartupBanner && isPWA && (
+        <div
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+            background: 'linear-gradient(90deg, #0ea5e9, #6366f1)',
+            color: '#fff', display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', padding: '10px 16px',
+            fontSize: '13px', boxShadow: '0 2px 12px rgba(14,165,233,0.4)'
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            ⏰ <strong>Never miss a reminder:</strong> Enable “Start at login” in Edge → edge://apps → Lumi Note → ⚙️
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => { window.open('edge://apps', '_blank'); }}
+              style={{
+                background: '#fff', color: '#0ea5e9', border: 'none',
+                borderRadius: 8, padding: '5px 14px', fontWeight: 700,
+                cursor: 'pointer', fontSize: 13
+              }}
+            >
+              Open Settings
+            </button>
+            <button
+              onClick={() => {
+                safeLocalStorageSet('luminote_startup_banner_dismissed', 'true');
+                setShowStartupBanner(false);
+              }}
+              style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 18 }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       <AnimatePresence>
         {isMobile && isSidebarOpen && (
           <motion.button
