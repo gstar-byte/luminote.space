@@ -3966,7 +3966,7 @@ export default function App() {
                         setQuickCaptureMode('buttons');
                       }
                     }}
-                    className="bg-transparent border-none text-white text-xs placeholder-white/50 focus:ring-0 outline-none w-36 md:w-52 py-1 px-0 shrink"
+                    className="bg-transparent border-none text-white text-sm placeholder-white/60 focus:ring-0 outline-none w-52 md:w-80 py-1 px-0 shrink"
                   />
                   <button
                     type="button"
