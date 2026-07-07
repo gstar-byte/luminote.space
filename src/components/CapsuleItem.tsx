@@ -375,18 +375,15 @@ export const CapsuleItem = memo(function CapsuleItem({
           : "",
         (showOptions || showColorPicker || showReminderPicker) ? "z-[70]" : "z-10"
       )}
-      style={{
-        backgroundColor: capsuleColor,
-      }}
     >
       <div
         id={`capsule-item-${index}`}
-        className="relative overflow-hidden w-full rounded-2xl md:rounded-[24px] border border-black/5 dark:border-white/5"
+        className="relative overflow-hidden w-full rounded-2xl md:rounded-[24px]"
       >
       {window.innerWidth <= 768 && isSwiping && Math.abs(swipeX) > 10 && (
         <div className="absolute inset-0 z-0 flex overflow-hidden rounded-2xl md:rounded-[24px]">
           {/* 左半区 — 右滑时露出（Todo / Complete / Restore） */}
-          <div className="flex-1 flex items-center pl-6 bg-[#F2F2F7] dark:bg-[#1C1C1E] transition-all">
+          <div className="flex-1 flex items-center pl-6 bg-transparent transition-all">
             <div className={cn(
               "flex items-center gap-2 transition-all duration-150",
               swipeX > 30 ? "opacity-100 translate-x-0 scale-100" : "opacity-0 -translate-x-4 scale-90",
@@ -417,7 +414,7 @@ export const CapsuleItem = memo(function CapsuleItem({
           </div>
 
           {/* 右半区 — 左滑时露出（Archive / Delete） */}
-          <div className="flex-1 flex items-center justify-end pr-6 bg-[#F2F2F7] dark:bg-[#1C1C1E] transition-all">
+          <div className="flex-1 flex items-center justify-end pr-6 bg-transparent transition-all">
             <div className={cn(
               "flex items-center gap-2 transition-all duration-150",
               swipeX < -30 ? "opacity-100 translate-x-0 scale-100" : "opacity-0 translate-x-4 scale-90",
@@ -442,7 +439,7 @@ export const CapsuleItem = memo(function CapsuleItem({
       <div
         ref={cardRootRef}
         className={cn(
-          "group w-full shrink-0 flex relative select-none",
+          "group w-full shrink-0 flex relative select-none rounded-2xl md:rounded-[24px] border border-black/5 dark:border-white/5",
           viewMode === 'grid'
             ? "flex-col justify-between"
             : "items-center gap-1.5 p-2.5 md:gap-3 md:p-6",
