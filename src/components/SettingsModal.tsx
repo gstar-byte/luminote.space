@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { showSystemNotification } from '../lib/notifications';
+import { subscribeToPush } from '../lib/webPush';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -27,6 +28,11 @@ export function SettingsModal({
     if (typeof window !== 'undefined' && 'Notification' in window) {
       Notification.requestPermission().then((res) => {
         setPermission(res);
+        if (res === 'granted' && user) {
+          subscribeToPush(user.uid).catch((err) => 
+            console.warn('[WebPush] subscribeToPush failed:', err)
+          );
+        }
       });
     }
   };
@@ -99,18 +105,38 @@ export function SettingsModal({
                 System Notifications
               </span>
               {permission === 'granted' ? (
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#34C759] animate-pulse" />
-                    <span className="text-sm font-bold text-[#1D1D1F]">Desktop alerts active</span>
+                <div className="flex flex-col gap-2 w-full">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#34C759] animate-pulse" />
+                      <span className="text-sm font-bold text-[#1D1D1F]">Alerts active</span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (user) {
+                            const ok = await subscribeToPush(user.uid);
+                            if (ok) {
+                              alert('✅ System notification synchronized successfully!');
+                            } else {
+                              alert('❌ Failed to synchronize. Check your connection or system permission settings.');
+                            }
+                          }
+                        }}
+                        className="px-2.5 py-1.5 bg-[#E8F5E9] hover:bg-[#C8E6C9] text-[#2E7D32] text-xs font-black rounded-lg transition-colors cursor-pointer"
+                      >
+                        Sync Push
+                      </button>
+                      <button
+                        type="button"
+                        onClick={sendTestNotification}
+                        className="px-2.5 py-1.5 bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#007AFF] text-xs font-black rounded-lg transition-colors cursor-pointer"
+                      >
+                        Send Test
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={sendTestNotification}
-                    className="px-3 py-1.5 bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#007AFF] text-xs font-black rounded-lg transition-colors"
-                  >
-                    Send Test
-                  </button>
                 </div>
               ) : permission === 'denied' ? (
                 <div className="space-y-2">
