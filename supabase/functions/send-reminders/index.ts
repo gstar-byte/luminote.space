@@ -90,11 +90,11 @@ Deno.serve(async (_req) => {
     if (!subs || subs.length === 0) continue;
 
     const rawBody = plainTextFromContent(cap.content) || "You have a reminder.";
-    // 优先将标题（Subject）作为大标题，若无标题则提取正文前 25 个字作为大标题
-    const title = cap.subject || (rawBody.length > 25 ? rawBody.slice(0, 25) + "..." : rawBody);
+    // 优先使用便签标题，无标题则截取正文前 12 个字作为通知标题，不显示多余正文体
+    const title = cap.subject || (rawBody.length > 12 ? rawBody.slice(0, 12) + "..." : rawBody);
     const payload = JSON.stringify({
       title,
-      body: rawBody.slice(0, 120),
+      body: "", // 保持为空，不显示大篇幅正文，卡片更精致小巧
       tag: cap.id,
       icon: "/favicon-192-v18.png",
       data: { id: cap.id },
