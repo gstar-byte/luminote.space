@@ -348,18 +348,41 @@ export default function App() {
     return arr;
   })());
 
+  // 追踪最近 3 次用过的颜色 index，防止换队列时首位重复
+  const lastUsedColorsRef = useRef<number[]>((() => {
+    try {
+      const saved = localStorage.getItem('luminote_last_colors');
+      const parsed = JSON.parse(saved || '[]') as number[];
+      return Array.isArray(parsed) ? parsed.slice(-3) : [];
+    } catch { return []; }
+  })());
+
+  const shuffleArray = (arr: number[]): number[] => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
+
   const pickNextColor = (): string => {
     if (colorQueueRef.current.length === 0) {
-      // 队列用完，重新洗牌
-      const arr = PRESET_COLORS.map((_, i) => i);
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
+      // 队列用完，重新洗牌；确保首位不与上次颜色相同
+      const arr = shuffleArray(PRESET_COLORS.map((_, i) => i));
+      const lastUsed = lastUsedColorsRef.current;
+      if (lastUsed.length > 0 && arr[0] === lastUsed[lastUsed.length - 1]) {
+        const swapIdx = arr.findIndex(v => !lastUsed.includes(v));
+        if (swapIdx > 0) [arr[0], arr[swapIdx]] = [arr[swapIdx], arr[0]];
       }
       colorQueueRef.current = arr;
     }
     const idx = colorQueueRef.current.shift()!;
-    try { localStorage.setItem('luminote_color_queue', JSON.stringify(colorQueueRef.current)); } catch {}
+    // 更新最近使用记录（保留最近3个）
+    lastUsedColorsRef.current = [...lastUsedColorsRef.current.slice(-2), idx];
+    try {
+      localStorage.setItem('luminote_color_queue', JSON.stringify(colorQueueRef.current));
+      localStorage.setItem('luminote_last_colors', JSON.stringify(lastUsedColorsRef.current));
+    } catch {}
     return PRESET_COLORS[idx];
   };
 
@@ -1327,6 +1350,8 @@ export default function App() {
   };
 
   const transcriptRef = useRef('');
+  // 用 ref 保存最新的 handleCreateCapsule，避免 SpeechRecognition onend 闭包陈旧
+  const handleCreateCapsuleRef = useRef<(text: string) => void>(() => {});
 
   useEffect(() => {
     if ('webkitSpeechRecognition' in window) {
@@ -1365,7 +1390,7 @@ export default function App() {
         setIsListening(false);
         const text = transcriptRef.current.trim();
         if (text) {
-          handleCreateCapsule(text);
+          handleCreateCapsuleRef.current(text);
           transcriptRef.current = '';
         }
       };
@@ -1434,6 +1459,7 @@ export default function App() {
 
   const handleCreateCapsule = async (text: string) => {
     if (!text.trim()) return;
+    // 每次调用时 ref 已指向当前最新版本（在下方 useEffect 中同步更新）
     
     // Request notification permission IMMEDIATELY, while still in the synchronous
     // call stack of the user's click gesture. Modern browsers silently block
@@ -1585,6 +1611,9 @@ export default function App() {
       setTimeout(() => inputRef.current?.focus(), 10);
     }
   };
+
+  // 始终保持 ref 指向最新的 handleCreateCapsule（供 SpeechRecognition onend 使用）
+  handleCreateCapsuleRef.current = handleCreateCapsule;
 
   const updateCapsule = useCallback(
     async (id: string, updates: Partial<Capsule>) => {

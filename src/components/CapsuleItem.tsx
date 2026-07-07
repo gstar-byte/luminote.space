@@ -550,7 +550,7 @@ export const CapsuleItem = memo(function CapsuleItem({
 
         <div className={cn(
           "flex-1 min-w-0 flex flex-col h-full",
-          viewMode === 'grid' ? "pt-0.5 justify-center text-center px-1 pb-4 md:pb-6" : "justify-center text-left"
+          viewMode === 'grid' ? "pt-0.5 justify-center text-center px-1 pb-4 md:pb-6" : "justify-end text-left pb-2"
         )}>
           <div className={cn(
             "text-base sm:text-lg md:text-xl font-bold leading-tight transition-all break-words select-none flex items-center gap-1.5 flex-wrap",

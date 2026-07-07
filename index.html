@@ -8,9 +8,7 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon-v18.png?v=20" />
     <link rel="apple-touch-startup-image" href="/pwa-splash.png" />
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
+
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-FTZZM6LBR9"></script>
     <script>
@@ -62,7 +60,49 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Inline loading skeleton — shown before React hydrates, auto-replaced -->
+      <style>
+        .lumi-splash {
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          height: 100dvh; width: 100%; background: #F8F9FA;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+          color: #1D1D1F; gap: 20px; position: fixed; inset: 0; z-index: 99999;
+        }
+        .lumi-splash-logo {
+          width: 64px; height: 64px; border-radius: 16px;
+          background: linear-gradient(135deg, #007AFF 0%, #00C6FF 100%);
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 8px 32px rgba(0,122,255,0.3);
+          animation: lumi-pulse 2s ease-in-out infinite;
+        }
+        .lumi-splash-logo svg { width: 32px; height: 32px; fill: #fff; }
+        .lumi-splash-text {
+          font-size: 16px; font-weight: 700; letter-spacing: 0.5px;
+          background: linear-gradient(135deg, #007AFF, #00C6FF);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        .lumi-splash-bar {
+          width: 120px; height: 3px; border-radius: 2px; overflow: hidden;
+          background: rgba(0,122,255,0.1);
+        }
+        .lumi-splash-bar-inner {
+          width: 40%; height: 100%; border-radius: 2px;
+          background: linear-gradient(90deg, #007AFF, #00C6FF);
+          animation: lumi-slide 1.2s ease-in-out infinite;
+        }
+        @keyframes lumi-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+        @keyframes lumi-slide { 0%{transform:translateX(-100%)} 100%{transform:translateX(350%)} }
+      </style>
+      <div class="lumi-splash">
+        <div class="lumi-splash-logo">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        </div>
+        <span class="lumi-splash-text">Lumi Note</span>
+        <div class="lumi-splash-bar"><div class="lumi-splash-bar-inner"></div></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx?v=3"></script>
   </body>
 </html>
