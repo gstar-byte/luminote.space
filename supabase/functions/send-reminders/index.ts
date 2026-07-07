@@ -89,11 +89,12 @@ Deno.serve(async (_req) => {
     console.log("[send-reminders] Subscriptions for user:", subs.length);
     if (!subs || subs.length === 0) continue;
 
-    const title = cap.subject || "Lumi Note Reminder";
-    const body = plainTextFromContent(cap.content) || "You have a reminder.";
+    const rawBody = plainTextFromContent(cap.content) || "You have a reminder.";
+    // 优先将标题（Subject）作为大标题，若无标题则提取正文前 25 个字作为大标题
+    const title = cap.subject || (rawBody.length > 25 ? rawBody.slice(0, 25) + "..." : rawBody);
     const payload = JSON.stringify({
       title,
-      body: body.slice(0, 120),
+      body: rawBody.slice(0, 120),
       tag: cap.id,
       icon: "/favicon-192-v18.png",
       data: { id: cap.id },
