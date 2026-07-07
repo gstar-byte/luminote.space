@@ -2645,19 +2645,24 @@ export default function App() {
             fontSize: '13px', boxShadow: '0 2px 12px rgba(14,165,233,0.4)'
           }}
         >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            ⏰ <strong>Never miss a reminder:</strong> Enable “Start at login” in Edge → edge://apps → Lumi Note → ⚙️
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+            ⏰ <strong>Auto-start tip:</strong> In Edge address bar, go to <code style={{ background: 'rgba(255,255,255,0.2)', padding: '1px 6px', borderRadius: 4 }}>edge://apps</code> → Lumi Note → ⚙ → Start at login
           </span>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 12, flexShrink: 0 }}>
             <button
-              onClick={() => { window.open('edge://apps', '_blank'); }}
+              onClick={() => {
+                navigator.clipboard?.writeText('edge://apps').catch(() => {});
+                showToast('📋 Copied! Paste in Edge address bar', 'success');
+                safeLocalStorageSet('luminote_startup_banner_dismissed', 'true');
+                setShowStartupBanner(false);
+              }}
               style={{
                 background: '#fff', color: '#0ea5e9', border: 'none',
                 borderRadius: 8, padding: '5px 14px', fontWeight: 700,
-                cursor: 'pointer', fontSize: 13
+                cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap'
               }}
             >
-              Open Settings
+              Copy URL
             </button>
             <button
               onClick={() => {
