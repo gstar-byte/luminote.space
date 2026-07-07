@@ -44,7 +44,12 @@ function toCamelCaseKeys(obj: any): any {
   if (Array.isArray(obj)) return obj.map(toCamelCaseKeys);
   const newObj: any = {};
   for (const key of Object.keys(obj)) {
-    newObj[snakeToCamel(key)] = toCamelCaseKeys(obj[key]);
+    const value = obj[key];
+    if ((key === 'created_at' || key === 'updated_at') && typeof value === 'string') {
+      newObj[snakeToCamel(key)] = new Date(value).getTime();
+    } else {
+      newObj[snakeToCamel(key)] = toCamelCaseKeys(value);
+    }
   }
   return newObj;
 }
@@ -165,15 +170,14 @@ function filterPayloadForTable(tableName: string, payload: Record<string, any>):
   // 字段映射：代码发送 created_at（数值时间戳），DB 中对应 timestamp 列
   if (tableName !== 'profiles' && !filtered.timestamp && filtered.created_at && typeof filtered.created_at === 'number') {
     filtered.timestamp = filtered.created_at;
-    delete filtered.created_at; // created_at 在 DB 中是自动的 timestamptz，不需要手动发送数值
   }
 
-  // DB 中 created_at / updated_at 是 timestamptz 类型，如果代码传的是数值则移除让 DB 自动处理
+  // DB 中 created_at / updated_at 是 timestamptz 类型，数值需要转换为 ISO 字符串存储
   if (typeof filtered.created_at === 'number') {
-    delete filtered.created_at;
+    filtered.created_at = new Date(filtered.created_at).toISOString();
   }
   if (typeof filtered.updated_at === 'number') {
-    delete filtered.updated_at;
+    filtered.updated_at = new Date(filtered.updated_at).toISOString();
   }
 
   return filtered;

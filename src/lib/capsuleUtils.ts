@@ -71,7 +71,7 @@ export function hasFinishedOneShotReminder(c: Capsule): boolean {
 }
 
 export function shouldBumpUpdatedAt(updates: Partial<Capsule>): boolean {
-  return 'subject' in updates || 'content' in updates || 'attachments' in updates;
+  return 'subject' in updates || 'content' in updates || 'attachments' in updates || 'reminder' in updates;
 }
 
 export function mergeCapsulePatch(c: Capsule, updates: Partial<Capsule>): Capsule {
