@@ -378,6 +378,7 @@ export function ClarificationPill({ capsule, onResolve, onUpdate }: Clarificatio
               ? 'bg-[#007AFF]/10 text-[#007AFF] border-[#007AFF]/30'
               : 'bg-white dark:bg-[#2C2C2E] text-[#8E8E93] border-[#E5E5EA] dark:border-[#3A3A3C]'
           }`}
+        >
           <Pin size={10} />
           {withPin ? 'Pinned' : 'Pin'}
         </motion.button>
