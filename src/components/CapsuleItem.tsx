@@ -78,6 +78,7 @@ export const CapsuleItem = memo(function CapsuleItem({
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null);
   const cardRootRef = useRef<HTMLDivElement>(null);
+  const hasVibratedRef = useRef(false); // 防止同一次滑动多次震动
   const isTouchRef = useRef(false);
   const clearLongPress = useCallback(() => {
     if (longPressTimer.current) {
@@ -133,6 +134,7 @@ export const CapsuleItem = memo(function CapsuleItem({
 
     touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     isHorizontalSwipe.current = null;
+    hasVibratedRef.current = false; // 每次新滑动开始重置
     setIsSwiping(true);
 
     clearLongPress();
@@ -174,6 +176,11 @@ export const CapsuleItem = memo(function CapsuleItem({
       } else if (targetX < -160) {
         targetX = -160 + (targetX + 160) * 0.15;
       }
+      // 越过操作阈値时触发短震动反馈
+      if (!hasVibratedRef.current && Math.abs(targetX) >= 100) {
+        if (navigator.vibrate) navigator.vibrate([12]);
+        hasVibratedRef.current = true;
+      }
       setSwipeX(targetX);
     }
   };
@@ -181,6 +188,7 @@ export const CapsuleItem = memo(function CapsuleItem({
   const handleTouchEndSwipe = () => {
     clearLongPress();
     setIsSwiping(false);
+    hasVibratedRef.current = false;
     if (!touchStartPos.current) return;
     touchStartPos.current = null;
 
@@ -453,6 +461,7 @@ export const CapsuleItem = memo(function CapsuleItem({
           backgroundColor: capsuleColor,
           transform: window.innerWidth <= 768 ? `translateX(${swipeX}px)` : 'none',
           WebkitTouchCallout: 'none',
+          touchAction: 'pan-y', // 允许竖向滚动传递给父容器，横向手势由我们接管
         }}
         onTouchStart={handleTouchStartSwipe}
         onTouchMove={handleTouchMoveSwipe}

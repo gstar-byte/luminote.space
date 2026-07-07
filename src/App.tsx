@@ -485,10 +485,7 @@ export default function App() {
   const handleSync = useCallback(async () => {
     if (isSyncing) return;
     setIsSyncing(true);
-    showToast("Syncing notes...", "info");
-    
-    // Artificial delay to show animation and "simulate" a refresh, 
-    // though Firestore is real-time. This also clears any local staleness.
+    // pull 指示器已显示同步状态，不再需要额外 toast
     await new Promise(r => setTimeout(r, 1000));
     setLastSyncTime(Date.now());
     setIsSyncing(false);
@@ -498,7 +495,8 @@ export default function App() {
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     const container = document.getElementById('scroll-container');
     if (!container) return;
-    if (container.scrollTop === 0) {
+    // scrollTop <= 2 容错，避免业内容微小滑动导致不能触发
+    if (container.scrollTop <= 2) {
       setIsPulling(true);
       touchStartY.current = e.touches[0].clientY;
     }
@@ -508,11 +506,13 @@ export default function App() {
     if (!isPulling) return;
     const currentY = e.touches[0].clientY;
     const diff = currentY - touchStartY.current;
-    
     if (diff > 0) {
-      const pullDistance = Math.min(diff * 0.4, 80);
-      setPullY(pullDistance);
-      if (diff > 10) {
+      // 渐进式 rubber-band：头段手感充分，越拉越段
+      const pullDistance = diff < 80
+        ? diff * 0.55
+        : 44 + (diff - 80) * 0.15;
+      setPullY(Math.min(pullDistance, 90));
+      if (diff > 8) {
         if (e.cancelable) e.preventDefault();
       }
     }
@@ -3274,12 +3274,17 @@ export default function App() {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           className="flex-1 overflow-x-hidden overflow-y-auto p-3 md:p-6 custom-scrollbar scroll-smooth relative"
+          style={{ overscrollBehaviorY: 'contain' }}
         >
           {/* Pull to refresh indicator */}
           {(pullY > 0 || isSyncing) && (
             <div 
-              style={{ height: `${isSyncing ? 50 : pullY}px` }}
-              className="w-full overflow-hidden transition-all duration-75 select-none relative"
+              style={{ 
+                height: `${isSyncing ? 50 : pullY}px`,
+                // 松手时用 spring 弹性曲线过渡，拉动时无过渡跟手
+                transition: isPulling ? 'none' : 'height 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)'
+              }}
+              className="w-full overflow-hidden select-none relative"
             >
               <div 
                 style={{ height: '50px', position: 'absolute', bottom: 0, left: 0, right: 0 }}
