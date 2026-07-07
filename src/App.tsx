@@ -1500,7 +1500,16 @@ export default function App() {
     if (window.Notification && Notification.permission === 'default') {
       Notification.requestPermission().then(permission => {
         setNotificationPermission(permission);
+        if (permission === 'granted' && user) {
+          subscribeToPush(user.uid).catch(err =>
+            console.warn('[WebPush] Auto-subscribe on permission grant failed:', err)
+          );
+        }
       });
+    } else if (window.Notification && Notification.permission === 'granted' && user) {
+      subscribeToPush(user.uid).catch(err =>
+        console.warn('[WebPush] Auto-subscribe on create failed:', err)
+      );
     }
     
     setIsProcessing(true);
@@ -1727,6 +1736,11 @@ export default function App() {
           cleanUpdates.updatedAt = now;
         }
         await updateDoc(docRef, cleanUpdates as any);
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && user) {
+          subscribeToPush(user.uid).catch(err =>
+            console.warn('[WebPush] Auto-subscribe on update failed:', err)
+          );
+        }
       } catch (error) {
         handleDbError(error, OperationType.UPDATE, `capsules/${id}`);
       }
@@ -3106,7 +3120,7 @@ export default function App() {
                {isSidebarOpen && <span>{isSyncing ? 'Syncing…' : 'Manual Sync'}</span>}
              </button>
            )}
-           {/* <button
+           <button
              type="button"
              onClick={() => setShowSettingsModal(true)}
              aria-label="Settings"
@@ -3118,7 +3132,7 @@ export default function App() {
            >
              <Settings size={14} />
              {isSidebarOpen && <span>Settings</span>}
-           </button> */}
+           </button>
            <div 
               className="bg-[#F2F2F7] rounded-2xl p-3 flex items-center gap-3 group"
               title={`UID: ${user.uid}\nEmail: ${user.email || 'None'}`}
