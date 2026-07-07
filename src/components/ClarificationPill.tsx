@@ -117,11 +117,14 @@ export function ClarificationPill({ capsule, onResolve, onUpdate }: Clarificatio
       reminderUpdate = { type: 'weekly', date: nextMon.getTime() };
     }
 
+    // 直接 onResolve 自动关闭面板，不需要点 Done
     if (reminderUpdate) {
-      setSelectedTimeType(type);
-      onUpdate?.({
+      onResolve({
+        ...baseUpdates,
         isTodo: true,
-        reminder: reminderUpdate
+        reminder: reminderUpdate,
+        isAmbiguous: false,
+        clarificationPrompt: null
       });
     }
   };
@@ -341,8 +344,12 @@ export function ClarificationPill({ capsule, onResolve, onUpdate }: Clarificatio
           whileTap={{ scale: 0.98 }}
           onClick={() => {
             const nextVal = !withStar;
-            setWithStar(nextVal);
-            onUpdate?.({ isStarred: nextVal });
+            onResolve({
+              isStarred: nextVal,
+              isPinned: withPin || undefined,
+              isAmbiguous: false,
+              clarificationPrompt: null
+            });
           }}
           className={`flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold rounded-xl shadow-sm border transition-colors ${
             withStar
@@ -359,32 +366,20 @@ export function ClarificationPill({ capsule, onResolve, onUpdate }: Clarificatio
           whileTap={{ scale: 0.98 }}
           onClick={() => {
             const nextVal = !withPin;
-            setWithPin(nextVal);
-            onUpdate?.({ isPinned: nextVal });
+            onResolve({
+              isStarred: withStar || undefined,
+              isPinned: nextVal,
+              isAmbiguous: false,
+              clarificationPrompt: null
+            });
           }}
           className={`flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold rounded-xl shadow-sm border transition-colors ${
             withPin
               ? 'bg-[#007AFF]/10 text-[#007AFF] border-[#007AFF]/30'
               : 'bg-white dark:bg-[#2C2C2E] text-[#8E8E93] border-[#E5E5EA] dark:border-[#3A3A3C]'
           }`}
-        >
           <Pin size={10} />
           {withPin ? 'Pinned' : 'Pin'}
-        </motion.button>
-
-        {/* ✦ Done 确认关闭按钮 */}
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            onResolve({
-              isAmbiguous: false,
-              clarificationPrompt: null
-            });
-          }}
-          className="flex items-center gap-1 px-3.5 py-1.5 bg-[#007AFF] text-white text-[11px] font-black rounded-xl shadow-md border border-[#007AFF] transition-all hover:bg-[#0062D6] active:scale-95 shrink-0"
-        >
-          <span>✦ Done</span>
         </motion.button>
       </div>
 

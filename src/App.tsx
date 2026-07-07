@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -726,6 +726,7 @@ export default function App() {
     setAuthError(null);
     setAuthProcessing(true);
     try {
+      await ensureReady(); // 确保 Firebase SDK 完全初始化，防止 "Auth session missing!" 报错
       if (isRegistering) {
         const userCredential = await createUserWithEmailAndPassword(getAuth(), email, password);
         await updateProfile(userCredential.user, {
