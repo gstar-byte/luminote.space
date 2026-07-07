@@ -10,11 +10,56 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 webpush.setVapidDetails("mailto:admin@luminote.space", VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
+function plainTextFromContent(content: any): string {
+  if (!content) return "";
+  if (typeof content === "string") {
+    const trimmed = content.trim();
+    if (!trimmed.startsWith("{")) {
+      return trimmed
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<\/(p|div|h[1-6]|li|blockquote)>/gi, "\n")
+        .replace(/<[^>]+>/g, "")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/^#{1,6}\s+/gm, "")
+        .replace(/\*\*(.+?)\*\*/g, "$1")
+        .replace(/\*(.+?)\*/g, "$1")
+        .replace(/~~(.+?)~~/g, "$1")
+        .replace(/^>\s+/gm, "")
+        .replace(/^[-*+]\s+/gm, "")
+        .replace(/^\d+\.\s+/gm, "")
+        .replace(/`([^`]+)`/g, "$1")
+        .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1");
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      return plainTextFromContent(parsed);
+    } catch {
+      return trimmed;
+    }
+  }
+
+  if (content.type === "text") return content.text || "";
+  if (content.content && Array.isArray(content.content)) {
+    return content.content.map(plainTextFromContent).filter(Boolean).join(" ").trim();
+  }
+  if (Array.isArray(content)) {
+    return content.map(plainTextFromContent).filter(Boolean).join(" ").trim();
+  }
+  if (typeof content === "object") {
+    if (content.text) return content.text;
+    if (content.value) return content.value;
+  }
+  return "";
+}
+
 Deno.serve(async (_req) => {
   const now = Date.now();
 
   const capsulesRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/capsules?select=id,content,reminder,user_id&is_deleted=eq.false&is_archived=eq.false&completed=eq.false`,
+    `${SUPABASE_URL}/rest/v1/capsules?select=id,content,reminder,user_id,subject&is_deleted=eq.false&is_archived=eq.false&completed=eq.false`,
     { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }
   );
   const capsules = await capsulesRes.json();
@@ -44,10 +89,14 @@ Deno.serve(async (_req) => {
     console.log("[send-reminders] Subscriptions for user:", subs.length);
     if (!subs || subs.length === 0) continue;
 
-    const body = typeof cap.content === "string" ? cap.content : (cap.content?.content || "You have a reminder.");
+    const title = cap.subject || "Lumi Note Reminder";
+    const body = plainTextFromContent(cap.content) || "You have a reminder.";
     const payload = JSON.stringify({
-      title: "Lumi Note Reminder", body: body.slice(0, 120),
-      tag: cap.id, icon: "/favicon-192-v18.png", data: { id: cap.id },
+      title,
+      body: body.slice(0, 120),
+      tag: cap.id,
+      icon: "/favicon-192-v18.png",
+      data: { id: cap.id },
     });
 
     for (const row of subs) {
