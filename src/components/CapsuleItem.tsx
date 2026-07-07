@@ -384,61 +384,67 @@ export const CapsuleItem = memo(function CapsuleItem({
         className="relative overflow-hidden w-full rounded-2xl md:rounded-[24px] border border-black/5 dark:border-white/5"
       >
       {window.innerWidth <= 768 && isSwiping && Math.abs(swipeX) > 10 && (
-        <div
-          className="absolute inset-0 flex items-center justify-between px-6 z-0 rounded-2xl md:rounded-[24px] bg-[#F2F2F7] dark:bg-[#1C1C1E]"
-        >
-          <div
-            className={cn(
+        <div className="absolute inset-0 z-0 flex overflow-hidden rounded-2xl md:rounded-[24px]">
+          {/* 左半区 — 右滑时露出（Todo / Complete / Restore） */}
+          <div className={cn(
+            "flex-1 flex items-center pl-5",
+            capsule.isArchived
+              ? "bg-[#007AFF]"
+              : (capsule.isTodo && capsule.completed)
+                ? "bg-[#FF9500]"
+                : "bg-[#30D158]"
+          )}>
+            <div className={cn(
               "flex items-center gap-2 transition-all duration-150",
               swipeX > 30 ? "opacity-100 translate-x-0 scale-100" : "opacity-0 -translate-x-4 scale-90",
-              swipeX > 100 ? "scale-110 font-black" : "",
-              capsule.isArchived ? "text-[#007AFF]" : "text-[#30D158]"
-            )}
-          >
-            {capsule.isArchived ? (
-              <>
-                <RotateCcw size={18} className="shrink-0" />
-                <span className="text-[10px] font-black uppercase tracking-wider">Restore</span>
-              </>
-            ) : !capsule.isTodo ? (
-              <>
-                <Check size={18} className="shrink-0" />
-                <span className="text-[10px] font-black uppercase tracking-wider">Todo</span>
-              </>
-            ) : capsule.completed ? (
-              <>
-                <Undo size={18} className="shrink-0" />
-                <span className="text-[10px] font-black uppercase tracking-wider">Activate</span>
-              </>
-            ) : (
-              <>
-                <Check size={18} className="shrink-0" />
-                <span className="text-[10px] font-black uppercase tracking-wider">Complete</span>
-              </>
-            )}
+              swipeX > 100 ? "scale-110" : ""
+            )}>
+              {capsule.isArchived ? (
+                <>
+                  <RotateCcw size={18} className="shrink-0 text-white" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-white">Restore</span>
+                </>
+              ) : !capsule.isTodo ? (
+                <>
+                  <Check size={18} className="shrink-0 text-white" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-white">Todo</span>
+                </>
+              ) : capsule.completed ? (
+                <>
+                  <Undo size={18} className="shrink-0 text-white" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-white">Activate</span>
+                </>
+              ) : (
+                <>
+                  <Check size={18} className="shrink-0 text-white" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-white">Complete</span>
+                </>
+              )}
+            </div>
           </div>
 
-          <div
-            className={cn(
+          {/* 右半区 — 左滑时露出（Archive / Delete） */}
+          <div className={cn(
+            "flex-1 flex items-center justify-end pr-5",
+            capsule.isArchived ? "bg-[#FF3B30]" : "bg-[#007AFF]"
+          )}>
+            <div className={cn(
               "flex items-center gap-2 transition-all duration-150",
               swipeX < -30 ? "opacity-100 translate-x-0 scale-100" : "opacity-0 translate-x-4 scale-90",
-              swipeX < -100 ? "scale-110 font-black" : "",
-              capsule.isArchived ? "text-[#FF3B30]" : "text-[#007AFF]"
-            )}
-          >
-            {capsule.isArchived ? (
-              <>
-                <span className="text-[10px] font-black uppercase tracking-wider">Delete</span>
-                <Trash2 size={18} className="shrink-0" />
-              </>
-            ) : (
-              <>
-                <span className="text-[10px] font-black uppercase tracking-wider">
-                  {capsule.isArchived ? 'Unarchive' : 'Archive'}
-                </span>
-                {capsule.isArchived ? <Inbox size={18} className="shrink-0" /> : <Archive size={18} className="shrink-0" />}
-              </>
-            )}
+              swipeX < -100 ? "scale-110" : ""
+            )}>
+              {capsule.isArchived ? (
+                <>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-white">Delete</span>
+                  <Trash2 size={18} className="shrink-0 text-white" />
+                </>
+              ) : (
+                <>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-white">Archive</span>
+                  <Archive size={18} className="shrink-0 text-white" />
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
