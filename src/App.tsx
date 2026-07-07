@@ -291,6 +291,8 @@ export default function App() {
   }, [capsules, user]);
 
   const [isListening, setIsListening] = useState(false);
+  const isListeningRef = useRef(false);
+  useEffect(() => { isListeningRef.current = isListening; }, [isListening]);
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [firedReminders, setFiredReminders] = useState<Capsule[]>([]);
@@ -1357,12 +1359,17 @@ export default function App() {
   // 用 ref 保存最新的 handleCreateCapsule，避免 SpeechRecognition onend 闭包陈旧
   const handleCreateCapsuleRef = useRef<(text: string) => void>(() => {});
 
+  // stoppedByUserRef: true = 用户主动点击停止（应创建笔记），false = 超时/错误自动停止（应重启）
+  const stoppedByUserRef = useRef(false);
+
   useEffect(() => {
-    if ('webkitSpeechRecognition' in window) {
-      recognition.current = new (window as any).webkitSpeechRecognition();
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognition.current = new SpeechRecognition();
       recognition.current.continuous = true;
       recognition.current.interimResults = true;
-      recognition.current.lang = navigator.language || 'zh-CN';
+      // 支持中文和英文：根据系统语言自动选择
+      recognition.current.lang = navigator.language?.startsWith('zh') ? 'zh-CN' : 'en-US';
 
       recognition.current.onresult = (event: any) => {
         let interim = '';
@@ -1383,6 +1390,8 @@ export default function App() {
 
       recognition.current.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
+        // 'no-speech' 和 'aborted' 不算致命错误，不关闭
+        if (event.error === 'no-speech' || event.error === 'aborted') return;
         setIsListening(false);
       };
 
@@ -1391,11 +1400,25 @@ export default function App() {
       };
 
       recognition.current.onend = () => {
-        setIsListening(false);
-        const text = transcriptRef.current.trim();
-        if (text) {
-          handleCreateCapsuleRef.current(text);
-          transcriptRef.current = '';
+        if (stoppedByUserRef.current) {
+          // 用户主动停止：创建笔记
+          stoppedByUserRef.current = false;
+          setIsListening(false);
+          const text = transcriptRef.current.trim();
+          if (text) {
+            handleCreateCapsuleRef.current(text);
+            transcriptRef.current = '';
+            setInputText('');
+          }
+        } else {
+          // 超时自动停止：如果还在录音状态，自动重启
+          if (isListeningRef.current) {
+            try {
+              recognition.current?.start();
+            } catch {
+              setIsListening(false);
+            }
+          }
         }
       };
     }
@@ -1975,6 +1998,7 @@ export default function App() {
   const startListening = () => {
     if (recognition.current) {
       try {
+        stoppedByUserRef.current = false;
         transcriptRef.current = '';
         setInputText('');
         setIsListening(true);
@@ -1984,6 +2008,7 @@ export default function App() {
         try {
           recognition.current.stop();
           setTimeout(() => {
+            stoppedByUserRef.current = false;
             transcriptRef.current = '';
             setInputText('');
             setIsListening(true);
@@ -1994,17 +2019,27 @@ export default function App() {
         }
       }
     } else {
-      alert('Your browser does not support speech recognition.');
+      showToast('Your browser does not support speech recognition.', 'error');
     }
   };
 
   const stopListening = () => {
-    if (recognition.current && isListening) {
+    if (recognition.current && isListeningRef.current) {
       try {
+        stoppedByUserRef.current = true; // 标记：用户主动停止，onend 回调中将创建笔记
         recognition.current.stop();
       } catch (e) {
         console.log('Speech recognition stop error', e);
       }
+    }
+  };
+
+  // 统一的点击切换函数
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
     }
   };
 
@@ -3918,10 +3953,7 @@ export default function App() {
              <motion.button 
                whileHover={{ scale: 1.05 }}
                whileTap={{ scale: 0.95 }}
-               onMouseDown={startListening}
-               onMouseUp={stopListening}
-               onTouchStart={startListening}
-               onTouchEnd={stopListening}
+               onClick={toggleListening}
                className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all shadow-2xl shrink-0 ${isListening ? 'bg-red-500 ring-8 ring-red-100' : 'bg-gradient-to-br from-[#007AFF] to-[#00C6FF]'}`}
              >
                {isListening ? (
@@ -3978,7 +4010,7 @@ export default function App() {
                     onClick={(e) => {
                       e.stopPropagation();
                       setQuickCaptureMode('voice');
-                      startListening();
+                      toggleListening();
                     }}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-full hover:bg-white/10 active:scale-95 transition-all cursor-pointer text-white font-black tracking-tight"
                   >
@@ -4112,8 +4144,7 @@ export default function App() {
          <div 
            className="fixed right-0 top-1/2 -translate-y-1/2 w-2 h-24 bg-[#007AFF]/20 hover:bg-[#007AFF] hover:w-6 hover:h-48 group transition-all duration-300 rounded-l-2xl z-50 flex items-center justify-start cursor-pointer shadow-lg backdrop-blur-md"
            onClick={() => {
-              // Trigger quick input focus and open sidebar or directly trigger listening
-              if (!isListening) startListening();
+              toggleListening();
            }}
            title="Edge Swipe (Pro) - Quick Recording"
          >
