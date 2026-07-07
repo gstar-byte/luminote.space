@@ -136,9 +136,9 @@ export const deleteField = (): any => {
 
 // capsules 表实际存在的列（蛇形命名）
 const CAPSULES_COLUMNS = new Set([
-  'id', 'user_id', 'content', 'category', 'tags', 'timestamp',
+  'id', 'user_id', 'content', 'subject', 'category', 'tag', 'tags', 'timestamp',
   'color', 'is_todo', 'completed', 'is_archived', 'is_deleted',
-  'reminder', 'created_at', 'updated_at'
+  'reminder', 'attachments', 'is_starred', 'is_pinned', 'created_at', 'updated_at'
 ]);
 
 // profiles 表实际存在的列

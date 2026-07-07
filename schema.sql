@@ -20,8 +20,10 @@ create table public.capsules (
   id text primary key,
   user_id uuid references auth.users on delete cascade not null default auth.uid(),
   content text not null,
+  subject text, -- Note Title
   category text,
-  tags jsonb default '[]'::jsonb,
+  tag text, -- Singular tag
+  tags jsonb default '[]'::jsonb, -- Deprecated tags array
   timestamp bigint not null,
   color text,
   is_todo boolean default false,
@@ -29,6 +31,9 @@ create table public.capsules (
   is_archived boolean default false,
   is_deleted boolean default false,
   reminder jsonb,
+  attachments jsonb, -- Note attachments array (images/videos metadata)
+  is_starred boolean default false,
+  is_pinned boolean default false,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
