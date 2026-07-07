@@ -3481,6 +3481,12 @@ export default function App() {
                         editSubjectDraftRef.current = val;
                         queueEditSubjectSave();
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          closeEditingModal();
+                        }
+                      }}
                       placeholder="Note Title"
                       className="font-black tracking-tight text-lg md:text-xl text-[#1D1D1F] bg-transparent border-none outline-none w-full p-0 placeholder-[#C7C7CC] focus:ring-0"
                     />
@@ -3568,6 +3574,12 @@ export default function App() {
                             setEditDetailCategory(e.target.value);
                             editDetailCategoryRef.current = e.target.value;
                           }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              closeEditingModal();
+                            }
+                          }}
                           className="w-full px-3 py-1.5 bg-[#F2F2F7] border border-transparent focus:border-[#007AFF] focus:bg-white rounded-xl text-xs font-bold transition-all outline-none text-[#1D1D1F] dark:text-white dark:bg-[#2C2C2E] dark:focus:bg-[#1C1C1E]"
                         />
                       </div>
@@ -3581,6 +3593,12 @@ export default function App() {
                             const val = e.target.value.replace(/,/g, '');
                             setEditDetailTag(val);
                             editDetailTagRef.current = val;
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              closeEditingModal();
+                            }
                           }}
                           className="w-full px-3 py-1.5 bg-[#F2F2F7] border border-transparent focus:border-[#007AFF] focus:bg-white rounded-xl text-xs font-bold transition-all outline-none text-[#1D1D1F] dark:text-white dark:bg-[#2C2C2E] dark:focus:bg-[#1C1C1E]"
                         />
