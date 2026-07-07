@@ -237,13 +237,12 @@ export default function App() {
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [capsules, setCapsules] = useState<Capsule[]>([]);
-  const [demoCapsules, setDemoCapsules] = useState<Capsule[]>([]);
   const [sortBy, setSortBy] = useState<'createdAt' | 'updatedAt'>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
 
   const allCapsules = React.useMemo(() => {
-    return [...demoCapsules, ...capsules].sort((a, b) => {
+    return [...capsules].sort((a, b) => {
       const ap = a.isPinned ? 1 : 0;
       const bp = b.isPinned ? 1 : 0;
       if (bp !== ap) return bp - ap;
@@ -251,7 +250,7 @@ export default function App() {
       const valB = b[sortBy] || b.createdAt || 0;
       return sortOrder === 'desc' ? valB - valA : valA - valB;
     });
-  }, [demoCapsules, capsules, sortBy, sortOrder]);
+  }, [capsules, sortBy, sortOrder]);
 
   const hasSeededOrCreated = React.useMemo(() => {
     if (!user) return false;
@@ -259,10 +258,9 @@ export default function App() {
     return (
       safeLocalStorageGet(seededKey) === 'true' ||
       user.hasNotesCreatedOrSeeded === true ||
-      capsules.length > 0 ||
-      demoCapsules.length > 0
+      capsules.length > 0
     );
-  }, [user, capsules.length, demoCapsules.length]);
+  }, [user, capsules.length]);
 
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -552,10 +550,11 @@ export default function App() {
     if (!user) return;
     setAuthProcessing(true);
     try {
+      const now = Date.now();
       const generatedDemoCapsules: Capsule[] = [
         {
-          id: 'demo-1',
-          content: "🚀 Welcome to Lumi Note! This is a thought note to record your inspiration. It displays perfectly in both list and grid views.",
+          id: `demo-${user.uid}-1`,
+          content: "Welcome to Lumi Note! Capture ideas instantly. Works beautifully in list and grid views.",
           category: "Technology",
           tag: "intro",
           color: PRESET_COLORS[0],
@@ -563,14 +562,11 @@ export default function App() {
           completed: false,
           isArchived: false,
           isDeleted: false,
-          attachments: [
-            { url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2664&auto=format&fit=crop", type: 'image' as const }
-          ],
-          createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2, // 2 days ago
+          createdAt: now - 1000 * 60 * 60 * 24 * 2,
         },
         {
-          id: 'demo-2',
-          content: "🛒 Remember to buy milk and bread",
+          id: `demo-${user.uid}-2`,
+          content: "Buy groceries: milk, bread, eggs",
           category: "Personal",
           tag: "shopping",
           color: PRESET_COLORS[1],
@@ -578,11 +574,11 @@ export default function App() {
           completed: false,
           isArchived: false,
           isDeleted: false,
-          createdAt: Date.now() - 1000 * 60 * 60,
+          createdAt: now - 1000 * 60 * 60,
         },
         {
-          id: 'demo-3',
-          content: "🎯 Finish project presentation PPT",
+          id: `demo-${user.uid}-3`,
+          content: "Finish project presentation slides",
           category: "Work",
           tag: "important",
           color: PRESET_COLORS[2],
@@ -590,12 +586,12 @@ export default function App() {
           completed: true,
           isArchived: true,
           isDeleted: false,
-          createdAt: Date.now() - 1000 * 60 * 60 * 5,
-          updatedAt: Date.now() - 1000 * 60 * 30,
+          createdAt: now - 1000 * 60 * 60 * 5,
+          updatedAt: now - 1000 * 60 * 30,
         },
         {
-          id: 'demo-4',
-          content: "💡 A crazy idea for a new App: AI-driven dream analyzer.",
+          id: `demo-${user.uid}-4`,
+          content: "App idea: AI-driven dream analyzer with mood tracking",
           category: "Idea",
           tag: "creative",
           color: PRESET_COLORS[3],
@@ -603,22 +599,22 @@ export default function App() {
           completed: false,
           isArchived: false,
           isDeleted: false,
-          createdAt: Date.now() - 1000 * 60 * 2,
+          createdAt: now - 1000 * 60 * 2,
         },
         {
-          id: 'demo-5',
-          content: "🗑️ This is an expired abandoned note, currently in the trash.",
+          id: `demo-${user.uid}-5`,
+          content: "Old draft note — moved to trash",
           category: "Uncategorized",
           color: PRESET_COLORS[4],
           isTodo: false,
           completed: false,
           isArchived: false,
           isDeleted: true,
-          createdAt: Date.now() - 1000 * 60 * 60 * 24 * 7,
+          createdAt: now - 1000 * 60 * 60 * 24 * 7,
         },
         {
-          id: 'demo-6',
-          content: "⏰ Book tomorrow's dentist appointment",
+          id: `demo-${user.uid}-6`,
+          content: "Book dentist appointment for tomorrow",
           category: "Health",
           tag: "appointment",
           color: PRESET_COLORS[5],
@@ -626,86 +622,105 @@ export default function App() {
           completed: false,
           isArchived: false,
           isDeleted: false,
-          reminder: { type: 'custom' as ReminderType, date: Date.now() + 86400000 },
-          createdAt: Date.now(),
+          reminder: { type: 'custom' as ReminderType, date: now + 86400000 },
+          createdAt: now,
         },
         {
-          id: 'demo-7',
-          content: 'This is a completed todo item demo, visible in the "Completed To-do" view.',
-          category: 'Personal',
-          tag: 'demo',
-          color: '#434343',
+          id: `demo-${user.uid}-7`,
+          content: "Completed task example — visible in Completed view",
+          category: "Personal",
+          tag: "demo",
+          color: PRESET_COLORS[6],
           isTodo: true,
           completed: true,
           isArchived: false,
           isDeleted: false,
-          createdAt: Date.now() - 172800000,
+          createdAt: now - 172800000,
         },
         {
-          id: 'demo-8',
-          content: "📚 Read 'The Design of Everyday Things' Chapters 1-3",
+          id: `demo-${user.uid}-8`,
+          content: "Read 'The Design of Everyday Things' Chapters 1-3",
           category: "Study",
           tag: "reading",
-          color: PRESET_COLORS[6] || '#AF52DE',
+          color: PRESET_COLORS[7],
           isTodo: true,
           completed: false,
           isArchived: false,
           isDeleted: false,
-          createdAt: Date.now() - 43200000,
+          createdAt: now - 43200000,
         },
         {
-          id: 'demo-9',
-          content: "📞 Confirm next week's online meeting time with investors",
+          id: `demo-${user.uid}-9`,
+          content: "Confirm online meeting time with investors next week",
           category: "Work",
           tag: "meeting",
-          color: PRESET_COLORS[2],
+          color: PRESET_COLORS[8],
           isTodo: true,
           completed: false,
           isArchived: false,
           isDeleted: false,
-          reminder: { type: 'custom' as ReminderType, date: Date.now() + 86400000 * 2 },
-          createdAt: Date.now() - 86400000,
+          reminder: { type: 'custom' as ReminderType, date: now + 86400000 * 2 },
+          createdAt: now - 86400000,
         },
         {
-          id: 'demo-10',
-          content: "🎬 Recommended movies: Interstellar, Inception",
+          id: `demo-${user.uid}-10`,
+          content: "Movies to watch: Interstellar, Inception, Arrival",
           category: "Entertainment",
           tag: "movie",
-          color: PRESET_COLORS[3],
+          color: PRESET_COLORS[9],
           isTodo: false,
           completed: false,
           isArchived: false,
           isDeleted: false,
-          createdAt: Date.now() - 172800000,
+          createdAt: now - 172800000,
         },
         {
-          id: 'demo-11',
-          content: "✈️ Make travel plans for Kyoto, Japan at the end of the year: flights, hotels, visas",
+          id: `demo-${user.uid}-11`,
+          content: "Plan year-end Kyoto trip: flights, hotels, visa",
           category: "Personal",
           tag: "travel",
-          color: PRESET_COLORS[1],
+          color: PRESET_COLORS[10],
           isTodo: true,
           completed: false,
           isArchived: false,
           isDeleted: false,
-          createdAt: Date.now() - 259200000,
+          createdAt: now - 259200000,
         },
         {
-          id: 'demo-12',
-          content: "💻 Optimize frontend first-screen loading speed, check Vite config and lazy loading",
+          id: `demo-${user.uid}-12`,
+          content: "Optimize frontend loading speed — review Vite config and lazy loading",
           category: "Technology",
           tag: "dev",
-          color: PRESET_COLORS[0],
+          color: PRESET_COLORS[11],
           isTodo: true,
           completed: false,
           isArchived: false,
           isDeleted: false,
-          createdAt: Date.now() - 1800000,
+          createdAt: now - 1800000,
         }
       ];
 
-      console.log('--- SEEDING DEMO DATA ---', generatedDemoCapsules);
-      setDemoCapsules(generatedDemoCapsules);
+      console.log('--- SEEDING DEMO DATA ---', generatedDemoCapsules.length, 'notes');
+
+      // 写入数据库持久化，刷新不会消失
+      const writePromises = generatedDemoCapsules.map(capsule => {
+        const { id, ...data } = capsule;
+        const docRef = doc(getDb(), 'capsules', id);
+        return setDoc(docRef, { ...data, userId: user.uid }).catch(err => {
+          console.warn(`[seedDemo] failed to write ${id}:`, err);
+        });
+      });
+
+      // 先立即在本地显示
+      setCapsules(prev => {
+        const existingIds = new Set(prev.map(c => c.id));
+        const newOnes = generatedDemoCapsules.filter(c => !existingIds.has(c.id));
+        return [...newOnes, ...prev];
+      });
+
+      // 后台等待写入完成
+      await Promise.all(writePromises);
+
       if (user) {
         safeLocalStorageSet(`luminote_has_notes_seeded_${user.uid}`, 'true');
         updateDoc(doc(getDb(), 'users', user.uid), { hasNotesCreatedOrSeeded: true }).catch(() => {});
@@ -929,7 +944,6 @@ export default function App() {
           setUser(null);
           safeLocalStorageRemove('luminote_auth_user');
           setCapsules([]);
-          setDemoCapsules([]);
           setAuthLoading(false);
           setDataLoading(true);
           setIsSyncFinished(false);
@@ -1287,20 +1301,7 @@ export default function App() {
   const batchUpdate = async (updates: Partial<Capsule>) => {
     if (!user) return;
     try {
-      const demoIds = Array.from<string>(selectedIds).filter((id: string) => id.startsWith('demo-'));
-      const realIds = Array.from<string>(selectedIds).filter((id: string) => !id.startsWith('demo-'));
-
-      if (demoIds.length > 0) {
-        const bump = shouldBumpUpdatedAt(updates);
-        const ts = Date.now();
-        setDemoCapsules((prev) =>
-          prev.map((c) => {
-            if (!demoIds.includes(c.id)) return c;
-            const merged = mergeCapsulePatch(c, updates);
-            return bump ? { ...merged, updatedAt: ts } : merged;
-          }),
-        );
-      }
+      const realIds = Array.from<string>(selectedIds);
 
       if (realIds.length > 0) {
         const bump = shouldBumpUpdatedAt(updates);
@@ -1336,12 +1337,7 @@ export default function App() {
   const batchRemovePermanently = async () => {
     if (!user) return;
     try {
-      const demoIds = Array.from<string>(selectedIds).filter((id: string) => id.startsWith('demo-'));
-      const realIds = Array.from<string>(selectedIds).filter((id: string) => !id.startsWith('demo-'));
-
-      if (demoIds.length > 0) {
-        setDemoCapsules(prev => prev.filter(c => !demoIds.includes(c.id)));
-      }
+      const realIds = Array.from<string>(selectedIds);
 
       if (realIds.length > 0) {
         const batch = writeBatch(getDb());
@@ -1454,7 +1450,6 @@ export default function App() {
       snapshot.docs.forEach(doc => batch.delete(doc.ref));
       await batch.commit();
       setCapsules([]);
-      setDemoCapsules([]);
       alert('All data has been cleared.');
     } catch (error) {
       console.error('Error clearing data:', error);
@@ -1581,7 +1576,7 @@ export default function App() {
       }
     } catch (error) {
       console.error('[handleCreate] ERROR in try block:', error);
-      const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
+      const randomColor = pickNextColor(); // 使用队列，保证12个内不重复
       const fallbackDoc = {
         userId: user?.uid || '',
         content: text,
@@ -1643,16 +1638,7 @@ export default function App() {
         return bump ? { ...merged, updatedAt: now } : merged;
       });
 
-      if (id.startsWith('demo-')) {
-        setDemoCapsules((prev) =>
-          prev.map((c) => {
-            if (c.id !== id) return c;
-            const merged = mergeCapsulePatch(c, updates);
-            return bump ? { ...merged, updatedAt: now } : merged;
-          }),
-        );
-        return;
-      }
+      // demo notes 现在也存入数据库，走标准更新路径
 
       // Optimistic Local State Update (Instant Response)
       setCapsules((prev) =>
@@ -1976,10 +1962,7 @@ export default function App() {
 
   const removeCapsuleForever = async (id: string) => {
     if (!user) return;
-    if (id.startsWith('demo-')) {
-      setDemoCapsules(prev => prev.filter(c => c.id !== id));
-      return;
-    }
+    // demo notes 已持久化到数据库，走标准删除路径
     setCapsules(prev => prev.filter(c => c.id !== id));
     try {
       const docRef = doc(getDb(), 'capsules', id);
@@ -4086,7 +4069,7 @@ export default function App() {
               const pendingCapsule = 
                 (temporaryPendingCapsule && temporaryPendingCapsule.id === pendingClarificationCapsuleId)
                   ? temporaryPendingCapsule
-                  : [...capsules, ...demoCapsules].find(c => c.id === pendingClarificationCapsuleId);
+                  : capsules.find(c => c.id === pendingClarificationCapsuleId);
               
               if (!pendingCapsule || !pendingCapsule.isAmbiguous) return null;
               return (
