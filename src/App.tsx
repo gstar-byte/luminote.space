@@ -726,25 +726,32 @@ export default function App() {
     setAuthError(null);
     setAuthProcessing(true);
     try {
-      await ensureReady(); // 确保 Firebase SDK 完全初始化，防止 "Auth session missing!" 报错
+      await ensureReady();
       if (isRegistering) {
         const userCredential = await createUserWithEmailAndPassword(getAuth(), email, password);
+        // updateProfile is safe now (handles missing session gracefully)
         await updateProfile(userCredential.user, {
           displayName: email.split('@')[0]
         });
+        // 如果 Supabase 需要邮件确认，session 为 null，给用户友好提示
+        if (!userCredential.user?._session) {
+          setAuthError('✉️ Check your email to confirm your account, then sign in.');
+        }
       } else {
         await signInWithEmailAndPassword(getAuth(), email, password);
       }
     } catch (err: any) {
       console.error("Auth error:", err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+      const msg = err.message || '';
+      // Supabase / generic error mapping
+      if (msg.includes('already registered') || msg.includes('already in use') || err.code === 'auth/email-already-in-use') {
+        setAuthError('Email already in use. Try signing in instead.');
+      } else if (msg.includes('weak') || msg.includes('too short') || msg.includes('6 characters') || err.code === 'auth/weak-password') {
+        setAuthError('Password is too weak. Use at least 6 characters.');
+      } else if (msg.includes('Invalid login') || msg.includes('invalid_credentials') || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
         setAuthError('Invalid email or password.');
-      } else if (err.code === 'auth/email-already-in-use') {
-        setAuthError('Email already in use.');
-      } else if (err.code === 'auth/weak-password') {
-        setAuthError('Password is too weak.');
       } else {
-        setAuthError(err.message || 'An error occurred. Please try again.');
+        setAuthError(msg || 'An error occurred. Please try again.');
       }
     } finally {
       setAuthProcessing(false);
@@ -2425,13 +2432,21 @@ export default function App() {
               className="bg-white dark:bg-[#1C1C1E] p-8 rounded-3xl shadow-2xl border border-black/5 dark:border-white/10 flex flex-col items-center max-w-sm mx-4 text-center gap-5 animate-in zoom-in-95 duration-200 cursor-default"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center bg-red-500/10 text-red-500 rounded-full">
-                <AlertCircle size={24} />
-              </div>
+              {authError.startsWith('✉️') ? (
+                <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center bg-[#007AFF]/10 text-[#007AFF] rounded-full text-2xl">
+                  ✉️
+                </div>
+              ) : (
+                <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center bg-red-500/10 text-red-500 rounded-full">
+                  <AlertCircle size={24} />
+                </div>
+              )}
               <div className="space-y-1.5">
-                <h3 className="text-base font-bold text-[#1D1D1F] dark:text-[#F2F2F7]">Authentication Error</h3>
+                <h3 className="text-base font-bold text-[#1D1D1F] dark:text-[#F2F2F7]">
+                  {authError.startsWith('✉️') ? 'Check Your Email' : 'Authentication Error'}
+                </h3>
                 <p className="text-xs font-semibold text-[#8E8E93] leading-relaxed">
-                  {authError}
+                  {authError.startsWith('✉️') ? authError.slice(3).trim() : authError}
                 </p>
               </div>
               <button 

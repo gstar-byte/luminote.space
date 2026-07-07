@@ -384,14 +384,23 @@ export const signOut = async (...args: any[]): Promise<any> => {
 };
 
 export const createUserWithEmailAndPassword = async (authInst: any, email: string, pass: string): Promise<any> => {
+  const displayName = email.split('@')[0];
   const { data, error } = await supabase.auth.signUp({
     email,
-    password: pass
+    password: pass,
+    options: {
+      data: {
+        display_name: displayName,
+        full_name: displayName
+      }
+    }
   });
   if (error) throw error;
-  currentAuthUser = mapSupabaseUser(data.user);
+  // 注册后如果需要邮符1确认，session 可能为 null，但 user 会有值
+  const mappedUser = mapSupabaseUser(data.user);
+  currentAuthUser = mappedUser;
   return {
-    user: currentAuthUser
+    user: { ...mappedUser, _supabaseUser: data.user, _session: data.session }
   };
 };
 
@@ -415,13 +424,31 @@ export const sendPasswordResetEmail = async (authInst: any, email: string): Prom
 };
 
 export const updateProfile = async (authInst: any, data: { displayName?: string; photoURL?: string }): Promise<any> => {
-  const { error } = await supabase.auth.updateUser({
-    data: {
-      display_name: data.displayName,
-      avatar_url: data.photoURL
+  // 首先检查是否有有效 session；注册后待确认情况下 session 为 null，直接更新本地即可
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      // 无 session（待测邮符1确认）—— 局部更新显示名即可，不调用 API
+      if (currentAuthUser && data.displayName) {
+        currentAuthUser.displayName = data.displayName;
+      }
+      return;
     }
-  });
-  if (error) throw error;
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        display_name: data.displayName,
+        avatar_url: data.photoURL
+      }
+    });
+    if (error) throw error;
+  } catch (err: any) {
+    // 静默处理：如果更新失败（如 Auth session missing），就局部更新一下
+    if (currentAuthUser && data.displayName) {
+      currentAuthUser.displayName = data.displayName;
+    }
+    console.warn('[updateProfile] skipped (no session or error):', err?.message);
+    return;
+  }
   if (currentAuthUser) {
     currentAuthUser.displayName = data.displayName || currentAuthUser.displayName;
     currentAuthUser.photoURL = data.photoURL || currentAuthUser.photoURL;
