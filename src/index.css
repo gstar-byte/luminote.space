@@ -175,3 +175,21 @@
 .capsule-item-wrapper.is-selected {
   box-shadow: var(--card-shadow-selected);
 }
+
+/* 移动端 PWA 阴影强化提升可见度，并微调边距以防左右阴影剪切 */
+@media (max-width: 768px) {
+  :root {
+    --card-shadow: 0 10px 24px -3px rgba(0, 0, 0, 0.22), 0 4px 10px -3px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.20);
+    --card-shadow-hover: 0 16px 36px -6px rgba(0, 0, 0, 0.28), 0 8px 16px -4px rgba(0, 0, 0, 0.16), 0 0 1px rgba(0, 0, 0, 0.25);
+  }
+  .dark {
+    --card-shadow: 0 14px 32px -6px rgba(0, 0, 0, 0.65), 0 6px 14px -4px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    --card-shadow-hover: 0 20px 42px -8px rgba(0, 0, 0, 0.80), 0 10px 20px -5px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+  .capsule-item-wrapper {
+    /* 移动端加上微小的缩进，保证左右两侧的阴影在横向 overflow-x-hidden 下不被容器边缘生硬剪切 */
+    margin-left: 2px;
+    margin-right: 2px;
+    width: calc(100% - 4px);
+  }
+}

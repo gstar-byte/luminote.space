@@ -386,14 +386,7 @@ export const CapsuleItem = memo(function CapsuleItem({
       {window.innerWidth <= 768 && isSwiping && Math.abs(swipeX) > 10 && (
         <div className="absolute inset-0 z-0 flex overflow-hidden rounded-2xl md:rounded-[24px]">
           {/* 左半区 — 右滑时露出（Todo / Complete / Restore） */}
-          <div className={cn(
-            "flex-1 flex items-center pl-5",
-            capsule.isArchived
-              ? "bg-[#007AFF]"
-              : (capsule.isTodo && capsule.completed)
-                ? "bg-[#FF9500]"
-                : "bg-[#30D158]"
-          )}>
+          <div className="flex-1 flex items-center pl-6 bg-[#F2F2F7] dark:bg-[#1C1C1E] transition-all">
             <div className={cn(
               "flex items-center gap-2 transition-all duration-150",
               swipeX > 30 ? "opacity-100 translate-x-0 scale-100" : "opacity-0 -translate-x-4 scale-90",
@@ -401,33 +394,30 @@ export const CapsuleItem = memo(function CapsuleItem({
             )}>
               {capsule.isArchived ? (
                 <>
-                  <RotateCcw size={18} className="shrink-0 text-white" />
-                  <span className="text-[10px] font-black uppercase tracking-wider text-white">Restore</span>
+                  <RotateCcw size={18} className="shrink-0 text-[#007AFF]" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#007AFF]">Restore</span>
                 </>
               ) : !capsule.isTodo ? (
                 <>
-                  <Check size={18} className="shrink-0 text-white" />
-                  <span className="text-[10px] font-black uppercase tracking-wider text-white">Todo</span>
+                  <Check size={18} className="shrink-0 text-[#30D158]" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#30D158]">Todo</span>
                 </>
               ) : capsule.completed ? (
                 <>
-                  <Undo size={18} className="shrink-0 text-white" />
-                  <span className="text-[10px] font-black uppercase tracking-wider text-white">Activate</span>
+                  <Undo size={18} className="shrink-0 text-[#FF9500]" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#FF9500]">Activate</span>
                 </>
               ) : (
                 <>
-                  <Check size={18} className="shrink-0 text-white" />
-                  <span className="text-[10px] font-black uppercase tracking-wider text-white">Complete</span>
+                  <Check size={18} className="shrink-0 text-[#30D158]" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#30D158]">Complete</span>
                 </>
               )}
             </div>
           </div>
 
           {/* 右半区 — 左滑时露出（Archive / Delete） */}
-          <div className={cn(
-            "flex-1 flex items-center justify-end pr-5",
-            capsule.isArchived ? "bg-[#FF3B30]" : "bg-[#007AFF]"
-          )}>
+          <div className="flex-1 flex items-center justify-end pr-6 bg-[#F2F2F7] dark:bg-[#1C1C1E] transition-all">
             <div className={cn(
               "flex items-center gap-2 transition-all duration-150",
               swipeX < -30 ? "opacity-100 translate-x-0 scale-100" : "opacity-0 translate-x-4 scale-90",
@@ -435,13 +425,13 @@ export const CapsuleItem = memo(function CapsuleItem({
             )}>
               {capsule.isArchived ? (
                 <>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-white">Delete</span>
-                  <Trash2 size={18} className="shrink-0 text-white" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#FF3B30] mr-0.5">Delete</span>
+                  <Trash2 size={18} className="shrink-0 text-[#FF3B30]" />
                 </>
               ) : (
                 <>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-white">Archive</span>
-                  <Archive size={18} className="shrink-0 text-white" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#007AFF] mr-0.5">Archive</span>
+                  <Archive size={18} className="shrink-0 text-[#007AFF]" />
                 </>
               )}
             </div>
