@@ -58,10 +58,16 @@ Deno.serve(async (_req) => {
       } catch (err: any) {
         console.error("[send-reminders] Push failed:", err?.statusCode, err?.body);
         if (err?.statusCode === 410 || err?.statusCode === 404) {
-          await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?user_id=eq.${cap.user_id}`, {
-            method: "DELETE",
-            headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-          });
+          await fetch(
+            `${SUPABASE_URL}/rest/v1/push_subscriptions?user_id=eq.${cap.user_id}&endpoint=eq.${encodeURIComponent(row.subscription.endpoint)}`,
+            {
+              method: "DELETE",
+              headers: {
+                apikey: SUPABASE_SERVICE_ROLE_KEY,
+                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              },
+            }
+          );
         }
         failed++;
       }
