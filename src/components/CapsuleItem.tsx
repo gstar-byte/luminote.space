@@ -570,7 +570,7 @@ export const CapsuleItem = memo(function CapsuleItem({
           <div className={cn(
             "text-base sm:text-lg md:text-xl font-bold leading-tight transition-all break-words select-none flex items-center gap-1.5 flex-wrap",
             capsule.isTodo && capsule.completed ? "line-through opacity-50 text-white/70" : "text-white",
-            viewMode === 'grid' ? "whitespace-pre-wrap line-clamp-4" : "line-clamp-1"
+            viewMode === 'grid' ? "whitespace-pre-wrap line-clamp-[12]" : "whitespace-pre-wrap line-clamp-3"
           )}>
             <span>{capsule.subject || plainTextFromContent(capsule.content) || 'Untitled Note'}</span>
           </div>
