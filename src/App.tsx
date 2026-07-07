@@ -1361,6 +1361,8 @@ export default function App() {
 
   // stoppedByUserRef: true = 用户主动点击停止（应创建笔记），false = 超时/错误自动停止（应重启）
   const stoppedByUserRef = useRef(false);
+  const showToastRef = useRef(showToast);
+  useEffect(() => { showToastRef.current = showToast; }, [showToast]);
 
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -1409,6 +1411,10 @@ export default function App() {
             handleCreateCapsuleRef.current(text);
             transcriptRef.current = '';
             setInputText('');
+          } else {
+            // 没有检测到语音内容
+            setInputText('');
+            showToastRef.current('🎙️ No speech detected. Tap the mic and try again.', 'info');
           }
         } else {
           // 超时自动停止：如果还在录音状态，自动重启
