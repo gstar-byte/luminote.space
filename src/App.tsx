@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -2469,12 +2469,16 @@ export default function App() {
               Thoughts.
             </h2>
             <div className="space-y-4">
-               {['AI Powered Intelligence', 'Idea Sync', 'Swiss Aesthetics'].map((feat) => (
-                 <div key={feat} className="flex items-center gap-3 text-[#8E8E93] font-bold">
-                   <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm">
-                     <div className="w-2 h-2 bg-[#007AFF] rounded-full"></div>
+               {[
+                 { icon: '⚡', label: 'Capture in Seconds — Voice or Text' },
+                 { icon: '🤖', label: 'AI Auto-Organizes Every Idea' },
+                 { icon: '🔔', label: 'Smart Reminders, Never Miss a Beat' },
+               ].map(({ icon, label }) => (
+                 <div key={label} className="flex items-center gap-3 text-[#8E8E93] font-bold">
+                   <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm text-sm">
+                     {icon}
                    </div>
-                   {feat}
+                   {label}
                  </div>
                ))}
             </div>
@@ -3981,8 +3985,8 @@ export default function App() {
               )}
 
               {quickCaptureMode === 'text' && (
-                <div className="flex items-center gap-2 pl-4 pr-2 py-1 text-white text-xs">
-                  <Keyboard size={14} className="text-white/75 shrink-0" />
+                <div className="flex items-center gap-2 pl-4 pr-2 py-2.5 text-white text-sm">
+                  <Keyboard size={16} className="text-white/75 shrink-0" />
                   <input
                     type="text"
                     autoFocus
@@ -4000,7 +4004,7 @@ export default function App() {
                         setQuickCaptureMode('buttons');
                       }
                     }}
-                    className="bg-transparent border-none text-white text-sm placeholder-white/60 focus:ring-0 outline-none w-52 md:w-80 py-1 px-0 shrink"
+                    className="bg-transparent border-none text-white text-base placeholder-white/60 focus:ring-0 outline-none w-52 md:w-80 py-1 px-0 shrink"
                   />
                   <button
                     type="button"
@@ -4012,9 +4016,9 @@ export default function App() {
                         setQuickCaptureMode('buttons');
                       }
                     }}
-                    className="p-1.5 rounded-full bg-white/20 text-white hover:bg-white/30 active:scale-90 transition-all cursor-pointer"
+                    className="p-2 rounded-full bg-white/20 text-white hover:bg-white/30 active:scale-90 transition-all cursor-pointer"
                   >
-                    <Check size={12} strokeWidth={3} />
+                    <Check size={14} strokeWidth={3} />
                   </button>
                   <button
                     type="button"
@@ -4022,9 +4026,9 @@ export default function App() {
                       e.stopPropagation();
                       setQuickCaptureMode('buttons');
                     }}
-                    className="p-1.5 rounded-full bg-white/10 text-white/80 hover:bg-white/20 active:scale-90 transition-all cursor-pointer"
+                    className="p-2 rounded-full bg-white/10 text-white/80 hover:bg-white/20 active:scale-90 transition-all cursor-pointer"
                   >
-                    <X size={12} />
+                    <X size={14} />
                   </button>
                 </div>
               )}
