@@ -1,68 +1,102 @@
 <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- Paper background: classic premium canary yellow gradient -->
+    <!-- 便签纸底色：极致经典且高端雅致的渐变淡黄色 (Classic Canary Yellow) -->
     <linearGradient id="paper-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFFDF0"/>
-      <stop offset="100%" stop-color="#FEF08A"/>
+      <stop offset="0%" stop-color="#FFFDF0" />
+      <stop offset="100%" stop-color="#FEF08A" />
     </linearGradient>
     
-    <!-- Curl corner background gradient -->
+    <!-- 卷角背面的立体渐变：模拟折角金黄暗面与高光 -->
     <linearGradient id="curl-bg" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#EAB308"/>
-      <stop offset="40%" stop-color="#FEF08A"/>
-      <stop offset="100%" stop-color="#FFFFFF"/>
+      <stop offset="0%" stop-color="#EAB308" />
+      <stop offset="40%" stop-color="#FEF08A" />
+      <stop offset="100%" stop-color="#FFFFFF" />
     </linearGradient>
 
     <linearGradient id="pill-blue" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#3B82F6"/>
-      <stop offset="100%" stop-color="#2563EB"/>
+      <stop offset="0%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#2563EB" />
     </linearGradient>
     <linearGradient id="pill-yellow" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#F97316"/>
-      <stop offset="100%" stop-color="#FACC15"/>
+      <stop offset="0%" stop-color="#F97316" />
+      <stop offset="100%" stop-color="#FACC15" />
     </linearGradient>
+
+    <!-- 整体纸张悬浮阴影：在透明背景上形成精致逼真的纸张立体悬浮投影 -->
+    <filter id="paper-shadow" x="-20%" y="-20%" width="145%" height="145%">
+      <feDropShadow dx="0" dy="4.5" stdDeviation="5.0" flood-color="#000000" flood-opacity="0.14" />
+    </filter>
+
+    <!-- 掀起弯折角的阴影 -->
+    <filter id="curl-shadow" x="-35%" y="-35%" width="170%" height="170%">
+      <feDropShadow dx="-2" dy="-2" stdDeviation="3" flood-color="#000000" flood-opacity="0.22" />
+    </filter>
   </defs>
 
-  <!-- Overall elegant 26-degree rotation -->
-  <g transform="rotate(-26, 50, 50)">
-    
-    <!-- 1. Note paper body (No drop-shadow filter to keep transparent pixels crisp at 16x16) -->
-    <path 
-      d="M18 30 C18 23.3726 23.3726 18 30 18 H70 C76.6274 18 82 23.3726 82 30 V60 L60 82 H30 C23.3726 82 18 76.6274 18 70 Z" 
-      fill="url(#paper-bg)" 
-    />
+  <!-- PWA专用图标：内部便签倾斜 26 度且带悬浮投影，背景 100% 彻底透明，供各平台自适应剪裁 -->
+  <g>
+    <!-- 倾斜的便签组合：倾斜 26 度 -->
+    <g transform="rotate(-26, 50, 50)">
+      
+      <!-- 便签纸主体 -->
+      <path 
+        d="M18 30 C18 23.3726 23.3726 18 30 18 H70 C76.6274 18 82 23.3726 82 30 V60 L60 82 H30 C23.3726 82 18 76.6274 18 70 Z" 
+        fill="url(#paper-bg)" 
+        filter="url(#paper-shadow)"
+      />
 
-    <!-- 2. Beautiful list items -->
-    <rect x="25" y="28" width="6" height="6" rx="1.5" stroke="#EC4899" stroke-width="1.2" fill="none"/>
-    <rect x="35" y="28" width="28" height="6" rx="3" fill="#EC4899"/>
-    
-    <!-- Gold star -->
-    <path 
-      d="M75.5 27 L77.1 30.2 L80.6 30.7 L78.0 33.1 L78.6 36.6 L75.5 34.9 L72.4 36.6 L73.0 33.1 L70.4 30.7 L73.9 30.2 Z" 
-      fill="#EAB308" 
-    />
+      <!-- 3. 3行精美小胶囊清单 -->
+      
+      <!-- 第一行：洋红胶囊 (未完成方块 + 右侧金黄色小五角星 ⭐️) -->
+      <rect x="25" y="28" width="6" height="6" rx="1.5" stroke="#EC4899" stroke-width="1.2" fill="none" />
+      <rect x="35" y="28" width="28" height="6" rx="3" fill="#EC4899" />
+      <!-- 饱满完美的五角星 ⭐️ -->
+      <path 
+        d="M75.5 27 L77.1 30.2 L80.6 30.7 L78.0 33.1 L78.6 36.6 L75.5 34.9 L72.4 36.6 L73.0 33.1 L70.4 30.7 L73.9 30.2 Z" 
+        fill="#EAB308" 
+      />
 
-    <!-- Blue capsule line with iOS bell -->
-    <rect x="25" y="42" width="6" height="6" rx="1.5" fill="url(#pill-blue)"/>
-    <path d="M26.5 45 L27.8 46.3 L30 44" stroke="#FFFFFF" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
-    <rect x="35" y="42" width="31" height="6" rx="3" fill="url(#pill-blue)"/>
-    
-    <path 
-      d="M75.5 38.5 C74.2 38.5 73.2 39.8 73.2 41.2 C73.2 42.2 72.2 44.2 71.5 44.8 C71 45.3 71.5 46.2 72.8 46.2 H78.2 C79.5 46.2 80 45.3 79.5 44.8 C78.8 44.2 77.8 42.2 77.8 41.2 C77.8 39.8 76.8 38.5 75.5 38.5 Z" 
-      fill="url(#pill-blue)" 
-    />
-    <circle cx="75.5" cy="47.2" r="1.1" fill="url(#pill-blue)"/>
+      <!-- 第二行：极客蓝胶囊 (已完成打勾复选框 + 右侧超圆润小铃铛 🔔) -->
+      <rect x="25" y="42" width="6" height="6" rx="1.5" fill="url(#pill-blue)" />
+      <path d="M26.5 45 L27.8 46.3 L30 44" stroke="#FFFFFF" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" />
+      <rect x="35" y="42" width="31" height="6" rx="3" fill="url(#pill-blue)" />
+      <!-- 饱满立体感的 iOS 风格小铃铛 -->
+      <path 
+        d="M75.5 38.5 C74.2 38.5 73.2 39.8 73.2 41.2 C73.2 42.2 72.2 44.2 71.5 44.8 C71 45.3 71.5 46.2 72.8 46.2 H78.2 C79.5 46.2 80 45.3 79.5 44.8 C78.8 44.2 77.8 42.2 77.8 41.2 C77.8 39.8 76.8 38.5 75.5 38.5 Z" 
+        fill="url(#pill-blue)" 
+      />
+      <circle cx="75.5" cy="47.2" r="1.1" fill="url(#pill-blue)" />
 
-    <!-- Orange capsule line -->
-    <rect x="25" y="56" width="6" height="6" rx="1.5" stroke="#F97316" stroke-width="1.2" fill="none"/>
-    <rect x="35" y="56" width="20" height="6" rx="3" fill="url(#pill-yellow)"/>
+      <!-- 第三行：明黄胶囊 (未完成方块 + 📌 橙色斜插立体球形图钉) -->
+      <rect x="25" y="56" width="6" height="6" rx="1.5" stroke="#F97316" stroke-width="1.2" fill="none" />
+      <rect x="35" y="56" width="20" height="6" rx="3" fill="url(#pill-yellow)" />
+      
+      <!-- 橙色斜插立体图钉 📌 (按 emoji 📌 精准设计：球形顶带 3D 亮面高光，尺寸更加精简，向左平移 5px 靠拢胶囊) -->
+      <g transform="translate(63, 58) rotate(45)">
+        <!-- 针头部分 (silver needle) -->
+        <path d="M0 0 L0 3.8" stroke="#94A3B8" stroke-width="1.0" stroke-linecap="round" />
+        
+        <!-- 颈部底盘 -->
+        <ellipse cx="0" cy="0" rx="1.8" ry="0.6" fill="#D97706" />
+        
+        <!-- 塑料连接颈 -->
+        <path d="M-1.4 0 L-0.9 -2 L0.9 -2 L1.4 0 Z" fill="#F97316" />
+        
+        <!-- 头部塑料球 -->
+        <circle cx="0" cy="-3.6" r="2.5" fill="#F97316" />
+        
+        <!-- 球体 3D 亮面高光点 -->
+        <circle cx="-0.8" cy="-4.4" r="0.7" fill="#FFFFFF" opacity="0.75" />
+      </g>
 
-    <!-- 3. Folded paper corner (No drop shadow filter) -->
-    <path 
-      d="M60 82 C60 71 71 60 82 60 C71 71 71 82 60 82 Z" 
-      fill="url(#curl-bg)" 
-    />
-    <path d="M60 82 L82 60" stroke="#EAB308" stroke-opacity="0.3" stroke-width="0.5"/>
-    
+      <!-- 4. 掀起一角 (立体卷边效果) -->
+      <path 
+        d="M60 82 C60 71 71 60 82 60 C71 71 71 82 60 82 Z" 
+        fill="url(#curl-bg)" 
+        filter="url(#curl-shadow)"
+      />
+      <path d="M60 82 L82 60" stroke="#EAB308" stroke-opacity="0.3" stroke-width="0.5" />
+      
+    </g>
   </g>
 </svg>

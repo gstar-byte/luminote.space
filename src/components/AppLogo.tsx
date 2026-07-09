@@ -86,9 +86,23 @@ export function AppLogo({ className = "w-36 h-36" }: { className?: string }) {
         />
         <circle cx="75.5" cy="47.2" r="1.1" fill={`url(#${pillBlueId})`} />
 
-        {/* 第三行：明黄胶囊 (未完成方块) */}
+        {/* 第三行：明黄胶囊 (未完成方块 + 📌 橙色斜插立体球形图钉) */}
         <rect x="25" y="56" width="6" height="6" rx="1.5" stroke="#F97316" strokeWidth="1.2" fill="none" />
         <rect x="35" y="56" width="20" height="6" rx="3" fill={`url(#${pillYellowId})`} />
+
+        {/* 橙色斜插立体图钉 📌 (对齐手绘蓝本设计：球形顶带 3D 亮面高光，倾斜 45 度指向右下方) */}
+        <g transform="translate(68, 57) rotate(45)">
+          {/* 针头部分 (silver needle) */}
+          <path d="M0 0 L0 4.2" stroke="#94A3B8" strokeWidth="1.0" strokeLinecap="round" />
+          {/* 颈部底盘 */}
+          <ellipse cx="0" cy="0" rx="1.8" ry="0.6" fill="#D97706" />
+          {/* 塑料连接颈 */}
+          <path d="M-1.4 0 L-0.9 -2 L0.9 -2 L1.4 0 Z" fill="#F97316" />
+          {/* 头部塑料球 */}
+          <circle cx="0" cy="-3.6" r="2.5" fill="#F97316" />
+          {/* 球体 3D 亮面高光点 */}
+          <circle cx="-0.8" cy="-4.4" r="0.7" fill="#FFFFFF" opacity={0.75} />
+        </g>
 
         {/* 3. 掀起一角 (立体卷边效果) */}
         <path 
