@@ -78,6 +78,8 @@ export async function categorizeThought(text: string): Promise<{ title?: string 
       reminder: finalReminder,
       isAmbiguous: typeof result.isAmbiguous === 'boolean' ? result.isAmbiguous : undefined,
       clarificationPrompt: result.clarificationPrompt || undefined,
+      isStarred: typeof result.isStarred === 'boolean' ? result.isStarred : undefined,
+      isPinned: typeof result.isPinned === 'boolean' ? result.isPinned : undefined,
     };
   } catch (error) {
     console.error("Failed to categorize thought:", error);
