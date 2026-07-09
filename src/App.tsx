@@ -1091,6 +1091,7 @@ export default function App() {
           callback: async (response: any) => {
             try {
               setAuthProcessing(true);
+              const { supabase } = await import('./lib/supabaseClient');
               const { data, error } = await supabase.auth.signInWithIdToken({
                 provider: 'google',
                 token: response.credential,
