@@ -15,6 +15,14 @@ export async function categorizeThought(text: string): Promise<{
   isStarred?: boolean;
   isPinned?: boolean;
 }> {
+  const provider = (() => {
+    try {
+      const saved = localStorage.getItem('luminote_nlp_provider');
+      if (saved === 'deepseek' || saved === 'gemini' || saved === 'local') return saved;
+    } catch {}
+    return NLP_PROVIDER;
+  })();
+
   // 1. Fast-path: check if local NLP can resolve a definitive reminder with zero ambiguity
   try {
     const localResult = await categorizeThoughtLocal(text);
@@ -29,7 +37,7 @@ export async function categorizeThought(text: string): Promise<{
     console.error("[NLP Router] Local NLP fast-path error:", e);
   }
 
-  if (NLP_PROVIDER === 'deepseek') {
+  if (provider === 'deepseek') {
     try {
       console.log("[NLP Router] Trying DeepSeek...");
       const result = await categorizeThoughtDeepSeek(text);
@@ -45,7 +53,7 @@ export async function categorizeThought(text: string): Promise<{
     }
   }
 
-  if (NLP_PROVIDER === 'gemini') {
+  if (provider === 'gemini') {
     try {
       console.log("[NLP Router] Trying Gemini...");
       const result = await categorizeThoughtGemini(text);

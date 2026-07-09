@@ -24,6 +24,57 @@ export function SettingsModal({
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
   );
 
+  const [provider, setProvider] = useState<'deepseek' | 'gemini' | 'local'>(() => {
+    try {
+      const saved = localStorage.getItem('luminote_nlp_provider');
+      if (saved === 'deepseek' || saved === 'gemini' || saved === 'local') return saved;
+    } catch {}
+    return 'gemini'; // 默认直接使用 Gemini
+  });
+
+  const [geminiKey, setGeminiKey] = useState(() => {
+    try {
+      return localStorage.getItem('luminote_gemini_api_key') || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const [deepseekKey, setDeepseekKey] = useState(() => {
+    try {
+      return localStorage.getItem('luminote_deepseek_api_key') || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const handleProviderChange = (val: 'deepseek' | 'gemini' | 'local') => {
+    setProvider(val);
+    try {
+      localStorage.setItem('luminote_nlp_provider', val);
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const handleGeminiKeyChange = (val: string) => {
+    setGeminiKey(val);
+    try {
+      localStorage.setItem('luminote_gemini_api_key', val);
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const handleDeepseekKeyChange = (val: string) => {
+    setDeepseekKey(val);
+    try {
+      localStorage.setItem('luminote_deepseek_api_key', val);
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
   const requestPermission = () => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       Notification.requestPermission().then((res) => {
@@ -163,6 +214,76 @@ export function SettingsModal({
                   </button>
                 </div>
               )}
+            </div>
+
+            {/* AI Helper Settings */}
+            <div className="bg-white rounded-2xl p-4">
+              <span className="text-sm font-bold text-[#8E8E93] uppercase tracking-wider block mb-3">
+                AI Helper Configuration
+              </span>
+              
+              <div className="space-y-3">
+                {/* Provider Selector */}
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-[#1D1D1F]">AI Model</label>
+                  <select
+                    value={provider}
+                    onChange={(e) => handleProviderChange(e.target.value as any)}
+                    className="text-xs bg-[#F2F2F7] border-none rounded-lg px-2 py-1.5 font-bold outline-none text-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/10 cursor-pointer"
+                  >
+                    <option value="gemini">Google Gemini</option>
+                    <option value="deepseek">DeepSeek AI</option>
+                    <option value="local">Local Parser (No AI)</option>
+                  </select>
+                </div>
+
+                {/* API Key Inputs */}
+                {provider === 'gemini' && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold text-[#8E8E93]">Gemini API Key</label>
+                      <a 
+                        href="https://aistudio.google.com/" 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="text-[10px] text-[#007AFF] hover:underline font-bold"
+                      >
+                        Get Key ↗
+                      </a>
+                    </div>
+                    <input
+                      type="password"
+                      value={geminiKey}
+                      onChange={(e) => handleGeminiKeyChange(e.target.value)}
+                      placeholder="Paste your Gemini API key here..."
+                      className="w-full text-xs bg-[#F2F2F7] border-none rounded-lg px-3 py-2 outline-none text-[#1D1D1F] placeholder-[#8E8E93] focus:ring-1 focus:ring-[#007AFF]/10"
+                    />
+                  </div>
+                )}
+
+                {provider === 'deepseek' && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold text-[#8E8E93]">DeepSeek API Key</label>
+                      <a 
+                        href="https://platform.deepseek.com/" 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="text-[10px] text-[#007AFF] hover:underline font-bold"
+                      >
+                        Get Key ↗
+                      </a>
+                    </div>
+                    <input
+                      type="password"
+                      value={deepseekKey}
+                      onChange={(e) => handleDeepseekKeyChange(e.target.value)}
+                      placeholder="Paste your DeepSeek API key here..."
+                      className="w-full text-xs bg-[#F2F2F7] border-none rounded-lg px-3 py-2 outline-none text-[#1D1D1F] placeholder-[#8E8E93] focus:ring-1 focus:ring-[#007AFF]/10"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="pt-2 pb-6 flex flex-col items-center gap-2">

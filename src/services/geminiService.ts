@@ -1,16 +1,23 @@
 import { GoogleGenAI } from "@google/genai";
 import { SYSTEM_PROMPT } from "../constants";
 
-// @ts-ignore
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? (process.env.GEMINI_API_KEY || "") : "") || "";
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+export async function categorizeThought(text: string): Promise<{ title?: string | null; category?: string; tags?: string[]; refinedContent: string; isTodo?: boolean; reminder?: any; isAmbiguous?: boolean; clarificationPrompt?: string | null; isStarred?: boolean; isPinned?: boolean }> {
+  const getApiKey = () => {
+    try {
+      const userKey = localStorage.getItem('luminote_gemini_api_key');
+      if (userKey) return userKey;
+    } catch {}
+    return import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? (process.env.GEMINI_API_KEY || "") : "") || "";
+  };
 
-export async function categorizeThought(text: string): Promise<{ title?: string | null; category?: string; tags?: string[]; refinedContent: string; isTodo?: boolean; reminder?: any; isAmbiguous?: boolean; clarificationPrompt?: string | null }> {
-  if (!ai) {
+  const key = getApiKey();
+  if (!key) {
     console.warn("Lumi Note Gemini AI Client: GoogleGenAI is not initialized because API Key is missing. Falling back to plain text note.");
     return { refinedContent: text };
   }
+
   try {
+    const ai = new GoogleGenAI({ apiKey: key });
     const now = new Date();
     const prompt =
       SYSTEM_PROMPT.replace(

@@ -1,14 +1,5 @@
 import { SYSTEM_PROMPT } from "../constants";
 
-// @ts-ignore
-const apiKey = (() => {
-  try {
-    return import.meta.env.VITE_DEEPSEEK_API_KEY;
-  } catch {
-    return (typeof process !== 'undefined' ? (process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY || "") : "");
-  }
-})();
-
 const API_URL = "https://api.deepseek.com/chat/completions";
 const MODEL = "deepseek-chat"; // DeepSeek-V3 (rebuild trigger)
 
@@ -24,7 +15,20 @@ export async function categorizeThoughtDeepSeek(text: string): Promise<{
   isStarred?: boolean;
   isPinned?: boolean;
 }> {
-  if (!apiKey) {
+  const getApiKey = () => {
+    try {
+      const userKey = localStorage.getItem('luminote_deepseek_api_key');
+      if (userKey) return userKey;
+    } catch {}
+    try {
+      return import.meta.env.VITE_DEEPSEEK_API_KEY || "";
+    } catch {
+      return (typeof process !== 'undefined' ? (process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY || "") : "");
+    }
+  };
+
+  const key = getApiKey();
+  if (!key) {
     console.warn("[DeepSeek] API Key missing.");
     throw new Error("DeepSeek API Key not configured");
   }
@@ -53,7 +57,7 @@ export async function categorizeThoughtDeepSeek(text: string): Promise<{
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
+      "Authorization": `Bearer ${key}`,
     },
     body: JSON.stringify({
       model: MODEL,
