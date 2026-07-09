@@ -28,7 +28,7 @@
     </filter>
   </defs>
 
-  <!-- PWA专用图标：不倾斜，100% 填满画布，完美解决白边和裁剪问题 -->
+  <!-- PWA专用图标：不倾斜，100% 填满画布，根据用户手绘蓝本精准重构 -->
   <g>
     <!-- 1. 底层完全填满，底角缺口位置填充金黄色阴影，使图标在裁剪时边缘没有任何空隙 -->
     <rect width="100" height="100" fill="#EAB308" />
@@ -44,7 +44,7 @@
     <!-- 第一行：洋红胶囊 (未完成方块 + 右侧金黄色小五角星 ⭐️) -->
     <rect x="10" y="24" width="6" height="6" rx="1.5" stroke="#EC4899" stroke-width="1.2" fill="none" />
     <rect x="20" y="24" width="42" height="6" rx="3" fill="#EC4899" />
-    <!-- 饱满完美的五角星 ⭐️ (移至 X=77 处，防圆角切边) -->
+    <!-- 饱满完美的五角星 ⭐️ -->
     <path 
       d="M77.0 23 L78.6 26.2 L82.1 26.7 L79.5 29.1 L80.1 32.6 L77.0 30.9 L73.9 32.6 L74.5 29.1 L71.9 26.7 L75.4 26.2 Z" 
       fill="#EAB308" 
@@ -54,26 +54,27 @@
     <rect x="10" y="38" width="6" height="6" rx="1.5" fill="url(#pill-blue)" />
     <path d="M11.5 41 L12.8 42.3 L15 40" stroke="#FFFFFF" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" />
     <rect x="20" y="38" width="44" height="6" rx="3" fill="url(#pill-blue)" />
-    <!-- 饱满立体感的 iOS 风格小铃铛 (移至 X=77 处，防圆角切边) -->
+    <!-- 饱满立体感的 iOS 风格小铃铛 -->
     <path 
       d="M77.0 34.5 C75.7 34.5 74.7 35.8 74.7 37.2 C74.7 38.2 73.7 40.2 73.0 40.8 C72.5 41.3 72.5 42.2 73.8 42.2 H79.7 C81.0 42.2 81.5 41.3 81.0 40.8 C80.3 40.2 79.3 38.2 79.3 37.2 C79.3 35.8 78.3 34.5 77.0 34.5 Z" 
       fill="url(#pill-blue)" 
     />
     <circle cx="77.0" cy="43.2" r="1.1" fill="url(#pill-blue)" />
 
-    <!-- 第三行：明黄胶囊 (未完成方块 + 右侧红色置顶小图钉 📌) -->
+    <!-- 第三行：明黄胶囊 (未完成方块 + 右侧橙色斜插立体小图钉 📌) -->
     <rect x="10" y="52" width="6" height="6" rx="1.5" stroke="#F97316" stroke-width="1.2" fill="none" />
-    <rect x="20" y="52" width="40" height="6" rx="3" fill="url(#pill-yellow)" />
+    <!-- 缩短胶囊条，给斜插的图钉留出呼吸空间 -->
+    <rect x="20" y="52" width="34" height="6" rx="3" fill="url(#pill-yellow)" />
     
-    <!-- 红色立体小图钉 📌 (中心点 X=76.5, Y=55, 倾斜 45 度，防止裁剪) -->
-    <g transform="translate(76.5, 55) rotate(-45)">
+    <!-- 橙色斜插立体小图钉 📌 (按蓝本设计：缩减尺寸，倾斜45度指向右下角，使用左侧橙色 #F97316) -->
+    <g transform="translate(71, 51) rotate(45)">
       <!-- 针头部分 (silver needle) -->
-      <path d="M0 0 L0 5" stroke="#94A3B8" stroke-width="1.2" stroke-linecap="round" />
-      <!-- 图钉红色塑料主体 -->
-      <path d="M-3.5 0 C-1 0 -1 -2 -2 -4 L-3 -6 L3 -6 L2 -4 C1 -2 1 0 3.5 0 Z" fill="#EF4444" />
+      <path d="M0 0 L0 4.2" stroke="#94A3B8" stroke-width="1.0" stroke-linecap="round" />
+      <!-- 图钉橙色塑料主体 -->
+      <path d="M-2.8 0 C-0.8 0 -0.8 -1.5 -1.5 -3 L-2.2 -4.8 L2.2 -4.8 L1.5 -3 C0.8 -1.5 0.8 0 2.8 0 Z" fill="#F97316" />
       <!-- 顶部手柄帽 -->
-      <rect x="-4.5" y="-7.5" width="9" height="1.5" rx="0.5" fill="#EF4444" />
-      <path d="M-2 -7.5 C-2 -9 2 -9 2 -7.5 Z" fill="#EF4444" />
+      <rect x="-3.5" y="-6" width="7" height="1.2" rx="0.4" fill="#F97316" />
+      <path d="M-1.5 -6 C-1.5 -7.2 1.5 -7.2 1.5 -6 Z" fill="#F97316" />
     </g>
 
     <!-- 4. 掀起一角 (从 76x100 和 100x76 开始折叠，拉满角边缘) -->
