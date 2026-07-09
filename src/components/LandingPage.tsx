@@ -62,7 +62,7 @@ export function LandingPage({ onLogin }: LandingPageProps) {
     if (!document.getElementById('google-gsi-client')) {
       const script = document.createElement('script');
       script.id = 'google-gsi-client';
-      script.src = 'https://accounts.google.com/gsi/client';
+      script.src = 'https://accounts.google.com/gsi/client?hl=en';
       script.async = true;
       script.defer = true;
       script.onload = initGoogleGsi;
