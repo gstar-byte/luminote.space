@@ -1,6 +1,11 @@
 import { SYSTEM_PROMPT } from '../constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const getDeepSeekKey = (): string => {
+const getDeepSeekKey = async (): Promise<string> => {
+  try {
+    const userKey = await AsyncStorage.getItem('luminote_deepseek_api_key');
+    if (userKey) return userKey;
+  } catch {}
   return (
     process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY ||
     process.env.EXPO_PUBLIC_DEEPSEEK_KEY ||
@@ -26,7 +31,7 @@ export type DeepSeekResult = {
 };
 
 export async function categorizeThoughtDeepSeek(text: string): Promise<DeepSeekResult> {
-  const apiKey = getDeepSeekKey();
+  const apiKey = await getDeepSeekKey();
   if (!apiKey) {
     console.warn('[DeepSeek] Mobile API Key missing.');
     throw new Error('DeepSeek API Key not configured');

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Image,
   Modal,
@@ -12,12 +12,14 @@ import {
   Platform,
   Linking,
   NativeModules,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { User as UserIcon, X, Sliders, Hand, Smartphone, Layers } from 'lucide-react-native';
 import type { UserProfile, AppSettings } from '../types';
 import { PAYWALL_ACTIVE } from '../featureFlags';
 import * as Haptics from 'expo-haptics';
-import { Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = {
   visible: boolean;
@@ -38,6 +40,80 @@ export function SettingsModalMobile({
   settings,
   onUpdateSettings,
 }: Props) {
+  const [provider, setProvider] = useState<'gemini' | 'deepseek' | 'local'>('gemini');
+  const [geminiKey, setGeminiKey] = useState('');
+  const [deepseekKey, setDeepseekKey] = useState('');
+  const [supabaseUrl, setSupabaseUrl] = useState('');
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState('');
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const savedProvider = await AsyncStorage.getItem('luminote_nlp_provider');
+        const savedGeminiKey = await AsyncStorage.getItem('luminote_gemini_api_key');
+        const savedDeepseekKey = await AsyncStorage.getItem('luminote_deepseek_api_key');
+        const savedSupabaseUrl = await AsyncStorage.getItem('luminote_supabase_url');
+        const savedSupabaseAnonKey = await AsyncStorage.getItem('luminote_supabase_anon_key');
+
+        if (savedProvider) setProvider(savedProvider as any);
+        if (savedGeminiKey) setGeminiKey(savedGeminiKey);
+        if (savedDeepseekKey) setDeepseekKey(savedDeepseekKey);
+        if (savedSupabaseUrl) setSupabaseUrl(savedSupabaseUrl);
+        if (savedSupabaseAnonKey) setSupabaseAnonKey(savedSupabaseAnonKey);
+      } catch (e) {
+        console.warn(e);
+      }
+    };
+    if (visible) {
+      loadSettings();
+    }
+  }, [visible]);
+
+  const handleProviderChange = async (val: 'gemini' | 'deepseek' | 'local') => {
+    setProvider(val);
+    try {
+      await AsyncStorage.setItem('luminote_nlp_provider', val);
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const handleGeminiKeyChange = async (val: string) => {
+    setGeminiKey(val);
+    try {
+      await AsyncStorage.setItem('luminote_gemini_api_key', val);
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const handleDeepseekKeyChange = async (val: string) => {
+    setDeepseekKey(val);
+    try {
+      await AsyncStorage.setItem('luminote_deepseek_api_key', val);
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const handleSupabaseUrlChange = async (val: string) => {
+    setSupabaseUrl(val);
+    try {
+      await AsyncStorage.setItem('luminote_supabase_url', val);
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const handleSupabaseAnonKeyChange = async (val: string) => {
+    setSupabaseAnonKey(val);
+    try {
+      await AsyncStorage.setItem('luminote_supabase_anon_key', val);
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
   if (!visible) return null;
 
   const handleToggle = async (key: keyof AppSettings, val: boolean) => {
@@ -387,6 +463,108 @@ export function SettingsModalMobile({
               </View>
             </View>
 
+            {/* Section: AI & Database Integrations */}
+            <Text style={styles.sectionLbl}>AI & DATABASE INTEGRATIONS</Text>
+            <View style={styles.sectionCard}>
+              {/* NLP Provider */}
+              <View style={styles.row}>
+                <View style={styles.rowMeta}>
+                  <Text style={styles.rowTitle}>AI Model</Text>
+                  <Text style={styles.rowSub}>Select the AI model for categorization & voice</Text>
+                </View>
+                <View style={styles.pickerContainer}>
+                  {['gemini', 'deepseek', 'local'].map((item) => (
+                    <TouchableOpacity
+                      key={item}
+                      style={[
+                        styles.segmentBtnMini,
+                        provider === item && styles.segmentBtnActive,
+                      ]}
+                      onPress={() => handleProviderChange(item as any)}
+                    >
+                      <Text style={[
+                        styles.segmentBtnTxtMini,
+                        provider === item && styles.segmentBtnTxtActive
+                      ]}>
+                        {item === 'gemini' ? 'Gemini' : item === 'deepseek' ? 'DeepSeek' : 'Local'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Gemini Key Input */}
+              {provider === 'gemini' && (
+                <View style={styles.rowDivider}>
+                  <View style={styles.inputCol}>
+                    <Text style={styles.inputTitle}>Gemini API Key</Text>
+                    <TextInput
+                      secureTextEntry
+                      value={geminiKey}
+                      onChangeText={handleGeminiKeyChange}
+                      placeholder="Paste your Google AI Studio key..."
+                      placeholderTextColor="#8E8E93"
+                      style={styles.textInput}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* DeepSeek Key Input */}
+              {provider === 'deepseek' && (
+                <View style={styles.rowDivider}>
+                  <View style={styles.inputCol}>
+                    <Text style={styles.inputTitle}>DeepSeek API Key</Text>
+                    <TextInput
+                      secureTextEntry
+                      value={deepseekKey}
+                      onChangeText={handleDeepseekKeyChange}
+                      placeholder="Paste your DeepSeek platform key..."
+                      placeholderTextColor="#8E8E93"
+                      style={styles.textInput}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* Supabase URL Input */}
+              <View style={styles.rowDivider}>
+                <View style={styles.inputCol}>
+                  <Text style={styles.inputTitle}>Supabase URL</Text>
+                  <TextInput
+                    value={supabaseUrl}
+                    onChangeText={handleSupabaseUrlChange}
+                    placeholder="https://your-project.supabase.co"
+                    placeholderTextColor="#8E8E93"
+                    style={styles.textInput}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+              </View>
+
+              {/* Supabase Anon Key Input */}
+              <View style={styles.rowDivider}>
+                <View style={styles.inputCol}>
+                  <Text style={styles.inputTitle}>Supabase Anon Key</Text>
+                  <TextInput
+                    secureTextEntry
+                    value={supabaseAnonKey}
+                    onChangeText={handleSupabaseAnonKeyChange}
+                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+                    placeholderTextColor="#8E8E93"
+                    style={styles.textInput}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+              </View>
+            </View>
+
             <TouchableOpacity style={styles.done} onPress={onClose}>
               <Text style={styles.doneTxt}>Done</Text>
             </TouchableOpacity>
@@ -558,4 +736,46 @@ const styles = StyleSheet.create({
   },
   done: { alignItems: 'center', padding: 12, marginTop: 4 },
   doneTxt: { color: '#007AFF', fontWeight: '800', fontSize: 15 },
+  pickerContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#E5E5EA',
+    borderRadius: 8,
+    padding: 2,
+    alignItems: 'center',
+  },
+  segmentBtnMini: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentBtnTxtMini: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8E8E93',
+  },
+  inputCol: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    width: '100%',
+  },
+  inputTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8E8E93',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  textInput: {
+    height: 38,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    fontSize: 13,
+    color: '#1D1D1F',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
 });

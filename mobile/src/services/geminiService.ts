@@ -2,8 +2,13 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { SYSTEM_PROMPT } from '../constants';
 import { categorizeThoughtLocal } from './localNlpService';
 import { categorizeThoughtDeepSeek } from './deepseekService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-function getGeminiKey(): string {
+async function getGeminiKey(): Promise<string> {
+  try {
+    const userKey = await AsyncStorage.getItem('luminote_gemini_api_key');
+    if (userKey) return userKey;
+  } catch {}
   return (
     process.env.EXPO_PUBLIC_GEMINI_API_KEY ||
     process.env.EXPO_PUBLIC_GEMINI_KEY ||
@@ -11,13 +16,25 @@ function getGeminiKey(): string {
   );
 }
 
-function getDeepSeekKey(): string {
+async function getDeepSeekKey(): Promise<string> {
+  try {
+    const userKey = await AsyncStorage.getItem('luminote_deepseek_api_key');
+    if (userKey) return userKey;
+  } catch {}
   return (
     process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY ||
     process.env.EXPO_PUBLIC_DEEPSEEK_KEY ||
     process.env.VITE_DEEPSEEK_API_KEY ||
     ''
   );
+}
+
+async function getProvider(): Promise<'gemini' | 'deepseek' | 'local'> {
+  try {
+    const saved = await AsyncStorage.getItem('luminote_nlp_provider');
+    if (saved === 'gemini' || saved === 'deepseek' || saved === 'local') return saved;
+  } catch {}
+  return 'gemini';
 }
 
 export type CategorizeThoughtResult = {
@@ -33,7 +50,7 @@ export async function categorizeThoughtFromAudio(
   audioBase64: string,
   mimeType: string,
 ): Promise<CategorizeThoughtResult & { error?: string }> {
-  const apiKey = getGeminiKey();
+  const apiKey = await getGeminiKey();
   if (!apiKey) {
     return { refinedContent: '', error: 'NO_KEY' };
   }
@@ -110,21 +127,48 @@ export async function categorizeThought(text: string): Promise<CategorizeThought
     console.warn('[Mobile NLP Router] Local NLP fast-path error:', e);
   }
 
-  // 2. Try DeepSeek (if API key is available)
-  const dsKey = getDeepSeekKey();
-  if (dsKey) {
-    try {
-      console.log('[Mobile NLP Router] Trying DeepSeek...');
-      const dsResult = await categorizeThoughtDeepSeek(text);
-      console.log('[Mobile NLP Router] DeepSeek succeeded:', dsResult);
-      return dsResult;
-    } catch (err) {
-      console.warn('[Mobile NLP Router] DeepSeek failed, falling back to Gemini:', err);
+  const provider = await getProvider();
+
+  // 2. Try DeepSeek (if chosen and API key is available)
+  if (provider === 'deepseek') {
+    const dsKey = await getDeepSeekKey();
+    if (dsKey) {
+      try {
+        console.log('[Mobile NLP Router] Trying DeepSeek...');
+        const dsResult = await categorizeThoughtDeepSeek(text);
+        console.log('[Mobile NLP Router] DeepSeek succeeded:', dsResult);
+        return dsResult;
+      } catch (err) {
+        console.warn('[Mobile NLP Router] DeepSeek failed, falling back to local:', err);
+      }
     }
+    // Fallback to local
+    const localRes = await categorizeThoughtLocal(text);
+    return {
+      title: null,
+      category: localRes.category,
+      tags: localRes.tags,
+      refinedContent: text,
+      isTodo: localRes.isTodo,
+      reminder: localRes.reminder,
+    };
   }
 
-  // 3. Fallback to Gemini
-  const apiKey = getGeminiKey();
+  // 3. Try Local Parser (if chosen)
+  if (provider === 'local') {
+    const localRes = await categorizeThoughtLocal(text);
+    return {
+      title: null,
+      category: localRes.category,
+      tags: localRes.tags,
+      refinedContent: text,
+      isTodo: localRes.isTodo,
+      reminder: localRes.reminder,
+    };
+  }
+
+  // 4. Try Gemini (default and fallback)
+  const apiKey = await getGeminiKey();
   if (!apiKey) {
     const localRes = await categorizeThoughtLocal(text);
     return {

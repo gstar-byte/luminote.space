@@ -84,7 +84,7 @@ import {
   Keyboard,
   Clock,
 } from 'lucide-react-native';
-import { onAuthStateChanged, type User } from './lib/firebaseMobile';
+import { onAuthStateChanged, type User } from './lib/supabaseMobile';
 import type { Capsule, FilterType, ReminderConfig, ReminderType, UserProfile, AppSettings } from './types';
 import { PRESET_COLORS } from './constants';
 import { categorizeThought, categorizeThoughtFromAudio } from './services/geminiService';
@@ -124,7 +124,7 @@ import {
   updateProfile,
   where,
   writeBatch,
-} from './lib/firebaseMobile';
+} from './lib/supabaseMobile';
 import {
   getVoiceCaptureCount,
   incrementVoiceCaptureCount,

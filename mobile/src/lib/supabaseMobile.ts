@@ -1,15 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+// 默认打包环境变量
+const defaultUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const defaultKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!defaultUrl || !defaultKey) {
   console.warn('[Supabase Mobile] URL or Anon Key is missing. Check your environment variables.');
 }
 
-// 初始化移动端的 Supabase 客户端，配合 AsyncStorage 存储会话
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+// 导出可被外部修改的 supabase 客户端引用
+export let supabase = createClient(defaultUrl, defaultKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
@@ -18,14 +19,48 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+// 动态载入 AsyncStorage 的凭据，并重置 Supabase 实例
+export async function refreshSupabaseClient() {
+  try {
+    const savedUrl = await AsyncStorage.getItem('luminote_supabase_url');
+    const savedKey = await AsyncStorage.getItem('luminote_supabase_anon_key');
+    const url = savedUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+    const key = savedKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+
+    if (url && key) {
+      // 重新实例化
+      supabase = createClient(url, key, {
+        auth: {
+          storage: AsyncStorage,
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: false,
+        },
+      });
+      // 重新拉取一次当前用户
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        currentAuthUser = mapSupabaseUserToFirebase(session.user);
+      } else {
+        currentAuthUser = null;
+      }
+      console.log('[Supabase Mobile] Client successfully updated & refreshed with keys:', url.substring(0, 15) + '...');
+    }
+  } catch (e) {
+    console.warn('[Supabase Mobile] Failed to refresh client:', e);
+  }
+}
+
 // 缓存当前登录用户，以支持同步的 auth.currentUser 获取
 let currentAuthUser: any = null;
 
-// 初始化拉取一次 Session
-supabase.auth.getSession().then(({ data: { session } }) => {
-  if (session) {
-    currentAuthUser = mapSupabaseUserToFirebase(session.user);
-  }
+// 初始化异步刷新客户端
+void refreshSupabaseClient().then(() => {
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session) {
+      currentAuthUser = mapSupabaseUserToFirebase(session.user);
+    }
+  });
 });
 
 function mapSupabaseUserToFirebase(user: any): any {
@@ -211,7 +246,7 @@ export const getDocs = async (queryRef: any): Promise<any> => {
 };
 
 export const writeBatch = (dbInstance?: any): any => {
-  const operations: Array<() => Promise<void>> = [];
+  const operations: (() => Promise<void>)[] = [];
   return {
     set(docRef: any, data: any, options?: any) {
       operations.push(() => setDoc(docRef, data, options));
