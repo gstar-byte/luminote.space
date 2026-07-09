@@ -17,6 +17,7 @@ interface LandingPageProps {
 
 export function LandingPage({ onLogin }: LandingPageProps) {
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+  console.log('[GoogleSDK] Google Client ID loaded:', googleClientId);
 
   useEffect(() => {
     if (!googleClientId) return;

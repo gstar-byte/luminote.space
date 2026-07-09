@@ -210,6 +210,8 @@ export default function App() {
     return null;
   }
 
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
   const [user, setUser] = useState<UserProfile | null>(() => {
     try {
       const raw = safeLocalStorageGet('luminote_auth_user');
@@ -1077,6 +1079,59 @@ export default function App() {
     window.addEventListener('beforeinstallprompt', handler as EventListener);
     return () => window.removeEventListener('beforeinstallprompt', handler as EventListener);
   }, [isPWA]);
+
+  // 集成谷歌 GSI SDK 弹窗登录以支持 AuthScreen 面板的无跳转鉴权
+  useEffect(() => {
+    if (!googleClientId || user || !showAuthScreen) return;
+
+    const initGoogleGsiAuth = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: async (response: any) => {
+            try {
+              setAuthProcessing(true);
+              const { data, error } = await supabase.auth.signInWithIdToken({
+                provider: 'google',
+                token: response.credential,
+              });
+              if (error) throw error;
+              setShowAuthScreen(false);
+            } catch (err) {
+              console.error('[GoogleSDK-Auth] Sign in with ID Token failed:', err);
+            } finally {
+              setAuthProcessing(false);
+            }
+          },
+          ux_mode: 'popup'
+        });
+
+        // 渲染官方原生登录按钮到容器内，宽度匹配输入框的 280px
+        const container = document.getElementById('google-signin-btn-container-auth');
+        if (container) {
+          window.google.accounts.id.renderButton(container, {
+            theme: 'outline',
+            size: 'large',
+            shape: 'pill',
+            text: 'signin_with',
+            width: 280
+          });
+        }
+      }
+    };
+
+    if (!document.getElementById('google-gsi-client')) {
+      const script = document.createElement('script');
+      script.id = 'google-gsi-client';
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = initGoogleGsiAuth;
+      document.body.appendChild(script);
+    } else {
+      initGoogleGsiAuth();
+    }
+  }, [user, showAuthScreen]);
 
   const tourActive = useRef(false);
 
@@ -2601,17 +2656,21 @@ export default function App() {
                 <div className="relative flex justify-center text-[10px] uppercase font-black text-[#8E8E93]"><span className="bg-white px-4 tracking-widest lowercase">or sign in with</span></div>
               </div>
 
-              <div className="flex justify-center">
-                <button 
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  className="w-full flex items-center justify-center gap-3 bg-white py-2.5 rounded-xl border border-[#E5E5EA] hover:bg-[#F2F2F7] transition-all active:scale-95 shadow-sm font-bold text-sm text-[#1D1D1F]"
-                  title="Sign in with Google"
-                >
-                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="Google" />
-                  <span>Google</span>
-                </button>
-              </div>
+              {googleClientId ? (
+                <div id="google-signin-btn-container-auth" className="w-full h-[46px] flex items-center justify-center" />
+              ) : (
+                <div className="flex justify-center">
+                  <button 
+                    type="button"
+                    onClick={handleGoogleSignIn}
+                    className="w-full flex items-center justify-center gap-3 bg-white py-2.5 rounded-xl border border-[#E5E5EA] hover:bg-[#F2F2F7] transition-all active:scale-95 shadow-sm font-bold text-sm text-[#1D1D1F]"
+                    title="Sign in with Google"
+                  >
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="Google" />
+                    <span>Google</span>
+                  </button>
+                </div>
+              )}
 
               <button 
                 onClick={() => setIsRegistering(!isRegistering)}
