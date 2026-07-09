@@ -6,7 +6,7 @@
       <stop offset="100%" stop-color="#FEF08A" />
     </linearGradient>
     
-    <!-- 卷角背面的立体渐变：模拟黄色纸张翻折的折角金黄暗面与高光 -->
+    <!-- 卷角背面的立体渐变：模拟折角金黄暗面与高光 -->
     <linearGradient id="curl-bg" x1="0%" y1="100%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#EAB308" />
       <stop offset="40%" stop-color="#FEF08A" />
@@ -22,59 +22,64 @@
       <stop offset="100%" stop-color="#FACC15" />
     </linearGradient>
 
-    <!-- 整体纸张悬浮阴影 -->
-    <filter id="paper-shadow" x="-15%" y="-15%" width="135%" height="135%">
-      <feDropShadow dx="0" dy="4" stdDeviation="4.5" flood-color="#000000" flood-opacity="0.15" />
-    </filter>
-
     <!-- 掀起弯折角的阴影：创造凌空飞起的感觉 -->
     <filter id="curl-shadow" x="-35%" y="-35%" width="170%" height="170%">
       <feDropShadow dx="-2" dy="-2" stdDeviation="3" flood-color="#000000" flood-opacity="0.22" />
     </filter>
   </defs>
 
-  <!-- PWA专用图标：不倾斜，左右填满，底部拉高，消除所有白边 -->
+  <!-- PWA专用图标：不倾斜，100% 填满画布，完美解决白边和裁剪问题 -->
   <g>
-    
-    <!-- 1. 便签纸主体：左上、右上、左下圆角形状，右下保留卷角，外阴影透明 -->
+    <!-- 1. 底层完全填满，底角缺口位置填充金黄色阴影，使图标在裁剪时边缘没有任何空隙 -->
+    <rect width="100" height="100" fill="#EAB308" />
+
+    <!-- 2. 便签纸主体：右下角切出折角，其余填满画布 -->
     <path 
-      d="M0 12 C0 5.3726 5.3726 0 12 0 H88 C94.6274 0 100 5.3726 100 12 V70 L74 94 H12 C5.3726 94 0 88.6274 0 82 V12 Z" 
+      d="M0 0 H100 V76 L76 100 H0 Z" 
       fill="url(#paper-bg)" 
     />
 
-    <!-- 2. 3行精美小胶囊清单 -->
+    <!-- 3. 3行精美小胶囊清单 -->
     
     <!-- 第一行：洋红胶囊 (未完成方块 + 右侧金黄色小五角星 ⭐️) -->
     <rect x="10" y="24" width="6" height="6" rx="1.5" stroke="#EC4899" stroke-width="1.2" fill="none" />
-    <rect x="20" y="24" width="48" height="6" rx="3" fill="#EC4899" />
-    <!-- 饱满完美的五角星 ⭐️ (平移至 X 轴 88 附近) -->
+    <rect x="20" y="24" width="42" height="6" rx="3" fill="#EC4899" />
+    <!-- 饱满完美的五角星 ⭐️ (移至 X=77 处，防圆角切边) -->
     <path 
-      d="M88.0 23 L89.6 26.2 L93.1 26.7 L90.5 29.1 L91.1 32.6 L88.0 30.9 L84.9 32.6 L85.5 29.1 L82.9 26.7 L86.4 26.2 Z" 
+      d="M77.0 23 L78.6 26.2 L82.1 26.7 L79.5 29.1 L80.1 32.6 L77.0 30.9 L73.9 32.6 L74.5 29.1 L71.9 26.7 L75.4 26.2 Z" 
       fill="#EAB308" 
     />
 
     <!-- 第二行：极客蓝胶囊 (已完成打勾复选框 + 右侧超圆润小铃铛 🔔) -->
     <rect x="10" y="38" width="6" height="6" rx="1.5" fill="url(#pill-blue)" />
     <path d="M11.5 41 L12.8 42.3 L15 40" stroke="#FFFFFF" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" />
-    <rect x="20" y="38" width="51" height="6" rx="3" fill="url(#pill-blue)" />
-    <!-- 饱满立体感的 iOS 风格小铃铛 (平移至 X 轴 88 附近) -->
+    <rect x="20" y="38" width="44" height="6" rx="3" fill="url(#pill-blue)" />
+    <!-- 饱满立体感的 iOS 风格小铃铛 (移至 X=77 处，防圆角切边) -->
     <path 
-      d="M88.0 34.5 C86.7 34.5 85.7 35.8 85.7 37.2 C85.7 38.2 84.7 40.2 84.0 40.8 C83.5 41.3 83.5 42.2 84.8 42.2 H90.7 C92.0 42.2 92.5 41.3 92.0 40.8 C91.3 40.2 90.3 38.2 90.3 37.2 C90.3 35.8 89.3 34.5 88.0 34.5 Z" 
+      d="M77.0 34.5 C75.7 34.5 74.7 35.8 74.7 37.2 C74.7 38.2 73.7 40.2 73.0 40.8 C72.5 41.3 72.5 42.2 73.8 42.2 H79.7 C81.0 42.2 81.5 41.3 81.0 40.8 C80.3 40.2 79.3 38.2 79.3 37.2 C79.3 35.8 78.3 34.5 77.0 34.5 Z" 
       fill="url(#pill-blue)" 
     />
-    <circle cx="88.0" cy="43.2" r="1.1" fill="url(#pill-blue)" />
+    <circle cx="77.0" cy="43.2" r="1.1" fill="url(#pill-blue)" />
 
-    <!-- 第三行：明黄胶囊 (未完成方块) -->
+    <!-- 第三行：明黄胶囊 (未完成方块 + 右侧红色置顶小曲别针 📎) -->
     <rect x="10" y="52" width="6" height="6" rx="1.5" stroke="#F97316" stroke-width="1.2" fill="none" />
     <rect x="20" y="52" width="40" height="6" rx="3" fill="url(#pill-yellow)" />
-
-    <!-- 3. 掀起一角 (立体卷边效果，切至 Y=94) -->
+    <!-- 红色小曲别针 📎 (移至 X=76.5 处，防圆角切边) -->
     <path 
-      d="M74 94 C74 82 82 70 98 70 C82 82 82 94 74 94 Z" 
+      d="M76.5 50 L80.5 54 M78 48.5 L82 52.5 C83.2 53.7 83.2 55.7 82 56.9 C80.8 58.1 78.8 58.1 77.6 56.9 L73.6 52.9 C71.6 50.9 71.6 47.7 73.6 45.7 C75.6 43.7 78.8 43.7 80.8 45.7 L84.8 49.7" 
+      stroke="#EF4444" 
+      stroke-width="1.4" 
+      stroke-linecap="round" 
+      fill="none" 
+    />
+
+    <!-- 4. 掀起一角 (从 76x100 和 100x76 开始折叠，拉满角边缘) -->
+    <path 
+      d="M76 100 C76 86 86 76 100 76 C86 86 86 100 76 100 Z" 
       fill="url(#curl-bg)" 
       filter="url(#curl-shadow)"
     />
-    <path d="M74 94 L98 70" stroke="#EAB308" stroke-opacity="0.3" stroke-width="0.5" />
+    <path d="M76 100 L100 76" stroke="#EAB308" stroke-opacity="0.3" stroke-width="0.5" />
     
   </g>
 </svg>
