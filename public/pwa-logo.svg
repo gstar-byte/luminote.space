@@ -22,7 +22,7 @@
       <stop offset="100%" stop-color="#FACC15" />
     </linearGradient>
 
-    <!-- 整体纸张悬浮阴影：营造精致悬浮于底板之上的立体投影 -->
+    <!-- 整体纸张悬浮阴影 -->
     <filter id="paper-shadow" x="-20%" y="-20%" width="145%" height="145%">
       <feDropShadow dx="0" dy="4.5" stdDeviation="5.0" flood-color="#000000" flood-opacity="0.14" />
     </filter>
@@ -33,7 +33,7 @@
     </filter>
   </defs>
 
-  <!-- PWA专用图标：底色 100% 铺满淡黄色，内部便签倾斜 26 度且带悬浮投影，完美解决桌面裁剪与黑边问题 -->
+  <!-- PWA专用图标：底色 100% 铺满淡黄色，内部便签倾斜 26 度且带悬浮投影，按 📌 表情符精致重构图钉 -->
   <g>
     <!-- 1. 底层完全填满淡黄色 (#FFFDF0)，使桌面图标在裁剪时为纯淡黄色圆角背景 -->
     <rect width="100" height="100" fill="#FFFDF0" />
@@ -41,7 +41,7 @@
     <!-- 2. 倾斜的便签组合：倾斜 26 度 -->
     <g transform="rotate(-26, 50, 50)">
       
-      <!-- 便签纸主体：经典的优雅弧度矩形 (带着纸面立体飞角裁切) -->
+      <!-- 便签纸主体 -->
       <path 
         d="M18 30 C18 23.3726 23.3726 18 30 18 H70 C76.6274 18 82 23.3726 82 30 V60 L60 82 H30 C23.3726 82 18 76.6274 18 70 Z" 
         fill="url(#paper-bg)" 
@@ -70,19 +70,26 @@
       />
       <circle cx="75.5" cy="47.2" r="1.1" fill="url(#pill-blue)" />
 
-      <!-- 第三行：明黄胶囊 (未完成方块 + 橙色斜插立体小图钉 📌) -->
+      <!-- 第三行：明黄胶囊 (未完成方块 + 📌 橙色斜插立体球形图钉) -->
       <rect x="25" y="56" width="6" height="6" rx="1.5" stroke="#F97316" stroke-width="1.2" fill="none" />
       <rect x="35" y="56" width="20" height="6" rx="3" fill="url(#pill-yellow)" />
       
-      <!-- 橙色斜插立体小图钉 📌 (对齐手绘蓝本：缩减尺寸，倾斜 45 度指向右下方，不强行与上行对齐，使用同款橙色 #F97316) -->
-      <g transform="translate(68, 57) rotate(45)">
+      <!-- 橙色斜插立体图钉 📌 (按 emoji 📌 精准设计：球形顶带 3D 亮面高光，尺寸更加精简，向左平移 5px 靠拢胶囊) -->
+      <g transform="translate(63, 58) rotate(45)">
         <!-- 针头部分 (silver needle) -->
-        <path d="M0 0 L0 4.2" stroke="#94A3B8" stroke-width="1.0" stroke-linecap="round" />
-        <!-- 图钉橙色塑料主体 -->
-        <path d="M-2.8 0 C-0.8 0 -0.8 -1.5 -1.5 -3 L-2.2 -4.8 L2.2 -4.8 L1.5 -3 C0.8 -1.5 0.8 0 2.8 0 Z" fill="#F97316" />
-        <!-- 顶部手柄帽 -->
-        <rect x="-3.5" y="-6" width="7" height="1.2" rx="0.4" fill="#F97316" />
-        <path d="M-1.5 -6 C-1.5 -7.2 1.5 -7.2 1.5 -6 Z" fill="#F97316" />
+        <path d="M0 0 L0 3.8" stroke="#94A3B8" stroke-width="1.0" stroke-linecap="round" />
+        
+        <!-- 颈部底盘 (暗橙色阴影) -->
+        <ellipse cx="0" cy="0" rx="1.8" ry="0.6" fill="#D97706" />
+        
+        <!-- 塑料连接颈 -->
+        <path d="M-1.4 0 L-0.9 -2 L0.9 -2 L1.4 0 Z" fill="#F97316" />
+        
+        <!-- 头部塑料球 -->
+        <circle cx="0" cy="-3.6" r="2.5" fill="#F97316" />
+        
+        <!-- 球体 3D 亮面高光点 (打造通透质感) -->
+        <circle cx="-0.8" cy="-4.4" r="0.7" fill="#FFFFFF" opacity="0.75" />
       </g>
 
       <!-- 4. 掀起一角 (立体卷边效果) -->
