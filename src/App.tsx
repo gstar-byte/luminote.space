@@ -295,6 +295,17 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const isListeningRef = useRef(false);
   useEffect(() => { isListeningRef.current = isListening; }, [isListening]);
+
+  const [voiceLang, setVoiceLang] = useState<'zh-CN' | 'en-US'>(() => {
+    const saved = safeLocalStorageGet('luminote_voice_lang');
+    if (saved === 'en-US' || saved === 'zh-CN') return saved;
+    const sysLang = navigator.languages?.some(l => l.startsWith('zh')) || navigator.language?.startsWith('zh');
+    return sysLang ? 'zh-CN' : 'zh-CN'; // 考虑到用户群体，默认首选中文 zh-CN
+  });
+
+  useEffect(() => {
+    safeLocalStorageSet('luminote_voice_lang', voiceLang);
+  }, [voiceLang]);
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [firedReminders, setFiredReminders] = useState<Capsule[]>([]);
@@ -1426,9 +1437,7 @@ export default function App() {
       recognition.current = new SpeechRecognition();
       recognition.current.continuous = true;
       recognition.current.interimResults = true;
-      // 支持中文和英文：根据系统语言自动选择
-      // 默认使用中文（zh-CN）语音识别。解决在 PWA 独立窗口模式下，某些浏览器 webview 会强制将 navigator.language 报告为 'en-US'，从而导致无法录入中文的问题。
-      recognition.current.lang = 'zh-CN';
+      recognition.current.lang = voiceLang;
 
       recognition.current.onresult = (event: any) => {
         let interim = '';
@@ -1486,6 +1495,14 @@ export default function App() {
       };
     }
   }, []);
+
+  // 监听 voiceLang 变化，实时更新语音识别器的语言设置
+  useEffect(() => {
+    if (recognition.current) {
+      recognition.current.lang = voiceLang;
+      console.log('[Voice] SpeechRecognition lang updated to:', voiceLang);
+    }
+  }, [voiceLang]);
 
   const [editingCapsule, setEditingCapsule] = useState<Capsule | null>(null);
   /** Local draft for detail editor — avoids Firestore write on every keystroke. */
@@ -2075,6 +2092,7 @@ export default function App() {
   const startListening = () => {
     if (recognition.current) {
       try {
+        recognition.current.lang = voiceLang; // 每次启动录音前，同步最新的中英文语种设置
         stoppedByUserRef.current = false;
         transcriptRef.current = '';
         setInputText('');
@@ -2085,6 +2103,7 @@ export default function App() {
         try {
           recognition.current.stop();
           setTimeout(() => {
+            if (recognition.current) recognition.current.lang = voiceLang;
             stoppedByUserRef.current = false;
             transcriptRef.current = '';
             setInputText('');
@@ -4029,6 +4048,16 @@ export default function App() {
                   disabled={isProcessing}
                   className="bg-transparent border-none focus:ring-0 flex-1 text-base md:text-lg placeholder-[#8E8E93] dark:text-[#F2F2F7] outline-none py-3"
                 />
+                {/* 语音语言切换按钮 (中/EN) */}
+                <button
+                  type="button"
+                  title={`当前语音识别语种: ${voiceLang === 'zh-CN' ? '中文 (Mandarin)' : 'English (US)'} (点击切换)`}
+                  onClick={() => setVoiceLang(prev => prev === 'zh-CN' ? 'en-US' : 'zh-CN')}
+                  className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#E5E5EA] hover:bg-[#D1D1D6] dark:bg-[#3A3A3C] dark:hover:bg-[#48484A] text-[#8E8E93] dark:text-[#AEAEB2] hover:text-[#007AFF] dark:hover:text-[#007AFF] transition-all mr-1.5 select-none shrink-0"
+                >
+                  {voiceLang === 'zh-CN' ? '中' : 'EN'}
+                </button>
+
                 <button 
                   type="button"
                   title="创建便签"
