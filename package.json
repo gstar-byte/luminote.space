@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
+    "@supabase/supabase-js": "^2.49.1",
     "@tailwindcss/vite": "^4.1.14",
     "@tiptap/extension-bubble-menu": "^3.23.1",
     "@tiptap/extension-color": "^3.23.1",
@@ -29,7 +30,6 @@
     "dotenv": "^17.2.3",
     "driver.js": "^1.4.0",
     "express": "^4.21.2",
-    "@supabase/supabase-js": "^2.49.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.0",
@@ -43,6 +43,7 @@
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
     "sharp": "^0.34.5",
+    "supabase": "^1.178.2",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

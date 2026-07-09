@@ -151,16 +151,16 @@
 /* Card Wrapper Base CSS & Dynamic Shadows                                     */
 /* ─────────────────────────────────────────────────────────────────────────── */
 :root {
-  /* 优化投影：减少纯向下偏移量（防止被紧邻的下方卡片背景遮挡），增大扩散和模糊，实现四周环绕的渐变阴影 */
-  --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.12), 0 2px 8px -1px rgba(0, 0, 0, 0.06), 0 0 1px rgba(0, 0, 0, 0.18);
-  --card-shadow-hover: 0 16px 36px -6px rgba(0, 0, 0, 0.18), 0 8px 16px -4px rgba(0, 0, 0, 0.10), 0 0 1px rgba(0, 0, 0, 0.22);
-  --card-shadow-selected: 0 12px 28px -6px rgba(0, 122, 255, 0.35), 0 6px 12px -3px rgba(0, 122, 255, 0.15);
+  /* 阴影效果强化：增加模糊度（blur）和不透明度，同时保留微小的向下偏移，实现极具质感的深浮雕拟物阴影 */
+  --card-shadow: 0 8px 30px rgba(0, 0, 0, 0.16), 0 2px 10px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0, 0, 0, 0.22);
+  --card-shadow-hover: 0 24px 50px rgba(0, 0, 0, 0.25), 0 8px 20px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.30);
+  --card-shadow-selected: 0 16px 36px rgba(0, 122, 255, 0.40), 0 6px 16px rgba(0, 122, 255, 0.18);
 }
 
 .dark {
-  --card-shadow: 0 6px 24px -2px rgba(0, 0, 0, 0.50), 0 3px 10px -2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  --card-shadow-hover: 0 20px 42px -8px rgba(0, 0, 0, 0.70), 0 10px 20px -5px rgba(0, 0, 0, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  --card-shadow-selected: 0 12px 28px -6px rgba(0, 122, 255, 0.50), 0 6px 12px -3px rgba(0, 122, 255, 0.20);
+  --card-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 4px 14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --card-shadow-hover: 0 28px 56px rgba(0, 0, 0, 0.85), 0 10px 24px rgba(0, 0, 0, 0.60), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  --card-shadow-selected: 0 16px 36px rgba(0, 122, 255, 0.55), 0 6px 16px rgba(0, 122, 255, 0.25);
 }
 
 .capsule-item-wrapper {
@@ -183,12 +183,12 @@
 /* 移动端 PWA 阴影强化提升可见度，并微调边距以防左右阴影剪切 */
 @media (max-width: 768px) {
   :root {
-    --card-shadow: 0 10px 24px -3px rgba(0, 0, 0, 0.22), 0 4px 10px -3px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.20);
-    --card-shadow-hover: 0 16px 36px -6px rgba(0, 0, 0, 0.28), 0 8px 16px -4px rgba(0, 0, 0, 0.16), 0 0 1px rgba(0, 0, 0, 0.25);
+    --card-shadow: 0 8px 26px rgba(0, 0, 0, 0.20), 0 2px 8px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.25);
+    --card-shadow-hover: 0 16px 36px rgba(0, 0, 0, 0.28), 0 4px 14px rgba(0, 0, 0, 0.16), 0 0 1px rgba(0, 0, 0, 0.30);
   }
   .dark {
-    --card-shadow: 0 14px 32px -6px rgba(0, 0, 0, 0.65), 0 6px 14px -4px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-    --card-shadow-hover: 0 20px 42px -8px rgba(0, 0, 0, 0.80), 0 10px 20px -5px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.70), 0 3px 12px rgba(0, 0, 0, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    --card-shadow-hover: 0 16px 36px rgba(0, 0, 0, 0.85), 0 6px 16px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.20);
   }
   .capsule-item-wrapper {
     /* 移动端加上微小的缩进，保证左右两侧的阴影在横向 overflow-x-hidden 下不被容器边缘生硬剪切 */

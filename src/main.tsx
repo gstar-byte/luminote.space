@@ -31,6 +31,14 @@ if (typeof window !== 'undefined' && 'caches' in window) {
 
 // Register the service worker after the page is fully loaded to prevent bandwidth/CPU competition
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
+
   window.addEventListener('load', () => {
     registerSW({
       onNeedRefresh() {

@@ -178,7 +178,7 @@ export const CapsuleItem = memo(function CapsuleItem({
       }
       // 越过操作阈値时触发短震动反馈
       if (!hasVibratedRef.current && Math.abs(targetX) >= 100) {
-        if (navigator.vibrate) navigator.vibrate([12]);
+        if (navigator.vibrate) navigator.vibrate([40]);
         hasVibratedRef.current = true;
       }
       setSwipeX(targetX);
@@ -194,6 +194,7 @@ export const CapsuleItem = memo(function CapsuleItem({
 
     if (isHorizontalSwipe.current === true) {
       if (swipeX > 100) {
+        if (navigator.vibrate) navigator.vibrate([30]);
         if (capsule.isArchived) {
           void onUpdate({ isArchived: false });
           if (showToast) {
@@ -218,6 +219,7 @@ export const CapsuleItem = memo(function CapsuleItem({
           }
         }
       } else if (swipeX < -100) {
+        if (navigator.vibrate) navigator.vibrate([30]);
         if (capsule.isArchived) {
           void onUpdate({ isDeleted: true });
           if (showToast) {
