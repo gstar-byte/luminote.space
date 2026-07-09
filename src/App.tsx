@@ -1427,7 +1427,8 @@ export default function App() {
       recognition.current.continuous = true;
       recognition.current.interimResults = true;
       // 支持中文和英文：根据系统语言自动选择
-      recognition.current.lang = navigator.language?.startsWith('zh') ? 'zh-CN' : 'en-US';
+      // 默认使用中文（zh-CN）语音识别。解决在 PWA 独立窗口模式下，某些浏览器 webview 会强制将 navigator.language 报告为 'en-US'，从而导致无法录入中文的问题。
+      recognition.current.lang = 'zh-CN';
 
       recognition.current.onresult = (event: any) => {
         let interim = '';
