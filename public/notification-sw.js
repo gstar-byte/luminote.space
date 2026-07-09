@@ -140,16 +140,29 @@ self.addEventListener('push', (event) => {
   }
 
   const title = data.title || 'Lumi Note Reminder';
+  const tag = data.tag || 'lumi-push-' + Date.now();
   const options = {
     body: data.body || '',
-    tag: data.tag || 'lumi-push-' + Date.now(),
+    tag: tag,
     icon: data.icon || '/favicon-192-v18.png',
     badge: data.badge || '/favicon-48-v18.png',
     data: data.data || {},
     requireInteraction: true
   };
 
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  );
+  event.waitUntil((async () => {
+    // 1. 如果当前应用网页正在前台处于活动状态，跳过系统推送（由 React 前台应用内 UI 卡片处理）
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const hasFocusedClient = clients.some(c => c.visibilityState === 'visible');
+    if (hasFocusedClient) return;
+
+    // 2. 防重判定：检查通知栏中是否已经存在具有相同 tag 的本地通知，避免和 Service Worker 本地定时器重复弹窗
+    const activeNotifications = await self.registration.getNotifications({ tag: tag });
+    if (activeNotifications.length > 0) {
+      console.log('[SW] Push notification ignored: duplicate tag', tag);
+      return;
+    }
+
+    await self.registration.showNotification(title, options);
+  })());
 });

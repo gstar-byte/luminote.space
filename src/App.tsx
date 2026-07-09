@@ -269,10 +269,10 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState<string | 'all'>('all');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth > 768,
+    () => typeof window !== 'undefined' && window.innerWidth > 768 && !/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent),
   );
   const [isMobile, setIsMobile] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth <= 768,
+    () => typeof window !== 'undefined' && (window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)),
   );
   
   useEffect(() => {
@@ -1052,9 +1052,9 @@ export default function App() {
   }, [user, isDbReady]);
 
   useEffect(() => {
-    let wasMobile = window.innerWidth <= 768;
+    let wasMobile = window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
     const handleResize = () => {
-      const mobile = window.innerWidth <= 768;
+      const mobile = window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
       setIsMobile(mobile);
       if (mobile && !wasMobile) {
         setIsSidebarOpen(false);
