@@ -591,23 +591,23 @@ export const CapsuleItem = memo(function CapsuleItem({
               let badgeStyle = '';
               if (daysLeft > 0) {
                 badgeText = `${daysLeft} days left`;
-                badgeStyle = 'bg-white/15 border-white/20 text-white hover:bg-white/20';
+                badgeStyle = 'bg-black/25 text-white border-white/20 hover:bg-black/35';
               } else if (daysLeft === 0) {
                 badgeText = '🎉 Today';
-                badgeStyle = 'bg-yellow-400 text-black border-yellow-300 font-extrabold animate-pulse';
+                badgeStyle = 'bg-yellow-400 text-black border border-yellow-300 font-extrabold animate-pulse';
               } else {
                 badgeText = `Passed ${Math.abs(daysLeft)}d`;
-                badgeStyle = 'bg-white/5 border border-white/10 text-white/40';
+                badgeStyle = 'bg-black/45 border-white/5 text-white/40';
               }
               return (
                 <div
                   title={`Target Date: ${new Date(capsule.countdownTarget).toLocaleDateString()}`}
                   className={cn(
-                    "px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm select-none shrink-0 border backdrop-blur-md",
+                    "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm select-none shrink-0 border backdrop-blur-md",
                     badgeStyle
                   )}
                 >
-                  <Hourglass size={10} className="shrink-0" />
+                  <Hourglass size={11} className="text-yellow-400 shrink-0 animate-pulse" />
                   <span>{badgeText}</span>
                 </div>
               );
@@ -650,7 +650,7 @@ export const CapsuleItem = memo(function CapsuleItem({
           if (daysLeft > 0) {
             numberText = `${daysLeft}`;
             labelText = daysLeft === 1 ? 'Day Left' : 'Days Left';
-            colorClasses = 'bg-white/15 border-white/20 text-white hover:bg-white/20';
+            colorClasses = 'bg-black/20 border-white/15 text-white hover:bg-black/30';
           } else if (daysLeft === 0) {
             numberText = '🎉';
             labelText = 'Today';
@@ -658,20 +658,20 @@ export const CapsuleItem = memo(function CapsuleItem({
           } else {
             numberText = `${Math.abs(daysLeft)}`;
             labelText = 'Days Ago';
-            colorClasses = 'bg-white/5 border-white/10 text-white/40';
+            colorClasses = 'bg-black/40 border-white/5 text-white/40';
           }
           return (
             <div
               title={`Target Date: ${new Date(capsule.countdownTarget).toLocaleDateString()}`}
               className={cn(
-                "flex flex-col items-center justify-center px-3.5 py-2.5 rounded-2xl border backdrop-blur-md shadow-lg min-w-[86px] shrink-0 mr-2 md:mr-3 select-none transition-all duration-300 hover:scale-105 active:scale-95",
+                "flex flex-col items-center justify-center px-4 py-3 rounded-2.5xl border backdrop-blur-md shadow-lg min-w-[90px] shrink-0 mr-2 md:mr-3 select-none transition-all duration-300 hover:scale-105 active:scale-95",
                 colorClasses
               )}
             >
-              <span className="text-xl md:text-2xl font-black tracking-tight leading-none mb-0.5">
+              <span className="text-2xl md:text-3xl font-black tracking-tight leading-none mb-0.5">
                 {numberText}
               </span>
-              <span className="text-[9px] font-black uppercase tracking-wider opacity-85 leading-none">
+              <span className="text-[9.5px] font-black uppercase tracking-wider opacity-85 leading-none">
                 {labelText}
               </span>
             </div>

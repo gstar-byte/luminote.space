@@ -34,6 +34,7 @@ create table public.capsules (
   attachments jsonb, -- Note attachments array (images/videos metadata)
   is_starred boolean default false,
   is_pinned boolean default false,
+  countdown_target bigint, -- Target timestamp for countdown tracker
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
