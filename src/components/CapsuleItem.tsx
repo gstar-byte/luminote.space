@@ -664,7 +664,7 @@ export const CapsuleItem = memo(function CapsuleItem({
             <div
               title={`Target Date: ${new Date(capsule.countdownTarget).toLocaleDateString()}`}
               className={cn(
-                "flex flex-col items-center justify-center px-4 py-3 rounded-2.5xl border backdrop-blur-md shadow-lg min-w-[90px] shrink-0 mr-2 md:mr-3 select-none transition-all duration-300 hover:scale-105 active:scale-95",
+                "flex flex-col items-center justify-center px-4 py-3 rounded-2xl border backdrop-blur-md shadow-lg min-w-[90px] shrink-0 mr-2 md:mr-3 select-none transition-all duration-300 hover:scale-105 active:scale-95",
                 colorClasses
               )}
             >
