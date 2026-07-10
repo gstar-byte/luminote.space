@@ -68,7 +68,8 @@ import {
   ListOrdered,
   ListChecks,
   Undo,
-  Inbox
+  Inbox,
+  Hourglass
 } from 'lucide-react';
 import { Capsule, FilterType, ReminderConfig, ReminderType, UserProfile } from './types';
 import { PRESET_COLORS } from './constants';
@@ -2398,6 +2399,7 @@ export default function App() {
         case 'pending-todo': return c.isTodo && !c.completed;
         case 'without-todo': return !c.isTodo;
         case 'completed-todo': return (c.isTodo && c.completed) || hasFinishedOneShotReminder(c);
+        case 'countdown': return !!c.countdownTarget;
         case 'repeat-reminder': return hasRepeatReminder(c);
         case 'without-reminder': return !hasActiveReminder(c);
         case 'finished-reminder': return hasFinishedOneShotReminder(c);
@@ -2422,6 +2424,8 @@ export default function App() {
           return c.isTodo && !c.completed;
         case 'completed-todo':
           return (c.isTodo && !!c.completed) || hasFinishedOneShotReminder(c);
+        case 'countdown':
+          return !!c.countdownTarget;
         case 'repeat-reminder':
           return hasRepeatReminder(c);
         case 'finished-reminder':
@@ -2438,6 +2442,7 @@ export default function App() {
     { value: 'pure-note', label: 'Note(s)' },
     { value: 'pending-todo', label: 'To-do' },
     { value: 'completed-todo', label: 'Completed' },
+    { value: 'countdown', label: 'Countdown' },
     { value: 'repeat-reminder', label: 'Recurring' },
     { value: 'archived', label: 'Archived' },
     { value: 'trash', label: 'Trash' },
@@ -2449,6 +2454,7 @@ export default function App() {
       'pure-note',
       'pending-todo',
       'completed-todo',
+      'countdown',
       'repeat-reminder',
       'finished-reminder',
       'archived',
@@ -2979,23 +2985,37 @@ export default function App() {
               >
                 {filterOptions
                   .filter((o) => o.value !== 'all')
-                  .map((opt) => (
-                    <SidebarItem
-                      key={`filter-${opt.value}`}
-                      id={`filter-${opt.value}`}
-                      icon={null}
-                      label={opt.label}
-                      isActive={filter === opt.value && categoryFilter === 'all' && !tagFilter}
-                      count={countForFilterType(opt.value)}
-                      onClick={() => {
-                        setFilter(opt.value);
-                        setCategoryFilter('all');
-                        setTagFilter(null);
-                        if (isMobile) setIsSidebarOpen(false);
-                      }}
-                      isSidebarOpen={isSidebarOpen}
-                    />
-                  ))}
+                  .map((opt) => {
+                    const getIcon = () => {
+                      switch (opt.value) {
+                        case 'pure-note': return <FileText size={14} />;
+                        case 'pending-todo': return <CheckSquare size={14} />;
+                        case 'completed-todo': return <CheckSquare size={14} className="opacity-60" />;
+                        case 'countdown': return <Hourglass size={14} />;
+                        case 'repeat-reminder': return <RefreshCw size={14} />;
+                        case 'archived': return <Archive size={14} />;
+                        case 'trash': return <Trash2 size={14} />;
+                        default: return null;
+                      }
+                    };
+                    return (
+                      <SidebarItem
+                        key={`filter-${opt.value}`}
+                        id={`filter-${opt.value}`}
+                        icon={getIcon()}
+                        label={opt.label}
+                        isActive={filter === opt.value && categoryFilter === 'all' && !tagFilter}
+                        count={countForFilterType(opt.value)}
+                        onClick={() => {
+                          setFilter(opt.value);
+                          setCategoryFilter('all');
+                          setTagFilter(null);
+                          if (isMobile) setIsSidebarOpen(false);
+                        }}
+                        isSidebarOpen={isSidebarOpen}
+                      />
+                    );
+                  })}
               </div>
 
               <button

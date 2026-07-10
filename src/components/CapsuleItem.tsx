@@ -7,7 +7,7 @@ import {
   ChevronLeft, RotateCcw, Square, CheckSquare, Palette, Edit2,
   Image as ImageIcon, Video, Paperclip, XCircle, PlayCircle,
   MessageSquare, BarChart3, ArrowDownNarrowWide, ArrowUpNarrowWide,
-  RefreshCw, Pin, Star, Sparkles, Share2, Inbox, Undo,
+  RefreshCw, Pin, Star, Sparkles, Share2, Inbox, Undo, Hourglass,
 } from 'lucide-react';
 import { Capsule, ReminderType } from '../types';
 import { PRESET_COLORS } from '../constants';
@@ -51,6 +51,16 @@ export const CapsuleItem = memo(function CapsuleItem({
   setNotificationPermission,
   onShowBatchMenu,
 }: CapsuleItemProps) {
+  const getDaysLeft = (target: number) => {
+    const targetDate = new Date(target);
+    targetDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffTime = targetDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   const capsuleColor = capsule.color || PRESET_COLORS[index % PRESET_COLORS.length] || '#E65100';
   const [showOptions, setShowOptions] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -64,6 +74,8 @@ export const CapsuleItem = memo(function CapsuleItem({
   const [tempTag, setTempTag] = useState(capsule.tag || (capsule.tags && capsule.tags.length > 0 ? capsule.tags[0] : ''));
   const [tempReminderDate, setTempReminderDate] = useState<number | null>(capsule.reminder?.date || null);
   const [tempReminderType, setTempReminderType] = useState<ReminderType>(capsule.reminder?.type || 'none');
+  const [showCountdownPicker, setShowCountdownPicker] = useState(false);
+  const [tempCountdownDate, setTempCountdownDate] = useState<number | null>(capsule.countdownTarget || null);
 
   const [isSwiping, setIsSwiping] = useState(false);
   const [swipeX, setSwipeX] = useState(0);
@@ -95,6 +107,7 @@ export const CapsuleItem = memo(function CapsuleItem({
     setShowColorPicker(false);
     setShowCustomColorPanel(false);
     setShowTagCat(false);
+    setShowCountdownPicker(false);
     setMenuMode('actions');
     setMenuPos(null);
   }, []);
@@ -278,6 +291,7 @@ export const CapsuleItem = memo(function CapsuleItem({
     setTempTag(capsule.tag || (capsule.tags && capsule.tags.length > 0 ? capsule.tags[0] : ''));
     setTempReminderDate(capsule.reminder?.date || null);
     setTempReminderType(capsule.reminder?.type || 'none');
+    setTempCountdownDate(capsule.countdownTarget || null);
   }, [capsule]);
 
   const onUpdate = useCallback(
@@ -504,8 +518,23 @@ export const CapsuleItem = memo(function CapsuleItem({
             </div>
           </div>
         )}
-        {(capsule.isPinned || capsule.isStarred || (capsule.reminder && capsule.reminder.type !== 'none' && capsule.reminder.date)) && (
+        {(capsule.isPinned || capsule.isStarred || capsule.countdownTarget || (capsule.reminder && capsule.reminder.type !== 'none' && capsule.reminder.date)) && (
           <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
+            {capsule.countdownTarget && viewMode === 'grid' && (() => {
+              const daysLeft = getDaysLeft(capsule.countdownTarget);
+              return (
+                <span
+                  title={`Countdown Target: ${new Date(capsule.countdownTarget).toLocaleDateString()}`}
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tight",
+                    daysLeft > 0 ? "bg-white/20 text-white" : daysLeft === 0 ? "bg-yellow-400 text-black font-black" : "bg-white/10 text-white/50"
+                  )}
+                >
+                  <Hourglass size={9} className="shrink-0" />
+                  <span>{daysLeft > 0 ? `${daysLeft}d` : daysLeft === 0 ? "Now" : "End"}</span>
+                </span>
+              );
+            })()}
             {capsule.isPinned && (
               <Pin size={13} className="text-white/80 fill-white/80 rotate-45 shrink-0 transition-opacity" />
             )}
@@ -621,6 +650,33 @@ export const CapsuleItem = memo(function CapsuleItem({
             )}
           </div>
         </div>
+
+        {capsule.countdownTarget && viewMode === 'list' && (() => {
+          const daysLeft = getDaysLeft(capsule.countdownTarget);
+          let badgeText = '';
+          let badgeStyle = '';
+          if (daysLeft > 0) {
+            badgeText = `⏳ ${daysLeft} days left`;
+            badgeStyle = 'bg-white/20 text-white border border-white/25';
+          } else if (daysLeft === 0) {
+            badgeText = '🎉 Today';
+            badgeStyle = 'bg-yellow-400 text-black border border-yellow-300 font-extrabold animate-bounce';
+          } else {
+            badgeText = `Passed ${Math.abs(daysLeft)}d`;
+            badgeStyle = 'bg-white/10 text-white/50 border border-white/10';
+          }
+          return (
+            <div
+              title={`Target Date: ${new Date(capsule.countdownTarget).toLocaleDateString()}`}
+              className={cn(
+                "px-3 py-1 rounded-full text-xs font-black uppercase tracking-tight flex items-center gap-1.5 shadow-sm select-none shrink-0 mr-1.5",
+                badgeStyle
+              )}
+            >
+              {badgeText}
+            </div>
+          );
+        })()}
 
         <div ref={menuRef} className={cn(
           "flex items-center gap-1 transition-opacity relative",
@@ -757,6 +813,62 @@ export const CapsuleItem = memo(function CapsuleItem({
                   </div>
                 )}
               </div>
+            ) : showCountdownPicker ? (
+              <div className="p-3 space-y-3">
+                <div className="flex items-center gap-1 mb-1">
+                  <button onClick={(e) => { e.stopPropagation(); setShowCountdownPicker(false); }} className="p-1 hover:bg-[#F2F2F7] rounded-md">
+                    <ChevronLeft size={14} className="text-[#8E8E93]" />
+                  </button>
+                  <span className="text-xs font-bold text-[#1D1D1F] dark:text-[#F2F2F7] uppercase tracking-tight">Set Countdown</span>
+                </div>
+                <div className="space-y-2.5">
+                  <div>
+                    <label className="text-[9px] font-bold text-[#8E8E93] uppercase block mb-1">Target Date</label>
+                    <input
+                      type="date"
+                      value={tempCountdownDate ? new Date(tempCountdownDate).toISOString().slice(0, 10) : ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val) {
+                          setTempCountdownDate(new Date(val).getTime());
+                        } else {
+                          setTempCountdownDate(null);
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full px-2.5 py-1.5 bg-[#F2F2F7] rounded-md text-xs border-none outline-none focus:ring-2 focus:ring-[#007AFF] text-[#1D1D1F]"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (tempCountdownDate) {
+                          void onUpdate({ countdownTarget: tempCountdownDate });
+                        }
+                        closeMenu();
+                      }}
+                      disabled={!tempCountdownDate}
+                      className="flex-grow py-2 bg-[#007AFF] text-white rounded-lg text-xs font-bold shadow-md hover:bg-[#0051FF] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Save
+                    </button>
+                    {capsule.countdownTarget && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void onUpdate({ countdownTarget: undefined });
+                          closeMenu();
+                        }}
+                        className="py-2 px-3 bg-red-50 text-[#FF3B30] rounded-lg text-xs font-bold hover:bg-red-100 transition-all"
+                        title="Remove Countdown"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             ) : !showReminderPicker ? (
               <div className="p-1.5 space-y-0.5">
                 <button
@@ -772,6 +884,13 @@ export const CapsuleItem = memo(function CapsuleItem({
                 >
                   <Calendar size={16} className="text-[#8E8E93]" />
                   Set Reminder
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowCountdownPicker(true); }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors"
+                >
+                  <Hourglass size={16} className="text-[#8E8E93]" />
+                  Set Countdown
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowColorPicker(true); }}

@@ -176,6 +176,7 @@ const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
   { value: 'pure-note', label: 'Note(s)' },
   { value: 'pending-todo', label: 'To-do' },
   { value: 'completed-todo', label: 'Completed' },
+  { value: 'countdown', label: 'Countdown' },
   { value: 'repeat-reminder', label: 'Recurring' },
   { value: 'archived', label: 'Archived' },
   { value: 'trash', label: 'Trash' },
@@ -1140,6 +1141,8 @@ export default function IdeaCapsuleApp() {
             return !c.isTodo;
           case 'completed-todo':
             return (c.isTodo && c.completed) || hasFinishedOneShotReminder(c);
+          case 'countdown':
+            return !!c.countdownTarget;
           case 'repeat-reminder':
             return hasRepeatReminder(c);
           case 'without-reminder':

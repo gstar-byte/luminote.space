@@ -28,6 +28,7 @@ export interface Capsule {
   isStarred?: boolean;
   /** Pinned notes sort to the top (after multi-select / sidebar filters). */
   isPinned?: boolean;
+  countdownTarget?: number;
 }
 
 export interface UserProfile {
@@ -44,6 +45,7 @@ export type FilterType =
   | 'without-todo' 
   | 'pending-todo'
   | 'completed-todo' 
+  | 'countdown'
   | 'without-reminder'
   | 'repeat-reminder'
   | 'finished-reminder'

@@ -31,6 +31,7 @@ export interface Capsule {
   isPinned?: boolean;
   isAmbiguous?: boolean;
   clarificationPrompt?: string | null;
+  countdownTarget?: number;
 }
 
 export interface UserProfile {
@@ -47,6 +48,7 @@ export type FilterType =
   | 'without-todo' 
   | 'pending-todo'
   | 'completed-todo' 
+  | 'countdown'
   | 'without-reminder' 
   | 'repeat-reminder'
   | 'finished-reminder'
