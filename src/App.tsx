@@ -2710,7 +2710,7 @@ export default function App() {
           }}
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            📲 <strong>Install Lumi Note</strong> as an app for the best experience &amp; startup reminders
+            <img src="/favicon-192-v18.png?v=21" style={{ width: 22, height: 22, borderRadius: 5, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }} alt="Lumi Note Logo" /> <strong>Install Lumi Note</strong> as an app for the best experience &amp; startup reminders
           </span>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
