@@ -1601,6 +1601,7 @@ export default function App() {
         color: randomColor
       };
       if (tags && tags.length > 0) newCapsuleData.tag = tags[0];
+      if (category) newCapsuleData.category = category;
       if (isStarred) newCapsuleData.isStarred = true;
       if (isPinned) newCapsuleData.isPinned = true;
       if (countdownTarget) newCapsuleData.countdownTarget = countdownTarget;

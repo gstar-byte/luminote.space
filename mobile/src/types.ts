@@ -29,6 +29,8 @@ export interface Capsule {
   /** Pinned notes sort to the top (after multi-select / sidebar filters). */
   isPinned?: boolean;
   countdownTarget?: number;
+  isAmbiguous?: boolean;
+  clarificationPrompt?: string | null;
 }
 
 export interface UserProfile {

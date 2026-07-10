@@ -83,6 +83,7 @@ import {
   Settings as SettingsIcon,
   Keyboard,
   Clock,
+  Hourglass,
 } from 'lucide-react-native';
 import { onAuthStateChanged, type User } from './lib/supabaseMobile';
 import type { Capsule, FilterType, ReminderConfig, ReminderType, UserProfile, AppSettings } from './types';
@@ -93,6 +94,7 @@ import { CapsuleColorSheet } from './components/CapsuleColorSheet';
 import { CapsuleReminderSheet } from './components/CapsuleReminderSheet';
 import { CapsuleEditorMobile } from './components/CapsuleEditorMobile';
 import { AppLogo } from './components/AppLogo';
+import { ClarificationPillMobile } from './components/ClarificationPillMobile';
 import { LandingScreen } from './components/LandingScreen';
 import { PremiumModalMobile } from './components/PremiumModalMobile';
 import { SettingsModalMobile } from './components/SettingsModalMobile';
@@ -264,6 +266,16 @@ function capsuleMenuMeta(c: Capsule) {
     r && r.type !== 'none' ? formatNoteDateTime(r.date) : 'Not set';
   const repeat = repeatLabelForMenu(r);
   return { created, reminderAt, repeat };
+}
+
+function getDaysLeft(target: number) {
+  const targetDate = new Date(target);
+  targetDate.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffTime = targetDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
 }
 
 function plainTextFromContent(raw: string): string {
@@ -836,6 +848,8 @@ export default function IdeaCapsuleApp() {
   const [batchCategory, setBatchCategory] = useState('');
   const [batchTag, setBatchTag] = useState('');
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [pendingClarificationCapsuleId, setPendingClarificationCapsuleId] = useState<string | null>(null);
+  const [temporaryPendingCapsule, setTemporaryPendingCapsule] = useState<Capsule | null>(null);
 
   const [colorPickerCapsule, setColorPickerCapsule] = useState<Capsule | null>(null);
   const [colorPickerHidePresets, setColorPickerHidePresets] = useState(false);
@@ -1400,17 +1414,23 @@ export default function IdeaCapsuleApp() {
     setIsProcessing(true);
     setInputText('');
     try {
-      const { title, category, tags, refinedContent, isTodo, reminder, countdownTarget } =
-        await categorizeThought(text);
+      const parsed = await categorizeThought(text);
+      const { title, category, tags, refinedContent, isTodo, reminder, isStarred, isPinned, countdownTarget } = parsed;
       const randomColor =
         PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
       const norm = normalizeReminder(reminder);
       const isTodoResolved = Boolean(isTodo || (norm != null && norm.type !== 'none'));
 
+      const hasReminder = Boolean(norm && norm.type && norm.type !== 'none');
+      const hasStar = Boolean(isStarred);
+      const hasPin = Boolean(isPinned);
+      const hasClearIntent = (isTodoResolved && hasReminder) || hasStar || hasPin || !!countdownTarget;
+      const shouldShowPill = !hasClearIntent;
+
       // 同步生成唯一的文档 ID，不阻塞 UI 线程
       const docRef = doc(collection(db, 'capsules'));
       
-      const newNote = {
+      const newNote: Capsule = {
         id: docRef.id,
         userId: user.uid,
         content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: refinedContent }] }] }),
@@ -1425,7 +1445,11 @@ export default function IdeaCapsuleApp() {
         isDeleted: false,
         reminder: norm,
         color: randomColor,
+        isStarred: hasStar || undefined,
+        isPinned: hasPin || undefined,
         countdownTarget: countdownTarget || undefined,
+        isAmbiguous: shouldShowPill,
+        clarificationPrompt: shouldShowPill ? 'Quickly set a reminder, star, pin, or keep as note?' : null
       };
 
       // 1. 同步执行本地状态乐观更新（瞬时展现，不管断网与否卡片立刻出现在首页）
@@ -1438,6 +1462,15 @@ export default function IdeaCapsuleApp() {
       setDoc(docRef, newNote).catch(e => {
         console.error("EAS setDoc failed:", e);
       });
+
+      // 3. 管理澄清状态
+      if (shouldShowPill) {
+        setTemporaryPendingCapsule(newNote);
+        setPendingClarificationCapsuleId(docRef.id);
+      } else {
+        setTemporaryPendingCapsule(null);
+        setPendingClarificationCapsuleId(null);
+      }
 
     } catch {
       const randomColor =
@@ -3431,7 +3464,6 @@ export default function IdeaCapsuleApp() {
               s.modalBackdrop,
               !menuPosition && s.modalFrontCenter,
             ]}
-            onPress={closeNotesMenu}
             accessibilityRole="button"
             accessibilityLabel="Close menu"
           >
@@ -3529,24 +3561,18 @@ export default function IdeaCapsuleApp() {
                         </Text>
                       </TouchableOpacity>
 
-                      {/* Share */}
+                      {/* Delete */}
                       <TouchableOpacity
                         style={s.mItem}
-                        onPress={async () => {
+                        onPress={() => {
                           if (!activeMenuCapsule) return;
-                          const shareText = plainTextFromContent(activeMenuCapsule.content);
-                          try {
-                            await Share.share({
-                              message: shareText,
-                            });
-                          } catch (err) {
-                            console.warn('Share error:', err);
-                          }
+                          void updateCapsule(activeMenuCapsule.id, { isDeleted: true });
+                          showToast('Note moved to Trash', 'success');
                           setActiveMenuCapsule(null);
                         }}
                       >
-                        <ShareIcon size={18} color="#8E8E93" />
-                        <Text style={s.mItemTxt}>Share</Text>
+                        <Trash2 size={18} color="#FF3B30" />
+                        <Text style={[s.mItemTxt, { color: '#FF3B30' }]}>Delete</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={{ paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }}
@@ -4302,6 +4328,32 @@ export default function IdeaCapsuleApp() {
           </View>
         )}
 
+        {/* Clarification Pill */}
+        {pendingClarificationCapsuleId && (() => {
+          const cap = temporaryPendingCapsule && temporaryPendingCapsule.id === pendingClarificationCapsuleId
+            ? temporaryPendingCapsule
+            : capsules.find(c => c.id === pendingClarificationCapsuleId);
+          if (!cap) return null;
+          return (
+            <ClarificationPillMobile
+              capsule={cap}
+              onResolve={(updates) => {
+                void updateCapsule(pendingClarificationCapsuleId, updates);
+                setPendingClarificationCapsuleId(null);
+                setTemporaryPendingCapsule(null);
+              }}
+              onCustomPress={() => {
+                // 打开自定义 Reminder Sheet 并解除待澄清状态
+                void updateCapsule(pendingClarificationCapsuleId, { isAmbiguous: false, clarificationPrompt: null });
+                const target = capsules.find(c => c.id === pendingClarificationCapsuleId) || cap;
+                setReminderTarget(target);
+                setPendingClarificationCapsuleId(null);
+                setTemporaryPendingCapsule(null);
+              }}
+            />
+          );
+        })()}
+
         {/* Floating Toast Notification */}
         {toastMessage && (
           <View style={s.toastWrapper} pointerEvents="none">
@@ -4512,6 +4564,47 @@ function CapsuleCard({
                 </View>
               ) : null}
 
+              {item.countdownTarget ? (() => {
+                const daysLeft = getDaysLeft(item.countdownTarget);
+                let badgeText = '';
+                let bg = 'rgba(0,0,0,0.25)';
+                let textCol = '#FFF';
+                let isToday = false;
+                
+                if (daysLeft > 0) {
+                  badgeText = `${daysLeft} days left`;
+                } else if (daysLeft === 0) {
+                  badgeText = '🎉 Today';
+                  bg = '#FFD60A';
+                  textCol = '#000';
+                  isToday = true;
+                } else {
+                  badgeText = `Passed ${Math.abs(daysLeft)}d`;
+                  bg = 'rgba(0,0,0,0.45)';
+                  textCol = 'rgba(255,255,255,0.4)';
+                }
+                
+                return (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: bg,
+                    paddingHorizontal: 6,
+                    paddingVertical: 2.5,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: isToday ? 'rgba(255,214,10,0.3)' : 'rgba(255,255,255,0.12)',
+                    marginVertical: 1,
+                    gap: 3.5
+                  }}>
+                    <Animated.View style={{ opacity: breathingAnim }}>
+                      <Hourglass size={9} color={isToday ? '#000' : '#FFD60A'} />
+                    </Animated.View>
+                    <Text style={{ color: textCol, fontSize: 8, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.3 }}>{badgeText}</Text>
+                  </View>
+                );
+              })() : null}
+
               {/* Date Row */}
               {item.createdAt ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, opacity: 0.65 }}>
@@ -4535,11 +4628,28 @@ function CapsuleCard({
             </View>
           )}
 
-          {/* 绝对定位角标：提醒铃铛 */}
+          {/* 绝对定位角标：提醒铃铛（到期时红色呼吸） */}
           {hasActiveReminder(item) ? (
             <View style={{ position: 'absolute', bottom: 12, right: isMulti ? 8 : 28, zIndex: 3 }} pointerEvents="none">
-              <Bell size={10} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
+              {item.reminder && typeof item.reminder === 'object' && (item.reminder as any).date && (item.reminder as any).date <= Date.now() ? (
+                <Animated.View style={{ opacity: breathingAnim }}>
+                  <Bell size={10} color="#FF6B6B" strokeWidth={2.5} />
+                </Animated.View>
+              ) : (
+                <Bell size={10} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
+              )}
             </View>
+          ) : null}
+
+          {/* 绝对定位角标：Intent Pending (isAmbiguous) */}
+          {item.isAmbiguous ? (
+            <Animated.View style={{
+              position: 'absolute', top: 6, left: 6, zIndex: 4,
+              backgroundColor: 'rgba(0,0,0,0.45)', paddingHorizontal: 6, paddingVertical: 2.5,
+              borderRadius: 8, opacity: breathingAnim,
+            }}>
+              <Text style={{ fontSize: 7, fontWeight: '900', color: '#FFF', letterSpacing: 0.3, textTransform: 'uppercase' }}>Intent Pending</Text>
+            </Animated.View>
           ) : null}
 
           {/* 绝对定位角标：三点菜单（右下角） */}
@@ -4651,6 +4761,63 @@ function CapsuleCard({
             </View>
           ) : null}
         </View>
+
+        {item.countdownTarget ? (() => {
+          const daysLeft = getDaysLeft(item.countdownTarget);
+          let numText = '';
+          let labelText = '';
+          let bg = 'rgba(0,0,0,0.18)';
+          let borderCol = 'rgba(255,255,255,0.12)';
+          let textCol = '#FFF';
+          let labelCol = 'rgba(255,255,255,0.5)';
+          
+          if (daysLeft > 0) {
+            numText = `${daysLeft}`;
+            labelText = daysLeft === 1 ? 'DAY LEFT' : 'DAYS LEFT';
+          } else if (daysLeft === 0) {
+            numText = '🎉';
+            labelText = 'TODAY';
+            bg = '#FFD60A';
+            borderCol = '#FFD60A';
+            textCol = '#000';
+            labelCol = 'rgba(0,0,0,0.6)';
+          } else {
+            numText = `${Math.abs(daysLeft)}`;
+            labelText = 'DAYS AGO';
+            bg = 'rgba(0,0,0,0.35)';
+            borderCol = 'rgba(255,255,255,0.05)';
+            textCol = 'rgba(255,255,255,0.38)';
+            labelCol = 'rgba(255,255,255,0.22)';
+          }
+          
+          const isToday = daysLeft === 0;
+          const ContainerComp = isToday ? Animated.View : View;
+          const containerExtra = isToday ? { opacity: breathingAnim } : {};
+          
+          return (
+            <ContainerComp style={[{
+              alignSelf: 'center',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingHorizontal: 8,
+              paddingVertical: 5,
+              borderRadius: 12,
+              backgroundColor: bg,
+              borderWidth: 1,
+              borderColor: borderCol,
+              minWidth: 64,
+              marginRight: isMulti ? 4 : 0,
+              marginLeft: 4,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.08,
+              shadowRadius: 4,
+            }, containerExtra]}>
+              <Text style={{ fontSize: 13, fontWeight: '900', color: textCol }}>{numText}</Text>
+              <Text style={{ fontSize: 6.5, fontWeight: '900', color: labelCol, marginTop: 1.5, letterSpacing: 0.15, textTransform: 'uppercase' }}>{labelText}</Text>
+            </ContainerComp>
+          );
+        })() : null}
         {/* Star & Pin badges — top-right, aligned with PC Web */}
         {(item.isStarred || item.isPinned) && (
           <View style={{ position: 'absolute', top: 5, right: isMulti ? 5 : 36, flexDirection: 'row', gap: 3, zIndex: 3 }}>
@@ -4658,11 +4825,28 @@ function CapsuleCard({
             {item.isStarred && <Star size={10} color="#FFD60A" fill="#FFD60A" />}
           </View>
         )}
-        {/* Reminder bell — bottom-right corner */}
+        {/* Reminder bell — bottom-right corner (到期时红色呼吸) */}
         {hasActiveReminder(item) ? (
           <View style={s.cardBellCorner} pointerEvents="none">
-            <Bell size={10} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
+            {item.reminder && typeof item.reminder === 'object' && (item.reminder as any).date && (item.reminder as any).date <= Date.now() ? (
+              <Animated.View style={{ opacity: breathingAnim }}>
+                <Bell size={10} color="#FF6B6B" strokeWidth={2.5} />
+              </Animated.View>
+            ) : (
+              <Bell size={10} color="rgba(255,255,255,0.95)" strokeWidth={2.5} />
+            )}
           </View>
+        ) : null}
+
+        {/* Intent Pending (isAmbiguous) — List 视图 */}
+        {item.isAmbiguous ? (
+          <Animated.View style={{
+            position: 'absolute', top: 4, left: 10, zIndex: 4,
+            backgroundColor: 'rgba(0,0,0,0.45)', paddingHorizontal: 6, paddingVertical: 2,
+            borderRadius: 8, opacity: breathingAnim,
+          }}>
+            <Text style={{ fontSize: 7, fontWeight: '900', color: '#FFF', letterSpacing: 0.3, textTransform: 'uppercase' }}>Intent Pending</Text>
+          </Animated.View>
         ) : null}
         {!isMulti ? (
           <View style={s.cardMenuCol}>

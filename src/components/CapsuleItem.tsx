@@ -693,7 +693,7 @@ export const CapsuleItem = memo(function CapsuleItem({
               e.stopPropagation();
               if (showOptions || showReminderPicker) { closeMenu(); } else { openMenuFromButton(); }
             }}
-            className="p-2 text-white/70 hover:bg-white/25 hover:text-white rounded-full transition-colors flex items-center justify-center"
+            className="p-2 text-white/70 hover:bg-white/25 hover:text-white rounded-full transition-colors flex items-center justify-center animate-pulse"
           >
             <MoreVertical size={16} />
           </button>

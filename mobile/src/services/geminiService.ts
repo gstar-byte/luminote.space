@@ -45,6 +45,10 @@ export type CategorizeThoughtResult = {
   isTodo?: boolean;
   reminder?: unknown;
   countdownTarget?: number;
+  isAmbiguous?: boolean;
+  clarificationPrompt?: string | null;
+  isStarred?: boolean;
+  isPinned?: boolean;
 };
 
 export async function categorizeThoughtFromAudio(
@@ -103,6 +107,10 @@ export async function categorizeThoughtFromAudio(
       isTodo: typeof parsed.isTodo === 'boolean' ? parsed.isTodo : undefined,
       reminder: parsed.reminder ?? undefined,
       countdownTarget: typeof parsed.countdownTarget === 'number' ? parsed.countdownTarget : undefined,
+      isAmbiguous: typeof parsed.isAmbiguous === 'boolean' ? parsed.isAmbiguous : undefined,
+      clarificationPrompt: parsed.clarificationPrompt || undefined,
+      isStarred: typeof parsed.isStarred === 'boolean' ? parsed.isStarred : undefined,
+      isPinned: typeof parsed.isPinned === 'boolean' ? parsed.isPinned : undefined,
     };
   } catch (error) {
     console.error('Failed to categorize from audio:', error);
@@ -123,6 +131,10 @@ export async function categorizeThought(text: string): Promise<CategorizeThought
         refinedContent: localResult.refinedContent,
         isTodo: localResult.isTodo,
         reminder: localResult.reminder,
+        isAmbiguous: localResult.isAmbiguous,
+        clarificationPrompt: localResult.clarificationPrompt,
+        isStarred: localResult.isStarred,
+        isPinned: localResult.isPinned,
       };
     }
   } catch (e) {
@@ -153,6 +165,10 @@ export async function categorizeThought(text: string): Promise<CategorizeThought
       refinedContent: text,
       isTodo: localRes.isTodo,
       reminder: localRes.reminder,
+      isAmbiguous: localRes.isAmbiguous,
+      clarificationPrompt: localRes.clarificationPrompt,
+      isStarred: localRes.isStarred,
+      isPinned: localRes.isPinned,
     };
   }
 
@@ -166,6 +182,10 @@ export async function categorizeThought(text: string): Promise<CategorizeThought
       refinedContent: text,
       isTodo: localRes.isTodo,
       reminder: localRes.reminder,
+      isAmbiguous: localRes.isAmbiguous,
+      clarificationPrompt: localRes.clarificationPrompt,
+      isStarred: localRes.isStarred,
+      isPinned: localRes.isPinned,
     };
   }
 
@@ -180,6 +200,10 @@ export async function categorizeThought(text: string): Promise<CategorizeThought
       refinedContent: text,
       isTodo: localRes.isTodo,
       reminder: localRes.reminder,
+      isAmbiguous: localRes.isAmbiguous,
+      clarificationPrompt: localRes.clarificationPrompt,
+      isStarred: localRes.isStarred,
+      isPinned: localRes.isPinned,
     };
   }
 
@@ -226,6 +250,10 @@ export async function categorizeThought(text: string): Promise<CategorizeThought
       isTodo: typeof parsed.isTodo === 'boolean' ? parsed.isTodo : undefined,
       reminder: parsed.reminder ?? undefined,
       countdownTarget: typeof parsed.countdownTarget === 'number' ? parsed.countdownTarget : undefined,
+      isAmbiguous: typeof parsed.isAmbiguous === 'boolean' ? parsed.isAmbiguous : undefined,
+      clarificationPrompt: parsed.clarificationPrompt || undefined,
+      isStarred: typeof parsed.isStarred === 'boolean' ? parsed.isStarred : undefined,
+      isPinned: typeof parsed.isPinned === 'boolean' ? parsed.isPinned : undefined,
     };
   } catch (error) {
     console.error('Failed to categorize thought:', error);
@@ -237,6 +265,10 @@ export async function categorizeThought(text: string): Promise<CategorizeThought
       refinedContent: text,
       isTodo: localRes.isTodo,
       reminder: localRes.reminder,
+      isAmbiguous: localRes.isAmbiguous,
+      clarificationPrompt: localRes.clarificationPrompt,
+      isStarred: localRes.isStarred,
+      isPinned: localRes.isPinned,
     };
   }
 }

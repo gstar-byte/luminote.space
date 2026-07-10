@@ -174,6 +174,8 @@ export const deleteField = (): any => {
 export const setDoc = async (docRef: any, data: any, options?: { merge?: boolean }): Promise<any> => {
   const tableName = docRef.collection === 'users' ? 'profiles' : docRef.collection;
   const rawPayload = { ...data };
+  delete rawPayload.isAmbiguous;
+  delete rawPayload.clarificationPrompt;
   
   for (const key of Object.keys(rawPayload)) {
     if (rawPayload[key] === '__DELETE_FIELD__') {
@@ -190,7 +192,10 @@ export const setDoc = async (docRef: any, data: any, options?: { merge?: boolean
 
 export const updateDoc = async (docRef: any, data: any): Promise<any> => {
   const tableName = docRef.collection === 'users' ? 'profiles' : docRef.collection;
-  const payload = toSnakeCaseKeys(data);
+  const rawPayload = { ...data };
+  delete rawPayload.isAmbiguous;
+  delete rawPayload.clarificationPrompt;
+  const payload = toSnakeCaseKeys(rawPayload);
   
   const { error } = await supabase.from(tableName).update(payload).eq('id', docRef.id);
   if (error) throw error;
@@ -204,7 +209,10 @@ export const deleteDoc = async (docRef: any): Promise<any> => {
 
 export const addDoc = async (colRef: any, data: any): Promise<any> => {
   const tableName = colRef.collection === 'users' ? 'profiles' : colRef.collection;
-  const payload = toSnakeCaseKeys(data);
+  const rawPayload = { ...data };
+  delete rawPayload.isAmbiguous;
+  delete rawPayload.clarificationPrompt;
+  const payload = toSnakeCaseKeys(rawPayload);
   const { data: insertedData, error } = await supabase.from(tableName).insert(payload).select().single();
   if (error) throw error;
   return {
