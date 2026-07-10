@@ -1431,7 +1431,7 @@ export default function App() {
       recognition.current.onresult = (event: any) => {
         let interim = '';
         let final = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        for (let i = 0; i < event.results.length; i++) {
           const t = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             final += t;
@@ -1439,10 +1439,8 @@ export default function App() {
             interim += t;
           }
         }
-        if (final) {
-          transcriptRef.current += final;
-        }
-        setInputText(transcriptRef.current + interim);
+        transcriptRef.current = final;
+        setInputText(final + interim);
       };
 
       recognition.current.onerror = (event: any) => {
@@ -2118,6 +2116,16 @@ export default function App() {
     } else {
       startListening();
     }
+  };
+
+  const handleMicPressStart = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    startListening();
+  };
+
+  const handleMicPressEnd = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    stopListening();
   };
 
   const renameCategory = (oldCat: string) => {
@@ -4011,7 +4019,7 @@ export default function App() {
                   id="thought-input"
                   ref={inputRef}
                   type="text" 
-                  placeholder={isListening ? "Listening..." : "Record your thoughts..."}
+                  placeholder={isListening ? "Listening... (Release mic to save)" : "Hold mic to speak or type here..."}
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={(e) => {
@@ -4052,8 +4060,14 @@ export default function App() {
              <motion.button 
                whileHover={{ scale: 1.05 }}
                whileTap={{ scale: 0.95 }}
-               onClick={toggleListening}
-               className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all shadow-2xl shrink-0 ${isListening ? 'bg-red-500 ring-8 ring-red-100' : 'bg-gradient-to-br from-[#007AFF] to-[#00C6FF]'}`}
+               onMouseDown={handleMicPressStart}
+               onMouseUp={handleMicPressEnd}
+               onMouseLeave={handleMicPressEnd}
+               onTouchStart={handleMicPressStart}
+               onTouchEnd={handleMicPressEnd}
+               onTouchCancel={handleMicPressEnd}
+               className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all shadow-2xl shrink-0 select-none ${isListening ? 'bg-red-500 ring-8 ring-red-100 cursor-grabbing' : 'bg-gradient-to-br from-[#007AFF] to-[#00C6FF] cursor-pointer'}`}
+               title="Hold to speak, release to save"
              >
                {isListening ? (
                  <div className="flex gap-1 items-center">
