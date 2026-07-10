@@ -1327,19 +1327,8 @@ export default function App() {
   const [batchMenuPos, setBatchMenuPos] = useState<{ left: number; top: number } | null>(null);
   
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as Node;
-      if (document.getElementById('portal-batch-menu')?.contains(target)) return;
-      setBatchMenuPos(null);
-    };
-    if (batchMenuPos) {
-      document.addEventListener('mousedown', handleOutsideClick);
-      document.addEventListener('touchstart', handleOutsideClick);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('touchstart', handleOutsideClick);
-    };
+    // 根据用户要求，长按批量菜单只能通过菜单底部的 Cancel 按钮或执行操作关闭，手动多选其他卡片时不能让长按菜单自己消失。
+    // 因此这里不监听外部点击关闭事件。
   }, [batchMenuPos]);
 
   // 批量「分类 & 标签」面板（批量场景下的唯一弹层，颜色/提醒已从批量中移除）
@@ -1355,6 +1344,9 @@ export default function App() {
       newSelection.add(id);
     }
     setSelectedIds(newSelection);
+    if (newSelection.size === 0) {
+      setBatchMenuPos(null);
+    }
   };
 
   const batchUpdate = async (updates: Partial<Capsule>) => {
