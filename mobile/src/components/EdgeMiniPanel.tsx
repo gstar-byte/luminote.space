@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   FlatList,
   Platform,
+  ScrollView,
 } from 'react-native';
 import {
   Gesture,
@@ -20,7 +21,7 @@ import Animated, {
   withSpring,
   runOnJS,
 } from 'react-native-reanimated';
-import { Check, Mic, Plus, Send, X, Star, Bell } from 'lucide-react-native';
+import { Check, Mic, Plus, Send, X, Star, Bell, Search } from 'lucide-react-native';
 import type { Capsule } from '../types';
 import * as Haptics from 'expo-haptics';
 
@@ -43,7 +44,6 @@ type Props = {
   limit: number;
 };
 
-// Helper to extract clean plain text for mini items
 function plainTextFromContent(raw: string): string {
   if (!raw) return '';
   try {
@@ -63,6 +63,8 @@ function plainTextFromContent(raw: string): string {
   } catch { return raw; }
 }
 
+const CATEGORY_TABS = ['all', 'Work', 'Personal', 'Ideas', 'Finance', 'Health', 'Social', 'Learning'];
+
 export function EdgeMiniPanel({
   capsules,
   onCreateCapsule,
@@ -75,6 +77,8 @@ export function EdgeMiniPanel({
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   
   // Reanimated shared values
   const translateX = useSharedValue(PANEL_WIDTH);
@@ -82,14 +86,9 @@ export function EdgeMiniPanel({
   // Sync state to JS thread
   const togglePanelState = (open: boolean) => {
     setIsOpen(open);
-    if (open) {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } else {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  // Open & Close methods
   const openPanel = () => {
     'worklet';
     translateX.value = withSpring(0, SPRING_CONFIG);
@@ -102,21 +101,17 @@ export function EdgeMiniPanel({
     runOnJS(togglePanelState)(false);
   };
 
-  // Drag Gesture handler
+  // Drag Gesture
   const panGesture = Gesture.Pan()
     .activeOffsetX([-10, 10])
     .onUpdate((event) => {
-      // Allow dragging inwards (negative translation)
       const currentX = isOpen ? 0 : PANEL_WIDTH;
       const nextX = currentX + event.translationX;
-      
-      // Boundaries
       if (nextX >= 0 && nextX <= PANEL_WIDTH) {
         translateX.value = nextX;
       }
     })
     .onEnd((event) => {
-      // Determine final state based on drag distance and velocity
       const threshold = PANEL_WIDTH * 0.4;
       const isDraggingLeft = event.velocityX < -300;
       const isDraggingRight = event.velocityX > 300;
@@ -136,14 +131,12 @@ export function EdgeMiniPanel({
       }
     });
 
-  // Animated styles for panel drawer
   const animatedPanelStyle = useAnimatedStyle(() => {
     return {
       transform: [{ translateX: translateX.value }],
     };
   });
 
-  // Animated styles for backdrop shadow cover
   const animatedBackdropStyle = useAnimatedStyle(() => {
     const opacity = (PANEL_WIDTH - translateX.value) / PANEL_WIDTH * 0.45;
     return {
@@ -152,9 +145,19 @@ export function EdgeMiniPanel({
     };
   });
 
-  // Filter latest non-archived, non-deleted capsules based on limit
-  const recentCapsules = capsules
+  // Filter & Search Logic
+  const filteredCapsules = capsules
     .filter(c => !c.isArchived && !c.isDeleted)
+    .filter(c => {
+      if (selectedCategory === 'all') return true;
+      return c.category === selectedCategory;
+    })
+    .filter(c => {
+      if (!searchText.trim()) return true;
+      const contentText = plainTextFromContent(c.content).toLowerCase();
+      const subjectText = (c.subject || '').toLowerCase();
+      return contentText.includes(searchText.toLowerCase()) || subjectText.includes(searchText.toLowerCase());
+    })
     .slice(0, limit);
 
   const handleSendText = async () => {
@@ -165,14 +168,19 @@ export function EdgeMiniPanel({
     await onCreateCapsule(txt);
   };
 
+  const handleCategoryPress = (cat: string) => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedCategory(cat);
+  };
+
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
-      {/* Backdrop shadow (click to close) */}
+      {/* Backdrop */}
       <GestureDetector gesture={Gesture.Tap().onEnd(closePanel)}>
         <Animated.View style={[styles.backdrop, animatedBackdropStyle]} />
       </GestureDetector>
 
-      {/* Floating Edge Handle (Little fry) */}
+      {/* Floating Edge Handle */}
       {!isOpen && (
         <GestureDetector gesture={panGesture}>
           <TouchableOpacity
@@ -193,24 +201,64 @@ export function EdgeMiniPanel({
         <Animated.View style={[styles.panel, animatedPanelStyle]}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>LUMI PANEL 🍟</Text>
+            <View>
+              <Text style={styles.headerTitle}>LUMI PANEL</Text>
+              <Text style={styles.headerSub}>Quick Workspace</Text>
+            </View>
             <TouchableOpacity onPress={() => { closePanel(); }} hitSlop={12}>
-              <X size={20} color="#1D1D1F" />
+              <X size={18} color="#1D1D1F" />
             </TouchableOpacity>
+          </View>
+
+          {/* Search bar inside panel */}
+          <View style={styles.searchContainer}>
+            <Search size={14} color="#8E8E93" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search recent notes..."
+              placeholderTextColor="#8E8E93"
+              value={searchText}
+              onChangeText={setSearchText}
+              clearButtonMode="while-editing"
+            />
+            {searchText.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchText('')} hitSlop={8}>
+                <X size={14} color="#8E8E93" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Category Quick Tabs */}
+          <View style={styles.tabsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+              {CATEGORY_TABS.map((cat) => {
+                const isActive = selectedCategory === cat;
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.tab, isActive && styles.tabActive]}
+                    onPress={() => handleCategoryPress(cat)}
+                  >
+                    <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                      {cat === 'all' ? 'All' : cat}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
 
           {/* Recent Notes List */}
           <View style={styles.body}>
-            <Text style={styles.secLbl}>RECENT NOTES</Text>
-            {recentCapsules.length === 0 ? (
+            {filteredCapsules.length === 0 ? (
               <View style={styles.emptyWrap}>
-                <Text style={styles.emptyTxt}>No active notes.</Text>
+                <Text style={styles.emptyTxt}>No notes found.</Text>
               </View>
             ) : (
               <FlatList
-                data={recentCapsules}
+                data={filteredCapsules}
                 keyExtractor={(item) => item.id}
-                scrollEnabled={recentCapsules.length > 3}
+                showsVerticalScrollIndicator={false}
                 renderItem={({ item }) => {
                   const hasReminder = item.reminder && item.reminder.type !== 'none';
                   return (
@@ -221,26 +269,49 @@ export function EdgeMiniPanel({
                         closePanel();
                       }}
                     >
-                      {item.isTodo && (
-                        <TouchableOpacity
-                          style={[styles.checkBox, item.completed && styles.checkBoxChecked]}
-                          onPress={() => {
-                            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                            onToggleTodo(item.id, !item.completed);
-                          }}
-                        >
-                          {item.completed && <Check size={10} color="#FFF" strokeWidth={3} />}
-                        </TouchableOpacity>
-                      )}
-                      <Text
-                        style={[styles.cardTxt, item.completed && styles.cardTxtDone]}
-                        numberOfLines={2}
-                      >
-                        {plainTextFromContent(item.content)}
-                      </Text>
-                      <View style={styles.metaIcons}>
-                        {item.isStarred && <Star size={10} color="#FFB800" fill="#FFB800" style={styles.metaIcon} />}
-                        {hasReminder && <Bell size={10} color="#8E8E93" style={styles.metaIcon} />}
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
+                          {item.isTodo && (
+                            <TouchableOpacity
+                              style={[styles.checkBox, item.completed && styles.checkBoxChecked]}
+                              onPress={() => {
+                                void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                onToggleTodo(item.id, !item.completed);
+                              }}
+                            >
+                              {item.completed && <Check size={8} color="#FFF" strokeWidth={3} />}
+                            </TouchableOpacity>
+                          )}
+                          
+                          {/* Subject / Title */}
+                          <Text
+                            style={[styles.cardTxt, item.completed && styles.cardTxtDone]}
+                            numberOfLines={1}
+                          >
+                            {item.subject ? item.subject : plainTextFromContent(item.content)}
+                          </Text>
+                        </View>
+
+                        {/* Detail text snippet if subject is present */}
+                        {item.subject ? (
+                          <Text style={styles.cardDetailTxt} numberOfLines={1}>
+                            {plainTextFromContent(item.content)}
+                          </Text>
+                        ) : null}
+
+                        {/* Bottom Row inside Card (Category pill & Meta indicators) */}
+                        <View style={styles.cardBottom}>
+                          {item.category ? (
+                            <View style={styles.categoryPill}>
+                              <Text style={styles.categoryPillTxt}>{item.category}</Text>
+                            </View>
+                          ) : null}
+
+                          <View style={styles.metaIcons}>
+                            {item.isStarred && <Star size={9} color="#FFB800" fill="#FFB800" style={styles.metaIcon} />}
+                            {hasReminder && <Bell size={9} color="#8E8E93" style={styles.metaIcon} />}
+                          </View>
+                        </View>
                       </View>
                     </TouchableOpacity>
                   );
@@ -353,9 +424,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
+    paddingBottom: 10,
   },
   headerTitle: {
     fontSize: 14,
@@ -363,16 +432,64 @@ const styles = StyleSheet.create({
     color: '#1D1D1F',
     letterSpacing: 0.5,
   },
+  headerSub: {
+    fontSize: 9,
+    color: '#8E8E93',
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    height: 36,
+    marginTop: 8,
+  },
+  searchIcon: {
+    marginRight: 6,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 12,
+    color: '#1D1D1F',
+    fontWeight: '600',
+    paddingVertical: 4,
+  },
+  tabsContainer: {
+    height: 28,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  tabsScroll: {
+    paddingHorizontal: 2,
+    alignItems: 'center',
+    gap: 6,
+  },
+  tab: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#F2F2F7',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.04)',
+  },
+  tabActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  tabText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8E8E93',
+  },
+  tabTextActive: {
+    color: '#FFF',
+  },
   body: {
     flex: 1,
-    paddingTop: 16,
-  },
-  secLbl: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: '#8E8E93',
-    letterSpacing: 1,
-    marginBottom: 10,
+    paddingTop: 10,
   },
   emptyWrap: {
     flex: 1,
@@ -381,27 +498,31 @@ const styles = StyleSheet.create({
   },
   emptyTxt: {
     color: '#8E8E93',
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: '600',
   },
   miniCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: 14,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.03)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   checkBox: {
-    width: 16,
-    height: 16,
-    borderRadius: 5,
+    width: 14,
+    height: 14,
+    borderRadius: 4,
     borderWidth: 1.5,
     borderColor: 'rgba(0, 0, 0, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: 6,
   },
   checkBoxChecked: {
     backgroundColor: '#007AFF',
@@ -410,17 +531,44 @@ const styles = StyleSheet.create({
   cardTxt: {
     flex: 1,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#1D1D1F',
-    lineHeight: 16,
   },
   cardTxtDone: {
     textDecorationLine: 'line-through',
     opacity: 0.45,
   },
+  cardDetailTxt: {
+    fontSize: 10,
+    color: '#8E8E93',
+    fontWeight: '500',
+    marginTop: 2,
+    lineHeight: 13,
+  },
+  cardBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  categoryPill: {
+    backgroundColor: 'rgba(255,255,255,0.45)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.03)',
+  },
+  categoryPillTxt: {
+    fontSize: 7.5,
+    fontWeight: '900',
+    color: '#8E8E93',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
   metaIcons: {
     flexDirection: 'row',
-    marginLeft: 6,
+    marginLeft: 'auto',
   },
   metaIcon: {
     marginLeft: 3,

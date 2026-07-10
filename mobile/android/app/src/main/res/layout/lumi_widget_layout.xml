@@ -7,17 +7,17 @@
     android:padding="8dp"
     android:gravity="center_vertical">
 
-    <!-- Left side brand placeholder acting as a search bar button -->
+    <!-- Left side brand search bar button -->
     <LinearLayout
         android:id="@+id/widget_search_bar"
         android:layout_width="0dp"
-        android:layout_height="match_parent"
+        android:layout_height="38dp"
         android:layout_weight="1"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:background="?android:attr/selectableItemBackground"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:background="@drawable/widget_search_bg"
         android:clickable="true"
         android:focusable="true">
 
@@ -26,25 +26,21 @@
             android:layout_height="wrap_content"
             android:text="Lumi Note"
             android:textColor="#FFFFFF"
-            android:textSize="14sp"
+            android:textSize="13sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text=" 🚀 Capture thought..."
-            android:textColor="#80B0C4DE"
-            android:textSize="12sp"
+            android:text=" 🚀 Quick Capture..."
+            android:textColor="#80A0B0C0"
+            android:textSize="11sp"
             android:layout_marginStart="4dp"/>
     </LinearLayout>
 
-    <!-- Divider -->
     <View
-        android:layout_width="1dp"
-        android:layout_height="20dp"
-        android:background="#20FFFFFF"
-        android:layout_marginStart="4dp"
-        android:layout_marginEnd="4dp"/>
+        android:layout_width="8dp"
+        android:layout_height="match_parent" />
 
     <!-- Action Buttons -->
     <LinearLayout
@@ -58,23 +54,25 @@
             android:id="@+id/btn_widget_voice"
             android:layout_width="38dp"
             android:layout_height="38dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/widget_button_bg"
             android:src="@drawable/ic_widget_mic"
-            android:tint="#007AFF"
-            android:padding="8dp"
+            android:tint="#0A84FF"
+            android:padding="9dp"
+            android:scaleType="fitCenter"
             android:contentDescription="Voice Capture"
             android:layout_marginStart="2dp"
-            android:layout_marginEnd="2dp" />
+            android:layout_marginEnd="4dp" />
 
         <!-- Add button -->
         <ImageButton
             android:id="@+id/btn_widget_add"
             android:layout_width="38dp"
             android:layout_height="38dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/widget_button_bg"
             android:src="@drawable/ic_widget_add"
-            android:tint="#34C759"
-            android:padding="8dp"
+            android:tint="#30D158"
+            android:padding="9dp"
+            android:scaleType="fitCenter"
             android:contentDescription="Text Capture"
             android:layout_marginStart="2dp"
             android:layout_marginEnd="2dp" />

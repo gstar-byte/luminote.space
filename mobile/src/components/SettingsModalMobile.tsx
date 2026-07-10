@@ -275,18 +275,46 @@ export function SettingsModalMobile({
                       </View>
                       <Switch
                         value={settings.accessibilityWakeEnabled}
-                        onValueChange={(val) => {
+                        onValueChange={async (val) => {
                           if (val) {
-                            Alert.alert(
-                              'Accessibility Setup Required',
-                              'To enable Volume Key Wake, you need to enable the Lumi Note Accessibility Service in your Android System Settings.\n\nGo to:\nSettings → Accessibility → Installed Services → Lumi Note → Enable',
-                              [
-                                { text: 'Cancel', style: 'cancel' },
-                                { text: 'Enable Anyway', onPress: () => handleToggle('accessibilityWakeEnabled', true) },
-                              ]
-                            );
+                            const { VolumeKeyWakeModule } = NativeModules;
+                            if (VolumeKeyWakeModule) {
+                              try {
+                                const isServiceEnabled = await VolumeKeyWakeModule.isAccessibilityServiceEnabled();
+                                if (isServiceEnabled) {
+                                  void handleToggle('accessibilityWakeEnabled', true);
+                                  VolumeKeyWakeModule.setAccessibilityWakeEnabled(true);
+                                } else {
+                                  Alert.alert(
+                                    'Accessibility Service Required',
+                                    'To wake Lumi Note with the volume key, you need to enable the Lumi Note service in Android Settings.\n\nGo to Settings → Accessibility → Installed Services → Lumi Note Volume Key Wake and turn it ON.',
+                                    [
+                                      { text: 'Cancel', style: 'cancel' },
+                                      { 
+                                        text: 'Go to Settings', 
+                                        onPress: () => {
+                                          VolumeKeyWakeModule.openAccessibilitySettings();
+                                          void handleToggle('accessibilityWakeEnabled', true);
+                                          VolumeKeyWakeModule.setAccessibilityWakeEnabled(true);
+                                        } 
+                                      },
+                                    ]
+                                  );
+                                }
+                              } catch (e) {
+                                void handleToggle('accessibilityWakeEnabled', true);
+                              }
+                            } else {
+                              void handleToggle('accessibilityWakeEnabled', true);
+                            }
                           } else {
-                            handleToggle('accessibilityWakeEnabled', false);
+                            void handleToggle('accessibilityWakeEnabled', false);
+                            const { VolumeKeyWakeModule } = NativeModules;
+                            if (VolumeKeyWakeModule) {
+                              try {
+                                VolumeKeyWakeModule.setAccessibilityWakeEnabled(false);
+                              } catch (e) {}
+                            }
                           }
                         }}
                         trackColor={{ false: '#E5E5EA', true: '#34C759' }}

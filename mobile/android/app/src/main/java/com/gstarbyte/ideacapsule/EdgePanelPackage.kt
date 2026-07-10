@@ -7,7 +7,10 @@ import com.facebook.react.uimanager.ViewManager
 
 class EdgePanelPackage : ReactPackage {
     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-        return listOf(EdgePanelModule(reactContext))
+        return listOf(
+            EdgePanelModule(reactContext),
+            VolumeKeyWakeModule(reactContext)
+        )
     }
 
     override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {
