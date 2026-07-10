@@ -84,12 +84,11 @@ import {
   Keyboard,
   Clock,
   Hourglass,
-  Camera,
 } from 'lucide-react-native';
 import { onAuthStateChanged, type User } from './lib/supabaseMobile';
 import type { Capsule, FilterType, ReminderConfig, ReminderType, UserProfile, AppSettings } from './types';
 import { PRESET_COLORS } from './constants';
-import { categorizeThought, categorizeThoughtFromAudio, categorizeThoughtFromImage } from './services/geminiService';
+import { categorizeThought, categorizeThoughtFromAudio } from './services/geminiService';
 import { GoogleSignInButton } from './components/GoogleSignInButton';
 import { CapsuleColorSheet } from './components/CapsuleColorSheet';
 import { CapsuleReminderSheet } from './components/CapsuleReminderSheet';
@@ -97,7 +96,6 @@ import { CapsuleEditorMobile } from './components/CapsuleEditorMobile';
 import { AppLogo } from './components/AppLogo';
 import { ClarificationPillMobile } from './components/ClarificationPillMobile';
 import { LandingScreen } from './components/LandingScreen';
-import { recordSettingTime } from './lib/reminderLearning';
 import { PremiumModalMobile } from './components/PremiumModalMobile';
 import { SettingsModalMobile } from './components/SettingsModalMobile';
 import { QuickCaptureModal } from './components/QuickCaptureModal';
@@ -1327,10 +1325,6 @@ export default function IdeaCapsuleApp() {
       }
 
       if (requireAuth()) return;
-
-      if (updates.reminder && typeof updates.reminder === 'object' && (updates.reminder as any).type !== 'none' && (updates.reminder as any).date) {
-        void recordSettingTime(new Date((updates.reminder as any).date));
-      }
       // 乐观更新本地 capsules（与 demo 路径一致），避免关弹窗后 Firestore 回调未到导致卡片显示旧数据
       setCapsules((prev) =>
         prev.map((c) => {
@@ -1468,12 +1462,7 @@ export default function IdeaCapsuleApp() {
         isPinned: hasPin || undefined,
         countdownTarget: countdownTarget || undefined,
         isAmbiguous: shouldShowPill,
-        clarificationPrompt: shouldShowPill ? 'Quickly set a reminder, star, pin, or keep as note?' : null
       };
-
-      if (newNote.reminder && newNote.reminder.type !== 'none' && (newNote.reminder as any).date) {
-        void recordSettingTime(new Date((newNote.reminder as any).date));
-      }
 
       // 1. 同步执行本地状态乐观更新（瞬时展现，不管断网与否卡片立刻出现在首页）
       setCapsules(prev => {
@@ -1671,129 +1660,7 @@ export default function IdeaCapsuleApp() {
     );
   };
 
-  const handleCreateCapsuleFromImage = async (uri: string) => {
-    if (requireAuth()) return;
-    if (!user) return;
-    setIsProcessing(true);
-    showToast('AI extracting note from image...', 'info');
 
-    try {
-      const base64 = await readAsStringAsync(uri, {
-        encoding: EncodingType.Base64,
-      });
-      const mimeType = 'image/jpeg';
-
-      const parsed = await categorizeThoughtFromImage(base64, mimeType);
-
-      if (parsed.error === 'NO_KEY') {
-        showToast('Gemini API Key missing. Configure in settings.', 'info');
-        return;
-      }
-      if (parsed.error === 'API_ERROR' || !parsed.refinedContent.trim()) {
-        showToast('AI failed to extract text from photo.', 'success');
-        return;
-      }
-
-      const { title, category, tags, refinedContent, isTodo, reminder, isStarred, isPinned, countdownTarget } = parsed;
-      const docRef = doc(collection(db, 'capsules'));
-      const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
-      const norm = normalizeReminder(reminder);
-      const isTodoResolved = Boolean(isTodo || (norm != null && norm.type !== 'none'));
-      const hasReminder = Boolean(norm && norm.type && norm.type !== 'none');
-      const hasStar = Boolean(isStarred);
-      const hasPin = Boolean(isPinned);
-      const shouldShowPill = !((isTodoResolved && hasReminder) || hasStar || hasPin || !!countdownTarget);
-
-      const newNote: Capsule = {
-        id: docRef.id,
-        userId: user.uid,
-        content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: refinedContent }] }] }),
-        subject: title || undefined,
-        category: category || undefined,
-        tag: tags && tags.length > 0 ? tags[0] : undefined,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        completed: false,
-        isTodo: isTodoResolved,
-        isArchived: false,
-        isDeleted: false,
-        reminder: norm || undefined,
-        color: randomColor,
-        isStarred: hasStar || undefined,
-        isPinned: hasPin || undefined,
-        countdownTarget: countdownTarget || undefined,
-        isAmbiguous: shouldShowPill,
-        clarificationPrompt: shouldShowPill ? 'Quickly set a reminder, star, pin, or keep as note?' : null,
-        attachments: [{ url: `data:${mimeType};base64,${base64}`, type: 'image' as const }]
-      };
-
-      setCapsules(prev => [newNote, ...prev]);
-      
-      setDoc(docRef, newNote).catch(e => {
-        console.error("EAS setDoc image failed:", e);
-      });
-
-      if (newNote.reminder && newNote.reminder.type !== 'none' && (newNote.reminder as any).date) {
-        void recordSettingTime(new Date((newNote.reminder as any).date));
-        void scheduleCapsuleNotification(newNote);
-      }
-
-      if (shouldShowPill) {
-        setTemporaryPendingCapsule(newNote);
-        setPendingClarificationCapsuleId(newNote.id);
-      }
-
-      showToast('Photo Note captured successfully! ✨', 'success');
-    } catch (err) {
-      console.error('[OCR Capture] Error:', err);
-      showToast('OCR Capture failed', 'success');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handlePickPhotoForOCR = async () => {
-    Alert.alert(
-      'AI Photo Note',
-      'Take a photo or choose from library to extract text with AI.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Camera',
-          onPress: async () => {
-            const perm = await ImagePicker.requestCameraPermissionsAsync();
-            if (!perm.granted) {
-              Alert.alert('Permission needed', 'Allow camera access in Settings to take photos.');
-              return;
-            }
-            const res = await ImagePicker.launchCameraAsync({
-              quality: 0.8,
-            });
-            if (!res.canceled && res.assets[0]) {
-              void handleCreateCapsuleFromImage(res.assets[0].uri);
-            }
-          }
-        },
-        {
-          text: 'Photo Library',
-          onPress: async () => {
-            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!perm.granted) {
-              Alert.alert('Permission needed', 'Allow photo library access to choose images.');
-              return;
-            }
-            const res = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ['images'],
-              quality: 0.8,
-            });
-            if (!res.canceled && res.assets[0]) {
-              void handleCreateCapsuleFromImage(res.assets[0].uri);
-            }
-          }
-        }
-      ]
-    );
-  };
 
   const pickImageForCapsule = async (cap: Capsule) => {
     if (requireAuth()) return;
@@ -2458,7 +2325,6 @@ export default function IdeaCapsuleApp() {
           isVoiceRecording={isVoiceRecording}
           startVoice={startVoice}
           limit={settings.quickCaptureLimit}
-          onPickPhoto={handlePickPhotoForOCR}
         />
       </View>
     );
@@ -3018,10 +2884,11 @@ export default function IdeaCapsuleApp() {
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    width: 290,
+                    justifyContent: 'center',
+                    gap: 10,
+                    width: 190,
                     height: 54,
-                    paddingHorizontal: 12,
+                    paddingHorizontal: 20,
                     borderRadius: 27,
                     borderWidth: 1,
                     borderColor: 'rgba(255, 255, 255, 0.25)',
@@ -3029,42 +2896,22 @@ export default function IdeaCapsuleApp() {
                 >
                   <TouchableOpacity
                     onPress={() => setQuickCaptureMode('text')}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 10, flex: 1, justifyContent: 'center' }}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10 }}
                     activeOpacity={0.85}
                   >
-                    <Keyboard size={15} color="#FFF" strokeWidth={2.5} />
-                    <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 12.5 }}>Text</Text>
+                    <Keyboard size={16} color="#FFF" strokeWidth={2.5} />
+                    <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 14 }}>Text</Text>
                   </TouchableOpacity>
 
                   <View style={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: 8,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
                     backgroundColor: 'rgba(255, 255, 255, 0.25)',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}>
-                    <Plus size={10} color="#FFF" strokeWidth={3} />
-                  </View>
-
-                  <TouchableOpacity
-                    onPress={handlePickPhotoForOCR}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 10, flex: 1, justifyContent: 'center' }}
-                    activeOpacity={0.85}
-                  >
-                    <Camera size={15} color="#FFF" strokeWidth={2.5} />
-                    <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 12.5 }}>Photo</Text>
-                  </TouchableOpacity>
-
-                  <View style={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: 8,
-                    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <Plus size={10} color="#FFF" strokeWidth={3} />
+                    <Plus size={14} color="#FFF" strokeWidth={3} />
                   </View>
 
                   <TouchableOpacity
@@ -3072,11 +2919,11 @@ export default function IdeaCapsuleApp() {
                       setQuickCaptureMode('voice');
                       void startVoice();
                     }}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 10, flex: 1, justifyContent: 'center' }}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10 }}
                     activeOpacity={0.85}
                   >
-                    <Mic size={15} color="#FFF" strokeWidth={2.5} />
-                    <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 12.5 }}>Voice</Text>
+                    <Mic size={16} color="#FFF" strokeWidth={2.5} />
+                    <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 14 }}>Voice</Text>
                   </TouchableOpacity>
                 </LinearGradient>
               </View>
@@ -4466,7 +4313,6 @@ export default function IdeaCapsuleApp() {
           isVoiceRecording={isVoiceRecording}
           startVoice={startVoice}
           limit={settings.quickCaptureLimit}
-          onPickPhoto={handlePickPhotoForOCR}
         />
 
 

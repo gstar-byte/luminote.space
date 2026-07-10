@@ -14,7 +14,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
-import { Check, Mic, Send, X, Star, Bell, Camera } from 'lucide-react-native';
+import { Check, Mic, Send, X, Star, Bell } from 'lucide-react-native';
 import type { Capsule } from '../types';
 import * as Haptics from 'expo-haptics';
 
@@ -30,7 +30,6 @@ type Props = {
   isVoiceRecording: boolean;
   startVoice: () => Promise<void>;
   limit: number;
-  onPickPhoto: () => void;
 };
 
 // Helper to extract clean plain text for mini items
@@ -63,7 +62,6 @@ export function QuickCaptureModal({
   isVoiceRecording,
   startVoice,
   limit,
-  onPickPhoto,
 }: Props) {
   const [inputText, setInputText] = useState('');
 
@@ -177,31 +175,16 @@ export function QuickCaptureModal({
                       <Send size={18} color="#007AFF" />
                     </TouchableOpacity>
                   ) : (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          handleClose();
-                          // 延时一小会儿确保Modal彻底关闭后再拉起拍照，防UI层级冲突
-                          setTimeout(() => {
-                            onPickPhoto();
-                          }, 150);
-                        }}
-                        style={styles.actionBtn}
-                        hitSlop={8}
-                      >
-                        <Camera size={18} color="#8E8E93" />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => {
-                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          startVoice();
-                        }}
-                        style={[styles.actionBtn, isVoiceRecording && styles.micRecording]}
-                        hitSlop={8}
-                      >
-                        <Mic size={18} color={isVoiceRecording ? '#FFF' : '#8E8E93'} />
-                      </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity
+                      onPress={() => {
+                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        startVoice();
+                      }}
+                      style={[styles.actionBtn, isVoiceRecording && styles.micRecording]}
+                      hitSlop={8}
+                    >
+                      <Mic size={18} color={isVoiceRecording ? '#FFF' : '#8E8E93'} />
+                    </TouchableOpacity>
                   )}
                 </View>
               </View>

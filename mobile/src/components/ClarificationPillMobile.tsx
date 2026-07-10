@@ -10,7 +10,6 @@ import {
 import { Clock, CheckSquare, FileText, Settings, Star, Pin, RefreshCw } from 'lucide-react-native';
 import type { Capsule } from '../types';
 import * as Haptics from 'expo-haptics';
-import { getLearnedTime } from '../lib/reminderLearning';
 
 interface Props {
   capsule: Capsule;
@@ -19,9 +18,9 @@ interface Props {
 }
 
 /** 计算下一个指定星期几和小时的日期 */
-function getNextDayOfWeekAndTime(dayOfWeek: number, hours: number, minutes: number): Date {
+function getNextDayOfWeekAndTime(dayOfWeek: number, hours: number): Date {
   const now = new Date();
-  const result = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+  const result = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, 0, 0, 0);
   const currentDay = now.getDay();
   let daysToAdd = (dayOfWeek - currentDay + 7) % 7;
   if (daysToAdd === 0 && result.getTime() <= now.getTime()) {
@@ -31,39 +30,17 @@ function getNextDayOfWeekAndTime(dayOfWeek: number, hours: number, minutes: numb
   return result;
 }
 
-function formatTimeLabel(hour: number, minute: number): string {
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-  const displayMinute = minute === 0 ? '' : `:${String(minute).padStart(2, '0')}`;
-  return `${displayHour}${displayMinute} ${ampm}`;
-}
-
 type QuickType = 'today' | 'tomorrow' | 'dayafter' | 'sat-am' | 'sat-pm' | 'sun-am' | 'sun-pm' | 'todo' | 'everyday' | 'everyweek' | 'justnote';
 
 export function ClarificationPillMobile({ capsule, onResolve, onCustomPress }: Props) {
   if (!capsule.isAmbiguous) return null;
 
-  // 状态：动态习得的小时/分钟
-  const [learnedMorning, setLearnedMorning] = useState({ hour: 9, minute: 0 });
-  const [learnedAfternoon, setLearnedAfternoon] = useState({ hour: 14, minute: 0 });
-  const [learnedEvening, setLearnedEvening] = useState({ hour: 18, minute: 0 });
-
-  // 入场和呼吸动画
+  // 入场动画
   const slideAnim = useRef(new Animated.Value(0)).current;
+  // Clock 图标呼吸动画
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // 异步加载用户习惯时间偏好
-    async function loadLearnedTimes() {
-      const m = await getLearnedTime('morning');
-      const a = await getLearnedTime('afternoon');
-      const e = await getLearnedTime('evening');
-      setLearnedMorning(m);
-      setLearnedAfternoon(a);
-      setLearnedEvening(e);
-    }
-    void loadLearnedTimes();
-
     Animated.spring(slideAnim, {
       toValue: 1,
       friction: 8,
@@ -71,6 +48,7 @@ export function ClarificationPillMobile({ capsule, onResolve, onCustomPress }: P
       useNativeDriver: true,
     }).start();
 
+    // Clock 呼吸脉冲
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 0.4, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
@@ -105,36 +83,31 @@ export function ClarificationPillMobile({ capsule, onResolve, onCustomPress }: P
     let reminderUpdate: any = null;
 
     if (type === 'today') {
-      const todayTarget = new Date(now.getFullYear(), now.getMonth(), now.getDate(), learnedEvening.hour, learnedEvening.minute, 0, 0);
-      // 如果计算的晚上时刻已过，顺延3小时
-      if (todayTarget.getTime() <= now.getTime()) {
-        todayTarget.setHours(todayTarget.getHours() + 3);
-      }
-      reminderUpdate = { type: 'once', date: todayTarget.getTime() };
+      const todaySix = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 0, 0, 0);
+      if (todaySix.getTime() <= now.getTime()) todaySix.setHours(todaySix.getHours() + 3);
+      reminderUpdate = { type: 'once', date: todaySix.getTime() };
     } else if (type === 'tomorrow') {
-      const tomorrowTarget = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, learnedMorning.hour, learnedMorning.minute, 0, 0);
-      reminderUpdate = { type: 'once', date: tomorrowTarget.getTime() };
+      const tomorrowNine = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 9, 0, 0, 0);
+      reminderUpdate = { type: 'once', date: tomorrowNine.getTime() };
     } else if (type === 'dayafter') {
-      const dayAfterTarget = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2, learnedMorning.hour, learnedMorning.minute, 0, 0);
-      reminderUpdate = { type: 'once', date: dayAfterTarget.getTime() };
+      const dayAfterNine = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2, 9, 0, 0, 0);
+      reminderUpdate = { type: 'once', date: dayAfterNine.getTime() };
     } else if (type === 'sat-am') {
-      reminderUpdate = { type: 'once', date: getNextDayOfWeekAndTime(6, learnedMorning.hour, learnedMorning.minute).getTime() };
+      reminderUpdate = { type: 'once', date: getNextDayOfWeekAndTime(6, 9).getTime() };
     } else if (type === 'sat-pm') {
-      reminderUpdate = { type: 'once', date: getNextDayOfWeekAndTime(6, learnedAfternoon.hour, learnedAfternoon.minute).getTime() };
+      reminderUpdate = { type: 'once', date: getNextDayOfWeekAndTime(6, 15).getTime() };
     } else if (type === 'sun-am') {
-      reminderUpdate = { type: 'once', date: getNextDayOfWeekAndTime(0, learnedMorning.hour, learnedMorning.minute).getTime() };
+      reminderUpdate = { type: 'once', date: getNextDayOfWeekAndTime(0, 9).getTime() };
     } else if (type === 'sun-pm') {
-      reminderUpdate = { type: 'once', date: getNextDayOfWeekAndTime(0, learnedAfternoon.hour, learnedAfternoon.minute).getTime() };
+      reminderUpdate = { type: 'once', date: getNextDayOfWeekAndTime(0, 15).getTime() };
     } else if (type === 'everyday') {
-      const dailyTarget = new Date(now.getFullYear(), now.getMonth(), now.getDate(), learnedEvening.hour, learnedEvening.minute, 0, 0);
-      if (dailyTarget.getTime() <= now.getTime()) {
-        dailyTarget.setDate(dailyTarget.getDate() + 1);
-      }
-      reminderUpdate = { type: 'daily', date: dailyTarget.getTime() };
+      const dailyEight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0, 0);
+      if (dailyEight.getTime() <= now.getTime()) dailyEight.setDate(dailyEight.getDate() + 1);
+      reminderUpdate = { type: 'daily', date: dailyEight.getTime() };
     } else if (type === 'everyweek') {
       const nextMon = new Date(now);
       nextMon.setDate(now.getDate() + ((1 + 7 - now.getDay()) % 7 || 7));
-      nextMon.setHours(learnedMorning.hour, learnedMorning.minute, 0, 0);
+      nextMon.setHours(9, 0, 0, 0);
       reminderUpdate = { type: 'weekly', date: nextMon.getTime() };
     }
 
@@ -172,78 +145,18 @@ export function ClarificationPillMobile({ capsule, onResolve, onCustomPress }: P
     onCustomPress();
   };
 
-  // 根据学到的作息，动态组装显示字样
   const chipData: { type: QuickType; label: string; color: string; borderColor: string; icon?: React.ReactNode }[] = [
-    { 
-      type: 'today', 
-      label: `Today ${formatTimeLabel(learnedEvening.hour, learnedEvening.minute)}`, 
-      color: '#007AFF', 
-      borderColor: '#E5E5EA' 
-    },
-    { 
-      type: 'tomorrow', 
-      label: `Tomorrow ${formatTimeLabel(learnedMorning.hour, learnedMorning.minute)}`, 
-      color: '#007AFF', 
-      borderColor: '#E5E5EA' 
-    },
-    { 
-      type: 'dayafter', 
-      label: `Day After ${formatTimeLabel(learnedMorning.hour, learnedMorning.minute)}`, 
-      color: '#007AFF', 
-      borderColor: '#E5E5EA' 
-    },
-    { 
-      type: 'sat-am', 
-      label: `Sat ${formatTimeLabel(learnedMorning.hour, learnedMorning.minute)}`, 
-      color: '#007AFF', 
-      borderColor: '#E5E5EA' 
-    },
-    { 
-      type: 'sat-pm', 
-      label: `Sat ${formatTimeLabel(learnedAfternoon.hour, learnedAfternoon.minute)}`, 
-      color: '#007AFF', 
-      borderColor: '#E5E5EA' 
-    },
-    { 
-      type: 'sun-am', 
-      label: `Sun ${formatTimeLabel(learnedMorning.hour, learnedMorning.minute)}`, 
-      color: '#007AFF', 
-      borderColor: '#E5E5EA' 
-    },
-    { 
-      type: 'sun-pm', 
-      label: `Sun ${formatTimeLabel(learnedAfternoon.hour, learnedAfternoon.minute)}`, 
-      color: '#007AFF', 
-      borderColor: '#E5E5EA' 
-    },
-    { 
-      type: 'everyday', 
-      label: `Every Day ${formatTimeLabel(learnedEvening.hour, learnedEvening.minute)}`, 
-      color: '#AF52DE', 
-      borderColor: 'rgba(175,82,222,0.15)', 
-      icon: <RefreshCw size={9} color="#AF52DE" style={{ marginRight: 2 }} /> 
-    },
-    { 
-      type: 'everyweek', 
-      label: `Every Mon ${formatTimeLabel(learnedMorning.hour, learnedMorning.minute)}`, 
-      color: '#AF52DE', 
-      borderColor: 'rgba(175,82,222,0.15)', 
-      icon: <RefreshCw size={9} color="#AF52DE" style={{ marginRight: 2 }} /> 
-    },
-    { 
-      type: 'todo', 
-      label: 'Just Todo', 
-      color: '#FF3B30', 
-      borderColor: 'rgba(255,59,48,0.12)', 
-      icon: <CheckSquare size={9} color="#FF3B30" style={{ marginRight: 2 }} /> 
-    },
-    { 
-      type: 'justnote', 
-      label: 'Just Note', 
-      color: '#8E8E93', 
-      borderColor: 'rgba(142,142,147,0.12)', 
-      icon: <FileText size={9} color="#8E8E93" style={{ marginRight: 2 }} /> 
-    },
+    { type: 'today', label: 'Today 6 PM', color: '#007AFF', borderColor: '#E5E5EA' },
+    { type: 'tomorrow', label: 'Tomorrow 9 AM', color: '#007AFF', borderColor: '#E5E5EA' },
+    { type: 'dayafter', label: 'Day After 9 AM', color: '#007AFF', borderColor: '#E5E5EA' },
+    { type: 'sat-am', label: 'Sat 9 AM', color: '#007AFF', borderColor: '#E5E5EA' },
+    { type: 'sat-pm', label: 'Sat 3 PM', color: '#007AFF', borderColor: '#E5E5EA' },
+    { type: 'sun-am', label: 'Sun 9 AM', color: '#007AFF', borderColor: '#E5E5EA' },
+    { type: 'sun-pm', label: 'Sun 3 PM', color: '#007AFF', borderColor: '#E5E5EA' },
+    { type: 'everyday', label: 'Every Day 8 PM', color: '#AF52DE', borderColor: 'rgba(175,82,222,0.15)', icon: <RefreshCw size={9} color="#AF52DE" style={{ marginRight: 2 }} /> },
+    { type: 'everyweek', label: 'Every Mon 9 AM', color: '#AF52DE', borderColor: 'rgba(175,82,222,0.15)', icon: <RefreshCw size={9} color="#AF52DE" style={{ marginRight: 2 }} /> },
+    { type: 'todo', label: 'Just Todo', color: '#FF3B30', borderColor: 'rgba(255,59,48,0.12)', icon: <CheckSquare size={9} color="#FF3B30" style={{ marginRight: 2 }} /> },
+    { type: 'justnote', label: 'Just Note', color: '#8E8E93', borderColor: 'rgba(142,142,147,0.12)', icon: <FileText size={9} color="#8E8E93" style={{ marginRight: 2 }} /> },
   ];
 
   return (
@@ -262,7 +175,7 @@ export function ClarificationPillMobile({ capsule, onResolve, onCustomPress }: P
           </Animated.View>
         </View>
         <View style={styles.headerTextWrap}>
-          <Text style={styles.secLabel}>Smart Settings</Text>
+          <Text style={styles.secLabel}>Quick Settings</Text>
           <Text style={styles.promptTxt}>
             {capsule.clarificationPrompt || 'Set a reminder, repeat loop, or keep as note?'}
           </Text>
