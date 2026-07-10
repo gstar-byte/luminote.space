@@ -28,6 +28,7 @@ export type DeepSeekResult = {
   clarificationPrompt?: string | null;
   isStarred?: boolean;
   isPinned?: boolean;
+  countdownTarget?: number;
 };
 
 export async function categorizeThoughtDeepSeek(text: string): Promise<DeepSeekResult> {
@@ -126,5 +127,6 @@ export async function categorizeThoughtDeepSeek(text: string): Promise<DeepSeekR
     clarificationPrompt: result.clarificationPrompt || undefined,
     isStarred: typeof result.isStarred === 'boolean' ? result.isStarred : undefined,
     isPinned: typeof result.isPinned === 'boolean' ? result.isPinned : undefined,
+    countdownTarget: typeof result.countdownTarget === 'number' ? result.countdownTarget : undefined,
   };
 }

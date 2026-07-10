@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { SYSTEM_PROMPT } from "../constants";
 
-export async function categorizeThought(text: string): Promise<{ title?: string | null; category?: string; tags?: string[]; refinedContent: string; isTodo?: boolean; reminder?: any; isAmbiguous?: boolean; clarificationPrompt?: string | null; isStarred?: boolean; isPinned?: boolean }> {
+export async function categorizeThought(text: string): Promise<{ title?: string | null; category?: string; tags?: string[]; refinedContent: string; isTodo?: boolean; reminder?: any; isAmbiguous?: boolean; clarificationPrompt?: string | null; isStarred?: boolean; isPinned?: boolean; countdownTarget?: number }> {
   const getApiKey = () => {
     try {
       const userKey = localStorage.getItem('luminote_gemini_api_key');
@@ -87,6 +87,7 @@ export async function categorizeThought(text: string): Promise<{ title?: string 
       clarificationPrompt: result.clarificationPrompt || undefined,
       isStarred: typeof result.isStarred === 'boolean' ? result.isStarred : undefined,
       isPinned: typeof result.isPinned === 'boolean' ? result.isPinned : undefined,
+      countdownTarget: typeof result.countdownTarget === 'number' ? result.countdownTarget : undefined,
     };
   } catch (error) {
     console.error("Failed to categorize thought:", error);

@@ -27,6 +27,7 @@ CORE RESPONSIBILITIES:
 5. TAGS: 1–3 short keywords. May be Chinese or English; match the language of refinedContent when possible.
 6. LANGUAGE OF refinedContent: Match the user's language. Chinese input → Chinese title; English → English. Do not paste the full reminder sentence back verbatim; extract the core task name only.
 7. TITLE GENERATION: Generate a short, premium, title (max 5-6 words) for the note as "title" in the user's language based on the core topic. If the input is extremely short (e.g. 1-3 words) and lacks context, or if no meaningful title can be inferred, set "title" to null.
+8. COUNTDOWN DETECTION: If the user mentions a countdown (e.g. "倒计时", "countdown") or indicates they want to track days remaining to a future date or deadline (e.g. "距离端午节还有多少天", "还有3天考试倒计时", "下周日国庆倒计时", "5天后交房租倒计时"), extract that target date as a UNIX millisecond timestamp under "countdownTarget". If no countdown or future date tracking is mentioned, set "countdownTarget" to null. Ensure the resolved "countdownTarget" is the start of that day (00:00:00 local time) in milliseconds.
 
 Output ONLY valid JSON, no markdown:
 {
@@ -35,5 +36,6 @@ Output ONLY valid JSON, no markdown:
   "tags": string[],
   "refinedContent": string,
   "isTodo": boolean,
-  "reminder": { "type": "once", "date": number } | { "type": "daily"|"weekly"|"monthly", "date": number } | null
+  "reminder": { "type": "once", "date": number } | { "type": "daily"|"weekly"|"monthly", "date": number } | null,
+  "countdownTarget": number | null
 }`;

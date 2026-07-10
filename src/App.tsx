@@ -1576,7 +1576,7 @@ export default function App() {
       // Use NLP router (DeepSeek -> Local fallback)
       const parsed = await categorizeThought(text);
       console.log('[handleCreate] parsed result:', JSON.stringify(parsed));
-      const { title, category, tags, refinedContent, isTodo, reminder, isStarred, isPinned } = parsed;
+      const { title, category, tags, refinedContent, isTodo, reminder, isStarred, isPinned, countdownTarget } = parsed;
       
       // 从洗牌队列中取下一个颜色，12个内不重复
       const randomColor = pickNextColor();
@@ -1584,7 +1584,7 @@ export default function App() {
       const hasReminder = Boolean(reminder && typeof reminder === 'object' && reminder.type && reminder.type !== 'none');
       const hasStar = Boolean(isStarred);
       const hasPin = Boolean(isPinned);
-      const hasClearIntent = (isTodo && hasReminder) || hasStar || hasPin;
+      const hasClearIntent = (isTodo && hasReminder) || hasStar || hasPin || !!countdownTarget;
       const shouldShowPill = !hasClearIntent;
 
       // isAmbiguous / clarificationPrompt 是纯前端 UI 状态，不存在于 Supabase capsules 表中，
@@ -1611,6 +1611,7 @@ export default function App() {
       if (tags && tags.length > 0) newCapsuleData.tag = tags[0];
       if (isStarred) newCapsuleData.isStarred = true;
       if (isPinned) newCapsuleData.isPinned = true;
+      if (countdownTarget) newCapsuleData.countdownTarget = countdownTarget;
       
       console.log('[handleCreate] saving to Firestore:', JSON.stringify({ content: newCapsuleData.content, subject: newCapsuleData.subject, isTodo: newCapsuleData.isTodo, hasReminder: !!newCapsuleData.reminder, isAmbiguous: newCapsuleData.isAmbiguous }));
       
@@ -1635,7 +1636,8 @@ export default function App() {
         category: (newCapsuleData.category || undefined) as string,
         tag: (newCapsuleData.tag || undefined) as string,
         isStarred: (newCapsuleData.isStarred || undefined) as boolean,
-        isPinned: (newCapsuleData.isPinned || undefined) as boolean
+        isPinned: (newCapsuleData.isPinned || undefined) as boolean,
+        countdownTarget: countdownTarget || undefined
       };
 
       // 立即在本地状态中加入此笔记（瞬时响应，避免断网时 UI 卡死或延迟）

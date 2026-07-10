@@ -1400,7 +1400,7 @@ export default function IdeaCapsuleApp() {
     setIsProcessing(true);
     setInputText('');
     try {
-      const { title, category, tags, refinedContent, isTodo, reminder } =
+      const { title, category, tags, refinedContent, isTodo, reminder, countdownTarget } =
         await categorizeThought(text);
       const randomColor =
         PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
@@ -1425,6 +1425,7 @@ export default function IdeaCapsuleApp() {
         isDeleted: false,
         reminder: norm,
         color: randomColor,
+        countdownTarget: countdownTarget || undefined,
       };
 
       // 1. 同步执行本地状态乐观更新（瞬时展现，不管断网与否卡片立刻出现在首页）
@@ -1792,6 +1793,7 @@ export default function IdeaCapsuleApp() {
           isDeleted: false,
           reminder: norm,
           color: randomColor,
+          countdownTarget: meta.countdownTarget || undefined,
         });
         if (!hasPremiumAccess(user)) {
           await incrementVoiceCaptureCount(user.uid);

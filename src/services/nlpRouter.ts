@@ -14,6 +14,7 @@ export async function categorizeThought(text: string): Promise<{
   clarificationPrompt?: string | null;
   isStarred?: boolean;
   isPinned?: boolean;
+  countdownTarget?: number;
 }> {
   const provider = (() => {
     try {

@@ -30,6 +30,7 @@ CORE RESPONSIBILITIES:
 8. STAR & PIN DETECTION: If the input explicitly mentions marking something as important/starred/pinned (e.g. "置顶", "星标", "important", "⭐", "收藏", "pin this"), set "isStarred" to true and/or "isPinned" to true accordingly. Do NOT set these for normal inputs unless explicitly requested.
 9. TITLE GENERATION: Generate a short, premium, title (max 5-6 words) for the note as "title" in the user's language based on the core topic. If the input is extremely short (e.g. 1-3 words) and lacks context, or if no meaningful title can be inferred, set "title" to null.
 10. SPEECH TO TEXT CORRECTION: The raw input might be transcribed by a Chinese voice recognition engine (zh-CN). If the user dictated in English or mixed Chinese-English, the input may contain phonetic Chinese homophones or typos (e.g. "埃普" instead of "app", "米奥克" instead of "milk", "比奥的" instead of "build"). Auto-detect the true spoken intent and reconstruct the misspelled words into correct English or natural mixed Chinese-English in "refinedContent" and "title".
+11. COUNTDOWN DETECTION: If the user mentions a countdown (e.g. "倒计时", "countdown") or indicates they want to track days remaining to a future date or deadline (e.g. "距离端午节还有多少天", "还有3天考试倒计时", "下周日国庆倒计时", "5天后交房租倒计时"), extract that target date as a UNIX millisecond timestamp under "countdownTarget". If no countdown or future date tracking is mentioned, set "countdownTarget" to null. Ensure the resolved "countdownTarget" is the start of that day (00:00:00 local time) in milliseconds.
 
 Output ONLY valid JSON, no markdown:
 {
@@ -42,5 +43,6 @@ Output ONLY valid JSON, no markdown:
   "isAmbiguous": boolean,
   "clarificationPrompt": string | null,
   "isStarred": boolean,
-  "isPinned": boolean
+  "isPinned": boolean,
+  "countdownTarget": number | null
 }`;

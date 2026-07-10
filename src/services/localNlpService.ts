@@ -484,6 +484,7 @@ export async function categorizeThoughtLocal(text: string): Promise<{
   clarificationPrompt?: string | null;
   isStarred?: boolean;
   isPinned?: boolean;
+  countdownTarget?: number;
 }> {
   try {
     const result = parseReminder(text);

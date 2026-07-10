@@ -14,6 +14,7 @@ export async function categorizeThoughtDeepSeek(text: string): Promise<{
   clarificationPrompt?: string | null;
   isStarred?: boolean;
   isPinned?: boolean;
+  countdownTarget?: number;
 }> {
   const getApiKey = () => {
     try {
@@ -121,5 +122,6 @@ export async function categorizeThoughtDeepSeek(text: string): Promise<{
     clarificationPrompt: result.clarificationPrompt || undefined,
     isStarred: typeof result.isStarred === 'boolean' ? result.isStarred : undefined,
     isPinned: typeof result.isPinned === 'boolean' ? result.isPinned : undefined,
+    countdownTarget: typeof result.countdownTarget === 'number' ? result.countdownTarget : undefined,
   };
 }

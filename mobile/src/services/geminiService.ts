@@ -44,6 +44,7 @@ export type CategorizeThoughtResult = {
   refinedContent: string;
   isTodo?: boolean;
   reminder?: unknown;
+  countdownTarget?: number;
 };
 
 export async function categorizeThoughtFromAudio(
@@ -101,6 +102,7 @@ export async function categorizeThoughtFromAudio(
         typeof parsed.refinedContent === 'string' ? parsed.refinedContent : '',
       isTodo: typeof parsed.isTodo === 'boolean' ? parsed.isTodo : undefined,
       reminder: parsed.reminder ?? undefined,
+      countdownTarget: typeof parsed.countdownTarget === 'number' ? parsed.countdownTarget : undefined,
     };
   } catch (error) {
     console.error('Failed to categorize from audio:', error);
@@ -223,6 +225,7 @@ export async function categorizeThought(text: string): Promise<CategorizeThought
         typeof parsed.refinedContent === 'string' ? parsed.refinedContent : text,
       isTodo: typeof parsed.isTodo === 'boolean' ? parsed.isTodo : undefined,
       reminder: parsed.reminder ?? undefined,
+      countdownTarget: typeof parsed.countdownTarget === 'number' ? parsed.countdownTarget : undefined,
     };
   } catch (error) {
     console.error('Failed to categorize thought:', error);
