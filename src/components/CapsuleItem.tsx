@@ -304,30 +304,8 @@ export const CapsuleItem = memo(function CapsuleItem({
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as Node;
-      if (menuRef.current && menuRef.current.contains(target)) return;
-      if (portalMenuRef.current && portalMenuRef.current.contains(target)) return;
-      const insideThisCard = !!(cardRootRef.current && cardRootRef.current.contains(target));
-      if ((showOptions || showReminderPicker) && insideThisCard) {
-        suppressNextClickRef.current = true;
-      }
-      setShowOptions(false);
-      setShowColorPicker(false);
-      setShowCustomColorPanel(false);
-      setShowReminderPicker(false);
-      setIsConfiguringCustom(false);
-      setShowTagCat(false);
-      setMenuMode('actions');
-      setMenuPos(null);
-    };
-
-    document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('touchstart', handleOutsideClick, { passive: true });
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('touchstart', handleOutsideClick);
-    };
+    // 根据用户要求，右键菜单和长按菜单（卡片操作菜单）只能通过底部的 Cancel 按钮或执行操作关闭，手动多选其他卡片时不能让操作菜单自动消失。
+    // 因此这里不监听外部点击关闭事件。
   }, [showOptions, showColorPicker, showReminderPicker]);
 
   const [customInterval, setCustomInterval] = useState(capsule.reminder?.customInterval || 1);
@@ -518,35 +496,8 @@ export const CapsuleItem = memo(function CapsuleItem({
             </div>
           </div>
         )}
-        {(capsule.isPinned || capsule.isStarred || capsule.countdownTarget || (capsule.reminder && capsule.reminder.type !== 'none' && capsule.reminder.date)) && (
+        {(capsule.isPinned || capsule.isStarred || (capsule.reminder && capsule.reminder.type !== 'none' && capsule.reminder.date)) && (
           <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
-            {capsule.countdownTarget && viewMode === 'grid' && (() => {
-              const daysLeft = getDaysLeft(capsule.countdownTarget);
-              let badgeText = '';
-              let badgeStyle = '';
-              if (daysLeft > 0) {
-                badgeText = `${daysLeft}d Left`;
-                badgeStyle = 'bg-white/20 text-white border border-white/20';
-              } else if (daysLeft === 0) {
-                badgeText = '🎉 Today';
-                badgeStyle = 'bg-yellow-400 text-black border border-yellow-300 font-extrabold';
-              } else {
-                badgeText = `Passed ${Math.abs(daysLeft)}d`;
-                badgeStyle = 'bg-white/15 text-white/55 border border-white/10';
-              }
-              return (
-                <span
-                  title={`Target Date: ${new Date(capsule.countdownTarget).toLocaleDateString()}`}
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-extrabold uppercase tracking-wider shadow-sm select-none",
-                    badgeStyle
-                  )}
-                >
-                  <Hourglass size={10} className="shrink-0" />
-                  <span>{badgeText}</span>
-                </span>
-              );
-            })()}
             {capsule.isPinned && (
               <Pin size={13} className="text-white/80 fill-white/80 rotate-45 shrink-0 transition-opacity" />
             )}
@@ -633,6 +584,34 @@ export const CapsuleItem = memo(function CapsuleItem({
                 );
               })()}
             </div>
+
+            {capsule.countdownTarget && viewMode === 'grid' && (() => {
+              const daysLeft = getDaysLeft(capsule.countdownTarget);
+              let badgeText = '';
+              let badgeStyle = '';
+              if (daysLeft > 0) {
+                badgeText = `${daysLeft} days left`;
+                badgeStyle = 'bg-white/15 border-white/20 text-white hover:bg-white/20';
+              } else if (daysLeft === 0) {
+                badgeText = '🎉 Today';
+                badgeStyle = 'bg-yellow-400 text-black border-yellow-300 font-extrabold animate-pulse';
+              } else {
+                badgeText = `Passed ${Math.abs(daysLeft)}d`;
+                badgeStyle = 'bg-white/5 border border-white/10 text-white/40';
+              }
+              return (
+                <div
+                  title={`Target Date: ${new Date(capsule.countdownTarget).toLocaleDateString()}`}
+                  className={cn(
+                    "px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm select-none shrink-0 border backdrop-blur-md",
+                    badgeStyle
+                  )}
+                >
+                  <Hourglass size={10} className="shrink-0" />
+                  <span>{badgeText}</span>
+                </div>
+              );
+            })()}
 
             <div className={cn(
               "flex flex-wrap items-center gap-2 text-[10px] text-white/60 select-none font-bold",
@@ -953,20 +932,18 @@ export const CapsuleItem = memo(function CapsuleItem({
                   {capsule.isPinned ? 'Unpin' : 'Pin'}
                 </button>
                 <button
-                  onClick={async (e) => {
+                  onClick={(e) => {
                     e.stopPropagation();
-                    const shareText = plainTextFromContent(capsule.content);
-                    if (typeof navigator !== 'undefined' && navigator.share) {
-                      try { await navigator.share({ title: 'Lumi Note Share', text: shareText }); } catch (err) { console.log('Share failed or aborted', err); }
-                    } else {
-                      try { await navigator.clipboard.writeText(shareText); showToast('Note content copied to clipboard!', 'success'); } catch (err) { console.error('Copy to clipboard failed: ', err); }
+                    void onUpdate({ isDeleted: true });
+                    if (showToast) {
+                      showToast('Note moved to Trash', 'success');
                     }
                     closeMenu();
                   }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-[#F2F2F7] font-medium rounded-lg transition-colors border-b border-[#F2F2F7] pb-1.5"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-950/20 text-[#FF3B30] font-medium rounded-lg transition-colors border-b border-[#F2F2F7] dark:border-white/5 pb-1.5"
                 >
-                  <Share2 size={16} className="text-[#8E8E93]" />
-                  Share
+                  <Trash2 size={16} className="text-[#FF3B30] shrink-0" />
+                  Delete
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); closeMenu(); }}
