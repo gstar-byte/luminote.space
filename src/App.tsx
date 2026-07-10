@@ -3252,7 +3252,9 @@ export default function App() {
         id="main-content" 
         className="flex-1 flex flex-col relative h-full min-w-0 min-h-0 overflow-x-hidden"
         onClick={() => {
-          if (selectedIds.size > 0) {
+          // 根据用户要求，长按批量菜单只能通过底部的 cancel 按钮关闭。
+          // 当批量操作菜单显示时（batchMenuPos 不为空），点击外部（主面板背景等）不能让其消失。
+          if (selectedIds.size > 0 && !batchMenuPos) {
             setSelectedIds(new Set());
           }
         }}
@@ -3450,7 +3452,15 @@ export default function App() {
           } ${isSidebarOpen ? 'ml-0' : 'mx-auto'}`}>
             <AnimatePresence initial={false}>
               {filteredCapsules.map((capsule, index) => (
-                <div key={capsule.id} className={cn("flex items-center gap-3 md:gap-5 group/list", viewMode === 'grid' ? "break-inside-avoid mb-3 md:mb-5" : "")}>
+                <div 
+                  key={capsule.id} 
+                  className={cn("flex items-center gap-3 md:gap-5 group/list", viewMode === 'grid' ? "break-inside-avoid mb-3 md:mb-5" : "")}
+                  onClick={(e) => {
+                    if (selectedIds.size > 0) {
+                      e.stopPropagation();
+                    }
+                  }}
+                >
                   {selectedIds.size > 0 && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); toggleSelection(capsule.id); }}

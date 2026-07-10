@@ -522,16 +522,28 @@ export const CapsuleItem = memo(function CapsuleItem({
           <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
             {capsule.countdownTarget && viewMode === 'grid' && (() => {
               const daysLeft = getDaysLeft(capsule.countdownTarget);
+              let badgeText = '';
+              let badgeStyle = '';
+              if (daysLeft > 0) {
+                badgeText = `${daysLeft}d Left`;
+                badgeStyle = 'bg-white/20 text-white border border-white/20';
+              } else if (daysLeft === 0) {
+                badgeText = '🎉 Today';
+                badgeStyle = 'bg-yellow-400 text-black border border-yellow-300 font-extrabold';
+              } else {
+                badgeText = `Passed ${Math.abs(daysLeft)}d`;
+                badgeStyle = 'bg-white/15 text-white/55 border border-white/10';
+              }
               return (
                 <span
-                  title={`Countdown Target: ${new Date(capsule.countdownTarget).toLocaleDateString()}`}
+                  title={`Target Date: ${new Date(capsule.countdownTarget).toLocaleDateString()}`}
                   className={cn(
-                    "inline-flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tight",
-                    daysLeft > 0 ? "bg-white/20 text-white" : daysLeft === 0 ? "bg-yellow-400 text-black font-black" : "bg-white/10 text-white/50"
+                    "inline-flex shrink-0 items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-extrabold uppercase tracking-wider shadow-sm select-none",
+                    badgeStyle
                   )}
                 >
-                  <Hourglass size={9} className="shrink-0" />
-                  <span>{daysLeft > 0 ? `${daysLeft}d` : daysLeft === 0 ? "Now" : "End"}</span>
+                  <Hourglass size={10} className="shrink-0" />
+                  <span>{badgeText}</span>
                 </span>
               );
             })()}
@@ -653,27 +665,36 @@ export const CapsuleItem = memo(function CapsuleItem({
 
         {capsule.countdownTarget && viewMode === 'list' && (() => {
           const daysLeft = getDaysLeft(capsule.countdownTarget);
-          let badgeText = '';
-          let badgeStyle = '';
+          let numberText = '';
+          let labelText = '';
+          let colorClasses = '';
           if (daysLeft > 0) {
-            badgeText = `⏳ ${daysLeft} days left`;
-            badgeStyle = 'bg-white/20 text-white border border-white/25';
+            numberText = `${daysLeft}`;
+            labelText = daysLeft === 1 ? 'Day Left' : 'Days Left';
+            colorClasses = 'bg-white/15 border-white/20 text-white hover:bg-white/20';
           } else if (daysLeft === 0) {
-            badgeText = '🎉 Today';
-            badgeStyle = 'bg-yellow-400 text-black border border-yellow-300 font-extrabold animate-bounce';
+            numberText = '🎉';
+            labelText = 'Today';
+            colorClasses = 'bg-yellow-400 text-black border-yellow-300 font-extrabold animate-pulse';
           } else {
-            badgeText = `Passed ${Math.abs(daysLeft)}d`;
-            badgeStyle = 'bg-white/10 text-white/50 border border-white/10';
+            numberText = `${Math.abs(daysLeft)}`;
+            labelText = 'Days Ago';
+            colorClasses = 'bg-white/5 border-white/10 text-white/40';
           }
           return (
             <div
               title={`Target Date: ${new Date(capsule.countdownTarget).toLocaleDateString()}`}
               className={cn(
-                "px-3 py-1 rounded-full text-xs font-black uppercase tracking-tight flex items-center gap-1.5 shadow-sm select-none shrink-0 mr-1.5",
-                badgeStyle
+                "flex flex-col items-center justify-center px-3.5 py-2.5 rounded-2xl border backdrop-blur-md shadow-lg min-w-[86px] shrink-0 mr-2 md:mr-3 select-none transition-all duration-300 hover:scale-105 active:scale-95",
+                colorClasses
               )}
             >
-              {badgeText}
+              <span className="text-xl md:text-2xl font-black tracking-tight leading-none mb-0.5">
+                {numberText}
+              </span>
+              <span className="text-[9px] font-black uppercase tracking-wider opacity-85 leading-none">
+                {labelText}
+              </span>
             </div>
           );
         })()}
