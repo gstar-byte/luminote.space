@@ -1322,6 +1322,9 @@ export default function App() {
   const quickVoiceStartTime = useRef<number>(0);
   const isHoldMode = useRef<boolean>(false);
   const micStartTime = useRef<number>(0);
+  const inputTextRef = useRef<string>('');
+  const voiceStartTime = useRef<number>(0);
+  const voiceTarget = useRef<'quick' | 'main' | null>(null);
   
   const allTags = Array.from(new Set(allCapsules.map(c => c.tag || (c.tags && c.tags.length > 0 ? c.tags[0] : undefined)).filter(Boolean) as string[])).sort();
   const allCategories = Array.from(new Set(allCapsules.map(c => c.category).filter(Boolean) as string[])).sort();
@@ -1437,6 +1440,7 @@ export default function App() {
         }
         transcriptRef.current = final + interim;
         setInputText(final + interim);
+        inputTextRef.current = final + interim;
       };
 
       recognition.current.onerror = (event: any) => {
@@ -1452,19 +1456,23 @@ export default function App() {
 
       recognition.current.onend = () => {
         if (stoppedByUserRef.current) {
-          // 用户主动停止：创建笔记
           stoppedByUserRef.current = false;
           setIsListening(false);
-          const text = transcriptRef.current.trim();
+          const text = (inputTextRef.current || transcriptRef.current || '').trim();
           if (text) {
             handleCreateCapsuleRef.current(text);
             transcriptRef.current = '';
             setInputText('');
+            inputTextRef.current = '';
+            if (voiceTarget.current === 'main') {
+              setIsCaptureCollapsed(true);
+            }
           } else {
-            // 没有检测到语音内容
             setInputText('');
+            inputTextRef.current = '';
             showToastRef.current('🎙️ No speech detected. Tap the mic and try again.', 'info');
           }
+          voiceTarget.current = null;
         } else {
           // 超时自动停止：如果还在录音状态，自动重启
           if (isListeningRef.current) {
@@ -2118,51 +2126,70 @@ export default function App() {
     }
   };
 
+  // 全局释放手势处理
+  const handleVoiceRelease = () => {
+    if (isHoldMode.current) {
+      const duration = Date.now() - voiceStartTime.current;
+      if (duration >= 400) {
+        stopListening();
+        if (voiceTarget.current === 'quick') {
+          setQuickCaptureMode('buttons');
+        }
+      } else {
+        isHoldMode.current = false;
+      }
+    }
+  };
+
   const handleMicPressStart = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     if (!isListening) {
+      voiceStartTime.current = Date.now();
       isHoldMode.current = true;
-      micStartTime.current = Date.now();
+      voiceTarget.current = 'main';
       startListening();
+
+      // 绑定全局释放手势，100% 捕获松手事件，规避 DOM 销毁和移出导致的事件丢失
+      const handleGlobalRelease = () => {
+        window.removeEventListener('touchend', handleGlobalRelease);
+        window.removeEventListener('mouseup', handleGlobalRelease);
+        handleVoiceRelease();
+      };
+      window.addEventListener('touchend', handleGlobalRelease, { passive: true });
+      window.addEventListener('mouseup', handleGlobalRelease, { passive: true });
     } else {
       isHoldMode.current = false;
+      voiceTarget.current = null;
       stopListening();
     }
   };
 
   const handleMicPressEnd = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
-    if (isHoldMode.current) {
-      const duration = Date.now() - micStartTime.current;
-      if (duration >= 400) {
-        stopListening();
-      } else {
-        isHoldMode.current = false;
-      }
-    }
   };
 
   const handleQuickVoiceStart = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    quickVoiceStartTime.current = Date.now();
+    voiceStartTime.current = Date.now();
     isHoldMode.current = true;
+    voiceTarget.current = 'quick';
     setQuickCaptureMode('voice');
     startListening();
+
+    // 绑定全局释放手势，100% 捕获松手事件，规避 DOM 销毁和移出导致的事件丢失
+    const handleGlobalRelease = () => {
+      window.removeEventListener('touchend', handleGlobalRelease);
+      window.removeEventListener('mouseup', handleGlobalRelease);
+      handleVoiceRelease();
+    };
+    window.addEventListener('touchend', handleGlobalRelease, { passive: true });
+    window.addEventListener('mouseup', handleGlobalRelease, { passive: true });
   };
 
   const handleQuickVoiceEnd = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (isHoldMode.current) {
-      const duration = Date.now() - quickVoiceStartTime.current;
-      if (duration >= 400) {
-        stopListening();
-        setQuickCaptureMode('buttons');
-      } else {
-        isHoldMode.current = false;
-      }
-    }
   };
 
   const renameCategory = (oldCat: string) => {
@@ -4087,7 +4114,10 @@ export default function App() {
                   type="text" 
                   placeholder={isListening ? "Listening... (Release mic to save)" : "Hold mic to speak or type here..."}
                   value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
+                  onChange={(e) => {
+                    setInputText(e.target.value);
+                    inputTextRef.current = e.target.value;
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       if (!inputText.trim()) {
