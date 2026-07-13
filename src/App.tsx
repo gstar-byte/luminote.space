@@ -2131,7 +2131,7 @@ export default function App() {
 
   const handleMicPressEnd = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
-    if (isHoldMode.current && isListening) {
+    if (isHoldMode.current) {
       const duration = Date.now() - micStartTime.current;
       if (duration >= 400) {
         stopListening();
@@ -2153,12 +2153,14 @@ export default function App() {
   const handleQuickVoiceEnd = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    const duration = Date.now() - quickVoiceStartTime.current;
-    if (duration >= 400) {
-      stopListening();
-      setQuickCaptureMode('buttons');
-    } else {
-      isHoldMode.current = false;
+    if (isHoldMode.current) {
+      const duration = Date.now() - quickVoiceStartTime.current;
+      if (duration >= 400) {
+        stopListening();
+        setQuickCaptureMode('buttons');
+      } else {
+        isHoldMode.current = false;
+      }
     }
   };
 
