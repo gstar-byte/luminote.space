@@ -1321,6 +1321,7 @@ export default function App() {
   const recognition = useRef<any>(null);
   const quickVoiceStartTime = useRef<number>(0);
   const isHoldMode = useRef<boolean>(false);
+  const micStartTime = useRef<number>(0);
   
   const allTags = Array.from(new Set(allCapsules.map(c => c.tag || (c.tags && c.tags.length > 0 ? c.tags[0] : undefined)).filter(Boolean) as string[])).sort();
   const allCategories = Array.from(new Set(allCapsules.map(c => c.category).filter(Boolean) as string[])).sort();
@@ -2118,12 +2119,26 @@ export default function App() {
 
   const handleMicPressStart = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
-    startListening();
+    if (!isListening) {
+      isHoldMode.current = true;
+      micStartTime.current = Date.now();
+      startListening();
+    } else {
+      isHoldMode.current = false;
+      stopListening();
+    }
   };
 
   const handleMicPressEnd = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
-    stopListening();
+    if (isHoldMode.current && isListening) {
+      const duration = Date.now() - micStartTime.current;
+      if (duration >= 400) {
+        stopListening();
+      } else {
+        isHoldMode.current = false;
+      }
+    }
   };
 
   const handleQuickVoiceStart = (e: React.MouseEvent | React.TouchEvent) => {
@@ -3467,116 +3482,116 @@ export default function App() {
               </div>
             </div>
           )}
-          <div className={`w-full pb-36 transition-all duration-300 ${
-            selectedIds.size > 0 ? 'mt-3' : ''
-          } ${
-            viewMode === 'grid' 
-              ? 'columns-2 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5 3xl:columns-6 gap-3 md:gap-5' 
-              : 'w-full max-w-[1200px] flex flex-col space-y-2.5 md:space-y-3.5'
-          } ${isSidebarOpen ? 'ml-0' : 'mx-auto'}`}>
-            <AnimatePresence initial={false}>
-              {filteredCapsules.map((capsule, index) => (
-                <div 
-                  key={capsule.id} 
-                  className={cn("flex items-center gap-3 md:gap-5 group/list", viewMode === 'grid' ? "break-inside-avoid mb-3 md:mb-5" : "")}
-                  onClick={(e) => {
-                    if (selectedIds.size > 0) {
-                      e.stopPropagation();
-                    }
+          {filteredCapsules.length > 0 ? (
+            <div className={`w-full pb-36 transition-all duration-300 ${
+              selectedIds.size > 0 ? 'mt-3' : ''
+            } ${
+              viewMode === 'grid' 
+                ? 'columns-2 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5 3xl:columns-6 gap-3 md:gap-5' 
+                : 'w-full max-w-[1200px] flex flex-col space-y-2.5 md:space-y-3.5'
+            } ${isSidebarOpen ? 'ml-0' : 'mx-auto'}`}>
+              <AnimatePresence initial={false}>
+                {filteredCapsules.map((capsule, index) => (
+                  <div 
+                    key={capsule.id} 
+                    className={cn("flex items-center gap-3 md:gap-5 group/list", viewMode === 'grid' ? "break-inside-avoid mb-3 md:mb-5" : "")}
+                    onClick={(e) => {
+                      if (selectedIds.size > 0) {
+                        e.stopPropagation();
+                      }
+                    }}
+                  >
+                    {selectedIds.size > 0 && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); toggleSelection(capsule.id); }}
+                        className={cn(
+                          "w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all",
+                          selectedIds.has(capsule.id) 
+                            ? "bg-[#007AFF] border-[#007AFF]" 
+                            : "border-[#C7C7CC] hover:border-[#8E8E93]"
+                        )}
+                      >
+                        {selectedIds.has(capsule.id) && <Check size={14} className="text-white" strokeWidth={3} />}
+                      </button>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <CapsuleItem 
+                        capsule={capsule}
+                        index={index}
+                        viewMode={viewMode}
+                        patchCapsule={patchCapsule}
+                        onRemovePermanently={() => removeCapsuleForever(capsule.id)}
+                        allCategories={allCategories}
+                        allTags={allTags}
+                        isSelectionMode={selectedIds.size > 0}
+                        isSelected={selectedIds.has(capsule.id)}
+                        onToggleSelection={() => toggleSelection(capsule.id)}
+                        onViewDetail={() => setEditingCapsule(capsule)}
+                        showToast={showToast}
+                        onSelectAll={() => setSelectedIds(new Set(filteredCapsules.map(c => c.id)))}
+                        setNotificationPermission={setNotificationPermission}
+                        onShowBatchMenu={(x, y) => setBatchMenuPos({ left: x, top: y })}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </AnimatePresence>
+            </div>
+          ) : (
+            (!isSyncFinished && !syncError) ? (
+              <div className="w-full h-64 flex flex-col items-center justify-center text-[#8E8E93] gap-4 pb-36">
+                <div className="w-10 h-10 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm font-semibold text-[#8E8E93] animate-pulse">Syncing your notes...</p>
+              </div>
+            ) : syncError ? (
+              <div className="w-full h-64 flex flex-col items-center justify-center text-[#8E8E93] gap-4 px-6 text-center max-w-md mx-auto pb-36">
+                <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-1">
+                  <CloudOff size={24} />
+                </div>
+                <h3 className="text-sm font-bold text-[#1D1D1F] dark:text-[#F5F5F7]">Sync Paused (Offline Mode)</h3>
+                <p className="text-xs text-[#8E8E93] leading-relaxed">
+                  Cloud sync is paused due to Firebase quota limits. You can still view, edit and create notes locally. They will sync automatically once limits reset.
+                </p>
+              </div>
+            ) : (
+              <div className="w-full h-64 flex flex-col items-center justify-center text-[#8E8E93] pb-36">
+                <button
+                  type="button"
+                  title="Create a new capsule"
+                  onClick={() => {
+                    setIsCaptureCollapsed(false);
+                    setQuickCaptureMode('text');
                   }}
+                  className="w-16 h-16 bg-[#E5E5EA] hover:bg-[#D1D1D6] dark:bg-[#3A3A3C] dark:hover:bg-[#48484A] rounded-full flex items-center justify-center mb-4 cursor-pointer active:scale-95 transition-all"
                 >
-                  {selectedIds.size > 0 && (
+                  <Plus size={32} />
+                </button>
+                <p className="text-sm font-medium mb-4">No capsules found in this view.</p>
+                <div className="flex gap-3">
+                  {/* 仅在数据同步完成、确认该用户从未创建过笔记时才显示 Generate Demo */}
+                  {!hasSeededOrCreated && isSyncFinished && !dataLoading && (
                     <button 
-                      onClick={(e) => { e.stopPropagation(); toggleSelection(capsule.id); }}
-                      className={cn(
-                        "w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all",
-                        selectedIds.has(capsule.id) 
-                          ? "bg-[#007AFF] border-[#007AFF]" 
-                          : "border-[#C7C7CC] hover:border-[#8E8E93]"
-                      )}
+                      id="generate-demo-btn"
+                      onClick={seedDemoData}
+                      disabled={authProcessing}
+                      className="px-6 py-3 bg-[#007AFF] text-white rounded-2xl font-bold text-sm hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 group"
                     >
-                      {selectedIds.has(capsule.id) && <Check size={14} className="text-white" strokeWidth={3} />}
+                      <Zap size={16} className={authProcessing ? 'animate-spin' : 'group-hover:animate-pulse'} />
+                      {authProcessing ? 'Generating...' : 'Generate Demo Data'}
                     </button>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <CapsuleItem 
-                      capsule={capsule}
-                      index={index}
-                      viewMode={viewMode}
-                      patchCapsule={patchCapsule}
-                      onRemovePermanently={() => removeCapsuleForever(capsule.id)}
-                      allCategories={allCategories}
-                      allTags={allTags}
-                      isSelectionMode={selectedIds.size > 0}
-                      isSelected={selectedIds.has(capsule.id)}
-                      onToggleSelection={() => toggleSelection(capsule.id)}
-                      onViewDetail={() => setEditingCapsule(capsule)}
-                      showToast={showToast}
-                      onSelectAll={() => setSelectedIds(new Set(filteredCapsules.map(c => c.id)))}
-                      setNotificationPermission={setNotificationPermission}
-                      onShowBatchMenu={(x, y) => setBatchMenuPos({ left: x, top: y })}
-                    />
-                  </div>
+                  {filter !== 'all' && (
+                     <button 
+                      onClick={() => setFilter('all')}
+                      className="px-6 py-3 bg-[#F2F2F7] text-[#1D1D1F] rounded-2xl font-bold text-sm hover:bg-[#E5E5EA] transition-all"
+                    >
+                      Show All
+                    </button>
+                  )}
                 </div>
-              ))}
-            </AnimatePresence>
-            
-            {filteredCapsules.length === 0 && (
-              (!isSyncFinished && !syncError) ? (
-                <div className="col-span-full h-64 flex flex-col items-center justify-center text-[#8E8E93] gap-4">
-                  <div className="w-10 h-10 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
-                  <p className="text-sm font-semibold text-[#8E8E93] animate-pulse">Syncing your notes...</p>
-                </div>
-              ) : syncError ? (
-                <div className="col-span-full h-64 flex flex-col items-center justify-center text-[#8E8E93] gap-4 px-6 text-center max-w-md mx-auto">
-                  <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-1">
-                    <CloudOff size={24} />
-                  </div>
-                  <h3 className="text-sm font-bold text-[#1D1D1F] dark:text-[#F5F5F7]">Sync Paused (Offline Mode)</h3>
-                  <p className="text-xs text-[#8E8E93] leading-relaxed">
-                    Cloud sync is paused due to Firebase quota limits. You can still view, edit and create notes locally. They will sync automatically once limits reset.
-                  </p>
-                </div>
-              ) : (
-                <div className="h-64 flex flex-col items-center justify-center text-[#8E8E93] col-span-full">
-                  <button
-                    type="button"
-                    title="Create a new capsule"
-                    onClick={() => {
-                      setIsCaptureCollapsed(false);
-                      setQuickCaptureMode('text');
-                    }}
-                    className="w-16 h-16 bg-[#E5E5EA] hover:bg-[#D1D1D6] dark:bg-[#3A3A3C] dark:hover:bg-[#48484A] rounded-full flex items-center justify-center mb-4 cursor-pointer active:scale-95 transition-all"
-                  >
-                    <Plus size={32} />
-                  </button>
-                  <p className="text-sm font-medium mb-4">No capsules found in this view.</p>
-                  <div className="flex gap-3">
-                    {/* 仅在数据同步完成、确认该用户从未创建过笔记时才显示 Generate Demo */}
-                    {!hasSeededOrCreated && isSyncFinished && !dataLoading && (
-                      <button 
-                        id="generate-demo-btn"
-                        onClick={seedDemoData}
-                        disabled={authProcessing}
-                        className="px-6 py-3 bg-[#007AFF] text-white rounded-2xl font-bold text-sm hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 group"
-                      >
-                        <Zap size={16} className={authProcessing ? 'animate-spin' : 'group-hover:animate-pulse'} />
-                        {authProcessing ? 'Generating...' : 'Generate Demo Data'}
-                      </button>
-                    )}
-                    {filter !== 'all' && (
-                       <button 
-                        onClick={() => setFilter('all')}
-                        className="px-6 py-3 bg-[#F2F2F7] text-[#1D1D1F] rounded-2xl font-bold text-sm hover:bg-[#E5E5EA] transition-all"
-                      >
-                        Show All
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )
-            )}
-          </div>
+              </div>
+            )
+          )}
         </div>
 
         <AnimatePresence>
@@ -4059,7 +4074,7 @@ export default function App() {
             id="quick-capture-area"
             className="flex items-center w-full max-w-3xl gap-2 md:gap-4 flex-nowrap bg-white/50 dark:bg-black/20 p-2 rounded-[32px] border border-white/20 shadow-sm mt-1.5 md:mt-0"
           >
-             <div className={`flex-1 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[24px] min-h-[56px] flex items-center px-5 transition-all border-2 border-transparent ${isListening ? 'border-red-400 ring-8 ring-red-50' : 'focus-within:border-[#007AFF]/20 focus-within:bg-white dark:focus-within:bg-[#3A3A3C] focus-within:shadow-2xl'}`}>
+             <div className={`flex-1 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[24px] min-h-[56px] flex items-center px-5 transition-all border-2 border-transparent min-w-0 ${isListening ? 'border-red-400 ring-8 ring-red-50' : 'focus-within:border-[#007AFF]/20 focus-within:bg-white dark:focus-within:bg-[#3A3A3C] focus-within:shadow-2xl'}`}>
                 <div className="text-[#007AFF] mr-3 shrink-0">
                    <Zap size={22} strokeWidth={2.5} />
                 </div>
@@ -4083,7 +4098,7 @@ export default function App() {
                     }
                   }}
                   disabled={isProcessing}
-                  className="bg-transparent border-none focus:ring-0 flex-1 text-base md:text-lg placeholder-[#8E8E93] dark:text-[#F2F2F7] outline-none py-3"
+                  className="bg-transparent border-none focus:ring-0 flex-1 text-base md:text-lg placeholder-[#8E8E93] dark:text-[#F2F2F7] outline-none py-3 min-w-0"
                 />
                 <button 
                   type="button"
