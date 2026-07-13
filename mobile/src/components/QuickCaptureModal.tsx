@@ -28,7 +28,7 @@ type Props = {
   onToggleTodo: (id: string, completed: boolean) => void;
   isProcessing: boolean;
   isVoiceRecording: boolean;
-  startVoice: () => Promise<void>;
+  startVoice: (isReleaseTrigger?: boolean) => Promise<void>;
   limit: number;
 };
 
@@ -178,10 +178,14 @@ export function QuickCaptureModal({
                     <TouchableOpacity
                       onPressIn={() => {
                         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        startVoice();
+                        if (!isVoiceRecording) {
+                          void startVoice();
+                        } else {
+                          void startVoice(false);
+                        }
                       }}
                       onPressOut={() => {
-                        startVoice();
+                        void startVoice(true);
                       }}
                       style={[styles.actionBtn, isVoiceRecording && styles.micRecording]}
                       hitSlop={8}

@@ -1319,6 +1319,8 @@ export default function App() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const recognition = useRef<any>(null);
+  const quickVoiceStartTime = useRef<number>(0);
+  const isHoldMode = useRef<boolean>(false);
   
   const allTags = Array.from(new Set(allCapsules.map(c => c.tag || (c.tags && c.tags.length > 0 ? c.tags[0] : undefined)).filter(Boolean) as string[])).sort();
   const allCategories = Array.from(new Set(allCapsules.map(c => c.category).filter(Boolean) as string[])).sort();
@@ -2122,6 +2124,27 @@ export default function App() {
   const handleMicPressEnd = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     stopListening();
+  };
+
+  const handleQuickVoiceStart = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    quickVoiceStartTime.current = Date.now();
+    isHoldMode.current = true;
+    setQuickCaptureMode('voice');
+    startListening();
+  };
+
+  const handleQuickVoiceEnd = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const duration = Date.now() - quickVoiceStartTime.current;
+    if (duration >= 400) {
+      stopListening();
+      setQuickCaptureMode('buttons');
+    } else {
+      isHoldMode.current = false;
+    }
   };
 
   const renameCategory = (oldCat: string) => {
@@ -4147,12 +4170,15 @@ export default function App() {
                   <button
                     type="button"
                     title="Quick voice capture"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setQuickCaptureMode('voice');
-                      toggleListening();
-                    }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-full hover:bg-white/10 active:scale-95 transition-all cursor-pointer text-white font-black tracking-tight"
+                    onMouseDown={handleQuickVoiceStart}
+                    onMouseUp={handleQuickVoiceEnd}
+                    onMouseLeave={handleQuickVoiceEnd}
+                    onTouchStart={handleQuickVoiceStart}
+                    onTouchEnd={handleQuickVoiceEnd}
+                    onTouchCancel={handleQuickVoiceEnd}
+                    onContextMenu={(e) => e.preventDefault()}
+                    style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-full hover:bg-white/10 active:scale-95 transition-all cursor-pointer text-white font-black tracking-tight select-none"
                   >
                     <Mic size={14} />
                     <span>Voice</span>

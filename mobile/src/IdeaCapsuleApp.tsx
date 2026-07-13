@@ -876,6 +876,7 @@ export default function IdeaCapsuleApp() {
   const voiceRecordingRef = useRef<Audio.Recording | null>(null);
   const webSpeechRef = useRef<any>(null);
   const voiceStartTime = useRef<number>(0);
+  const isVoiceHoldMode = useRef<boolean>(false);
 
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -1727,7 +1728,7 @@ export default function IdeaCapsuleApp() {
     );
   };
 
-  const startVoice = async () => {
+  const startVoice = async (isReleaseTrigger?: boolean) => {
     if (requireAuth()) return;
     if (!user) return;
 
@@ -1766,10 +1767,14 @@ export default function IdeaCapsuleApp() {
     }
 
     if (isVoiceRecording && voiceRecordingRef.current) {
+      const duration = Date.now() - voiceStartTime.current;
+      if (isReleaseTrigger && duration < 400) {
+        isVoiceHoldMode.current = false;
+        return;
+      }
       const prev = voiceRecordingRef.current;
       voiceRecordingRef.current = null;
-      const duration = Date.now() - voiceStartTime.current;
-      if (duration < 500) {
+      if (duration < 500 && !isReleaseTrigger) {
         try {
           await prev.stopAndUnloadAsync();
         } catch (e) {
@@ -1880,6 +1885,7 @@ export default function IdeaCapsuleApp() {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       voiceRecordingRef.current = rec;
       voiceStartTime.current = Date.now();
+      isVoiceHoldMode.current = true;
       setIsVoiceRecording(true);
       setQuickCaptureMode('voice');
     } catch (e) {
@@ -2930,11 +2936,18 @@ export default function IdeaCapsuleApp() {
 
                   <TouchableOpacity
                     onPressIn={() => {
-                      setQuickCaptureMode('voice');
-                      void startVoice();
+                      if (!isVoiceRecording) {
+                        setQuickCaptureMode('voice');
+                        void startVoice();
+                      } else {
+                        isVoiceHoldMode.current = false;
+                        void startVoice(false);
+                      }
                     }}
                     onPressOut={() => {
-                      void startVoice();
+                      if (isVoiceHoldMode.current && isVoiceRecording) {
+                        void startVoice(true);
+                      }
                     }}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10 }}
                     activeOpacity={0.85}
