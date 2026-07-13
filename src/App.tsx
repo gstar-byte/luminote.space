@@ -4091,6 +4091,8 @@ export default function App() {
                onTouchStart={handleMicPressStart}
                onTouchEnd={handleMicPressEnd}
                onTouchCancel={handleMicPressEnd}
+               onContextMenu={(e) => e.preventDefault()}
+               style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all shadow-2xl shrink-0 select-none ${isListening ? 'bg-red-500 ring-8 ring-red-100 cursor-grabbing' : 'bg-gradient-to-br from-[#007AFF] to-[#00C6FF] cursor-pointer'}`}
                title="Hold to speak, release to save"
              >

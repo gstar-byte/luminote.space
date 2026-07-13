@@ -176,8 +176,11 @@ export function QuickCaptureModal({
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
-                      onPress={() => {
+                      onPressIn={() => {
                         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        startVoice();
+                      }}
+                      onPressOut={() => {
                         startVoice();
                       }}
                       style={[styles.actionBtn, isVoiceRecording && styles.micRecording]}

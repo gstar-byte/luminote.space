@@ -875,6 +875,7 @@ export default function IdeaCapsuleApp() {
   const [editMode, setEditMode] = useState<'plain' | 'markdown'>('plain');
   const voiceRecordingRef = useRef<Audio.Recording | null>(null);
   const webSpeechRef = useRef<any>(null);
+  const voiceStartTime = useRef<number>(0);
 
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -1767,6 +1768,18 @@ export default function IdeaCapsuleApp() {
     if (isVoiceRecording && voiceRecordingRef.current) {
       const prev = voiceRecordingRef.current;
       voiceRecordingRef.current = null;
+      const duration = Date.now() - voiceStartTime.current;
+      if (duration < 500) {
+        try {
+          await prev.stopAndUnloadAsync();
+        } catch (e) {
+          console.error(e);
+        }
+        setIsVoiceRecording(false);
+        setQuickCaptureMode('buttons');
+        showToast('Speak longer to record note', 'success');
+        return;
+      }
       try {
         await prev.stopAndUnloadAsync();
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -1866,6 +1879,7 @@ export default function IdeaCapsuleApp() {
       await rec.startAsync();
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       voiceRecordingRef.current = rec;
+      voiceStartTime.current = Date.now();
       setIsVoiceRecording(true);
       setQuickCaptureMode('voice');
     } catch (e) {
@@ -2915,8 +2929,11 @@ export default function IdeaCapsuleApp() {
                   </View>
 
                   <TouchableOpacity
-                    onPress={() => {
+                    onPressIn={() => {
                       setQuickCaptureMode('voice');
+                      void startVoice();
+                    }}
+                    onPressOut={() => {
                       void startVoice();
                     }}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10 }}
