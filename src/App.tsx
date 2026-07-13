@@ -1325,6 +1325,7 @@ export default function App() {
   const inputTextRef = useRef<string>('');
   const voiceStartTime = useRef<number>(0);
   const voiceTarget = useRef<'quick' | 'main' | null>(null);
+  const hasCreatedOnRelease = useRef<boolean>(false);
   
   const allTags = Array.from(new Set(allCapsules.map(c => c.tag || (c.tags && c.tags.length > 0 ? c.tags[0] : undefined)).filter(Boolean) as string[])).sort();
   const allCategories = Array.from(new Set(allCapsules.map(c => c.category).filter(Boolean) as string[])).sort();
@@ -1458,19 +1459,24 @@ export default function App() {
         if (stoppedByUserRef.current) {
           stoppedByUserRef.current = false;
           setIsListening(false);
-          const text = (inputTextRef.current || transcriptRef.current || '').trim();
-          if (text) {
-            handleCreateCapsuleRef.current(text);
-            transcriptRef.current = '';
-            setInputText('');
-            inputTextRef.current = '';
-            if (voiceTarget.current === 'main') {
-              setIsCaptureCollapsed(true);
-            }
+          if (hasCreatedOnRelease.current) {
+            // 互斥控制：已在松手瞬间直接同步保存，在此仅静默收尾重置锁
+            hasCreatedOnRelease.current = false;
           } else {
-            setInputText('');
-            inputTextRef.current = '';
-            showToastRef.current('🎙️ No speech detected. Tap the mic and try again.', 'info');
+            const text = (inputTextRef.current || transcriptRef.current || '').trim();
+            if (text) {
+              handleCreateCapsuleRef.current(text);
+              transcriptRef.current = '';
+              setInputText('');
+              inputTextRef.current = '';
+              if (voiceTarget.current === 'main') {
+                setIsCaptureCollapsed(true);
+              }
+            } else {
+              setInputText('');
+              inputTextRef.current = '';
+              showToastRef.current('🎙️ No speech detected. Tap the mic and try again.', 'info');
+            }
           }
           voiceTarget.current = null;
         } else {
@@ -2132,8 +2138,22 @@ export default function App() {
       const duration = Date.now() - voiceStartTime.current;
       if (duration >= 400) {
         stopListening();
+        
+        // 关键：在松手瞬间同步提取文本直接创建便签，实现0延迟体验
+        const text = (inputTextRef.current || transcriptRef.current || '').trim();
+        if (text) {
+          handleCreateCapsule(text);
+          hasCreatedOnRelease.current = true; // 互斥锁：防止 onend 里二次保存
+          setInputText('');
+          inputTextRef.current = '';
+          transcriptRef.current = '';
+        }
+
+        // 立刻重置/折叠 UI
         if (voiceTarget.current === 'quick') {
           setQuickCaptureMode('buttons');
+        } else if (voiceTarget.current === 'main') {
+          setIsCaptureCollapsed(true);
         }
       } else {
         isHoldMode.current = false;
