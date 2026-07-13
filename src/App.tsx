@@ -1435,7 +1435,7 @@ export default function App() {
             interim += t;
           }
         }
-        transcriptRef.current = final;
+        transcriptRef.current = final + interim;
         setInputText(final + interim);
       };
 
@@ -2101,6 +2101,7 @@ export default function App() {
     if (recognition.current && isListeningRef.current) {
       try {
         stoppedByUserRef.current = true; // 标记：用户主动停止，onend 回调中将创建笔记
+        setIsListening(false); // 同步且立即执行，使界面在多次点击时能 100% 恢复正常
         recognition.current.stop();
       } catch (e) {
         console.log('Speech recognition stop error', e);
