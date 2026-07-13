@@ -1492,6 +1492,22 @@ export default function App() {
         }
       };
     }
+
+    // 注册全局静态触摸/鼠标释放监听器，100% 捕获松手和被打断事件，彻底跳出移动端手势屏蔽限制
+    const handleGlobalRelease = () => {
+      if (isHoldMode.current) {
+        handleVoiceReleaseRef.current();
+      }
+    };
+    window.addEventListener('mouseup', handleGlobalRelease, { passive: true });
+    window.addEventListener('touchend', handleGlobalRelease, { passive: true });
+    window.addEventListener('touchcancel', handleGlobalRelease, { passive: true });
+
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalRelease);
+      window.removeEventListener('touchend', handleGlobalRelease);
+      window.removeEventListener('touchcancel', handleGlobalRelease);
+    };
   }, []);
 
   const [editingCapsule, setEditingCapsule] = useState<Capsule | null>(null);
@@ -2137,6 +2153,7 @@ export default function App() {
   const handleVoiceRelease = () => {
     setIsHolding(false); // 无论时长如何，松手时立即关闭全局悬浮框
     if (isHoldMode.current) {
+      isHoldMode.current = false; // 立即重置，防止重复触发
       const duration = Date.now() - voiceStartTime.current;
       if (duration >= 400) {
         stopListening();
@@ -2163,6 +2180,11 @@ export default function App() {
     }
   };
 
+  const handleVoiceReleaseRef = useRef(handleVoiceRelease);
+  useEffect(() => {
+    handleVoiceReleaseRef.current = handleVoiceRelease;
+  }, [handleVoiceRelease]);
+
   const handleMicPressStart = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     if (!isListening) {
@@ -2171,17 +2193,6 @@ export default function App() {
       voiceTarget.current = 'main';
       setIsHolding(true); // 开启屏幕中央录音悬浮框
       startListening();
-
-      // 绑定全局释放手势，100% 捕获松手事件，规避 DOM 销毁和移出以及 touchcancel 导致的事件丢失
-      const handleGlobalRelease = () => {
-        window.removeEventListener('touchend', handleGlobalRelease);
-        window.removeEventListener('touchcancel', handleGlobalRelease);
-        window.removeEventListener('mouseup', handleGlobalRelease);
-        handleVoiceRelease();
-      };
-      window.addEventListener('touchend', handleGlobalRelease, { passive: true });
-      window.addEventListener('touchcancel', handleGlobalRelease, { passive: true });
-      window.addEventListener('mouseup', handleGlobalRelease, { passive: true });
     } else {
       isHoldMode.current = false;
       voiceTarget.current = null;
@@ -2203,17 +2214,6 @@ export default function App() {
     setIsHolding(true); // 开启屏幕中央录音悬浮框
     setQuickCaptureMode('voice');
     startListening();
-
-    // 绑定全局释放手势，100% 捕获松手事件，规避 DOM 销毁和移出以及 touchcancel 导致的事件丢失
-    const handleGlobalRelease = () => {
-      window.removeEventListener('touchend', handleGlobalRelease);
-      window.removeEventListener('touchcancel', handleGlobalRelease);
-      window.removeEventListener('mouseup', handleGlobalRelease);
-      handleVoiceRelease();
-    };
-    window.addEventListener('touchend', handleGlobalRelease, { passive: true });
-    window.addEventListener('touchcancel', handleGlobalRelease, { passive: true });
-    window.addEventListener('mouseup', handleGlobalRelease, { passive: true });
   };
 
   const handleQuickVoiceEnd = (e: React.MouseEvent | React.TouchEvent) => {
