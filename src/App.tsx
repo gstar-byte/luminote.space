@@ -1342,6 +1342,7 @@ export default function App() {
   const [batchTagCatOpen, setBatchTagCatOpen] = useState(false);
   const [batchCat, setBatchCat] = useState('');
   const [batchTag, setBatchTag] = useState('');
+  const [isHolding, setIsHolding] = useState<boolean>(false);
 
   const toggleSelection = (id: string) => {
     const newSelection = new Set(selectedIds);
@@ -2134,6 +2135,7 @@ export default function App() {
 
   // 全局释放手势处理
   const handleVoiceRelease = () => {
+    setIsHolding(false); // 无论时长如何，松手时立即关闭全局悬浮框
     if (isHoldMode.current) {
       const duration = Date.now() - voiceStartTime.current;
       if (duration >= 400) {
@@ -2167,19 +2169,23 @@ export default function App() {
       voiceStartTime.current = Date.now();
       isHoldMode.current = true;
       voiceTarget.current = 'main';
+      setIsHolding(true); // 开启屏幕中央录音悬浮框
       startListening();
 
-      // 绑定全局释放手势，100% 捕获松手事件，规避 DOM 销毁和移出导致的事件丢失
+      // 绑定全局释放手势，100% 捕获松手事件，规避 DOM 销毁和移出以及 touchcancel 导致的事件丢失
       const handleGlobalRelease = () => {
         window.removeEventListener('touchend', handleGlobalRelease);
+        window.removeEventListener('touchcancel', handleGlobalRelease);
         window.removeEventListener('mouseup', handleGlobalRelease);
         handleVoiceRelease();
       };
       window.addEventListener('touchend', handleGlobalRelease, { passive: true });
+      window.addEventListener('touchcancel', handleGlobalRelease, { passive: true });
       window.addEventListener('mouseup', handleGlobalRelease, { passive: true });
     } else {
       isHoldMode.current = false;
       voiceTarget.current = null;
+      setIsHolding(false);
       stopListening();
     }
   };
@@ -2194,16 +2200,19 @@ export default function App() {
     voiceStartTime.current = Date.now();
     isHoldMode.current = true;
     voiceTarget.current = 'quick';
+    setIsHolding(true); // 开启屏幕中央录音悬浮框
     setQuickCaptureMode('voice');
     startListening();
 
-    // 绑定全局释放手势，100% 捕获松手事件，规避 DOM 销毁和移出导致的事件丢失
+    // 绑定全局释放手势，100% 捕获松手事件，规避 DOM 销毁和移出以及 touchcancel 导致的事件丢失
     const handleGlobalRelease = () => {
       window.removeEventListener('touchend', handleGlobalRelease);
+      window.removeEventListener('touchcancel', handleGlobalRelease);
       window.removeEventListener('mouseup', handleGlobalRelease);
       handleVoiceRelease();
     };
     window.addEventListener('touchend', handleGlobalRelease, { passive: true });
+    window.addEventListener('touchcancel', handleGlobalRelease, { passive: true });
     window.addEventListener('mouseup', handleGlobalRelease, { passive: true });
   };
 
@@ -4184,7 +4193,7 @@ export default function App() {
                onTouchCancel={handleMicPressEnd}
                onContextMenu={(e) => e.preventDefault()}
                style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-               className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all shadow-2xl shrink-0 select-none ${isListening ? 'bg-red-500 ring-8 ring-red-100 cursor-grabbing' : 'bg-gradient-to-br from-[#007AFF] to-[#00C6FF] cursor-pointer'}`}
+               className={`mic-button-gesture w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all shadow-2xl shrink-0 select-none ${isListening ? 'bg-red-500 ring-8 ring-red-100 cursor-grabbing' : 'bg-gradient-to-br from-[#007AFF] to-[#00C6FF] cursor-pointer'}`}
                title="Hold to speak, release to save"
              >
                {isListening ? (
@@ -4246,7 +4255,7 @@ export default function App() {
                     onTouchCancel={handleQuickVoiceEnd}
                     onContextMenu={(e) => e.preventDefault()}
                     style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-full hover:bg-white/10 active:scale-95 transition-all cursor-pointer text-white font-black tracking-tight select-none"
+                    className="quick-voice-gesture flex items-center gap-1.5 px-4 py-2 rounded-full hover:bg-white/10 active:scale-95 transition-all cursor-pointer text-white font-black tracking-tight select-none"
                   >
                     <Mic size={14} />
                     <span>Voice</span>
@@ -4397,6 +4406,58 @@ export default function App() {
             {toastType === 'info' && <RefreshCw size={14} className="animate-spin text-[#007AFF]" />}
             {toastType === 'success' && <Check size={14} className="text-[#34C759]" strokeWidth={3} />}
             <span>{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 全局录音屏幕中央悬浮反馈 */}
+      <AnimatePresence>
+        {isHolding && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[999] bg-black/35 dark:bg-black/55 backdrop-blur-[3px] flex items-center justify-center pointer-events-none select-none"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 360 }}
+              className="bg-white/90 dark:bg-zinc-900/90 border border-white/20 dark:border-white/5 rounded-[28px] p-6 shadow-2xl flex flex-col items-center gap-4 w-72 md:w-80 backdrop-blur-2xl text-center"
+            >
+              <div className="relative flex items-center justify-center w-20 h-20">
+                <motion.div
+                  animate={{ scale: [1, 1.4, 1] }}
+                  transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
+                  className="absolute inset-0 rounded-full bg-red-500/10 dark:bg-red-500/20"
+                />
+                <motion.div
+                  animate={{ scale: [1, 1.25, 1] }}
+                  transition={{ repeat: Infinity, duration: 1.6, delay: 0.3, ease: "easeInOut" }}
+                  className="absolute w-16 h-16 rounded-full bg-red-500/15 dark:bg-red-500/25"
+                />
+                <div className="z-10 w-12 h-12 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg">
+                  <Mic size={22} className="animate-pulse" />
+                </div>
+              </div>
+
+              <div>
+                <p className="text-base font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                  Speaking...
+                </p>
+                <p className="text-xs text-slate-400 dark:text-zinc-500 font-bold mt-0.5 tracking-tight">
+                  Release to save note
+                </p>
+              </div>
+
+              {/* 实时语音听写显示 */}
+              <div className="w-full bg-slate-500/10 dark:bg-white/5 rounded-2xl p-4 min-h-[64px] max-h-[120px] overflow-y-auto custom-scrollbar flex items-center justify-center border border-white/10">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 text-center leading-relaxed tracking-tight break-all">
+                  {inputText ? inputText : <span className="opacity-40 italic font-bold">Listening to your voice...</span>}
+                </p>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

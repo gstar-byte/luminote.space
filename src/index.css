@@ -197,3 +197,13 @@
     width: calc(100% - 4px);
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* Native Gestures Callout Inhibition for Record Buttons                       */
+/* ─────────────────────────────────────────────────────────────────────────── */
+.mic-button-gesture, .quick-voice-gesture {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  touch-action: none !important;
+}
