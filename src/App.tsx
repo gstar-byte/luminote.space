@@ -295,6 +295,7 @@ export default function App() {
 
   const [isListening, setIsListening] = useState(false);
   const isListeningRef = useRef(false);
+  const wasListeningOnPress = useRef(false);
   useEffect(() => { isListeningRef.current = isListening; }, [isListening]);
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -2155,10 +2156,13 @@ export default function App() {
     if (isHoldMode.current) {
       isHoldMode.current = false; // 立即重置，防止重复触发
       const duration = Date.now() - voiceStartTime.current;
-      if (duration >= 400) {
+      
+      // 1. 长按释放（大于等于 400ms）或者在录制中轻点（wasListeningOnPress 为 true，代表原本就是在录音，轻点想关闭并保存）
+      // 这两种情况下都应该立刻停止录音并保存创建
+      if (duration >= 400 || wasListeningOnPress.current) {
         stopListening();
         
-        // 关键：在松手瞬间同步提取文本直接创建便签，实现0延迟体验
+        // 关键：在松手/轻点保存瞬间同步提取文本直接创建便签，实现0延迟体验
         const text = (inputTextRef.current || transcriptRef.current || '').trim();
         if (text) {
           handleCreateCapsule(text);
@@ -2175,6 +2179,8 @@ export default function App() {
           setIsCaptureCollapsed(true);
         }
       } else {
+        // 2. 没在录音时轻点（小于 400ms 且 wasListeningOnPress 为 false）
+        // 保持 isListening 开启，供用户持续说话，直到再次轻点或点击Check
         isHoldMode.current = false;
       }
     }
@@ -2188,17 +2194,13 @@ export default function App() {
 
       const handleTouchStart = (e: TouchEvent) => {
         e.preventDefault();
+        voiceStartTime.current = Date.now();
+        isHoldMode.current = true;
+        voiceTarget.current = 'main';
+        setIsHolding(true);
+        wasListeningOnPress.current = isListeningRef.current;
         if (!isListeningRef.current) {
-          voiceStartTime.current = Date.now();
-          isHoldMode.current = true;
-          voiceTarget.current = 'main';
-          setIsHolding(true);
           startListening();
-        } else {
-          isHoldMode.current = false;
-          voiceTarget.current = null;
-          setIsHolding(false);
-          stopListening();
         }
       };
 
@@ -2233,7 +2235,10 @@ export default function App() {
         voiceTarget.current = 'quick';
         setIsHolding(true);
         setQuickCaptureMode('voice');
-        startListening();
+        wasListeningOnPress.current = isListeningRef.current;
+        if (!isListeningRef.current) {
+          startListening();
+        }
       };
 
       const handleTouchEnd = (e: TouchEvent) => {
@@ -2264,17 +2269,13 @@ export default function App() {
     if (!e.type.startsWith('touch') || isAndroid) {
       e.preventDefault();
     }
-    if (!isListening) {
-      voiceStartTime.current = Date.now();
-      isHoldMode.current = true;
-      voiceTarget.current = 'main';
-      setIsHolding(true); // 开启屏幕中央录音悬浮框
+    voiceStartTime.current = Date.now();
+    isHoldMode.current = true;
+    voiceTarget.current = 'main';
+    setIsHolding(true);
+    wasListeningOnPress.current = isListeningRef.current;
+    if (!isListeningRef.current) {
       startListening();
-    } else {
-      isHoldMode.current = false;
-      voiceTarget.current = null;
-      setIsHolding(false);
-      stopListening();
     }
   };
 
@@ -2294,9 +2295,12 @@ export default function App() {
     voiceStartTime.current = Date.now();
     isHoldMode.current = true;
     voiceTarget.current = 'quick';
-    setIsHolding(true); // 开启屏幕中央录音悬浮框
+    setIsHolding(true);
     setQuickCaptureMode('voice');
-    startListening();
+    wasListeningOnPress.current = isListeningRef.current;
+    if (!isListeningRef.current) {
+      startListening();
+    }
   };
 
   const handleQuickVoiceEnd = (e: React.MouseEvent | React.TouchEvent) => {
