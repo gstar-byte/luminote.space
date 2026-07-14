@@ -8,9 +8,7 @@
     "scheme": "luminote",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/270197b3-4a9c-451e-b8c8-7224a99a5c50"
     },
