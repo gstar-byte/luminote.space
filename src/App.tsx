@@ -2180,6 +2180,80 @@ export default function App() {
     }
   };
 
+  const micButtonRef = useCallback((node: HTMLButtonElement | null) => {
+    if (node) {
+      if ((node as any)._cleanup) {
+        (node as any)._cleanup();
+      }
+
+      const handleTouchStart = (e: TouchEvent) => {
+        e.preventDefault();
+        if (!isListeningRef.current) {
+          voiceStartTime.current = Date.now();
+          isHoldMode.current = true;
+          voiceTarget.current = 'main';
+          setIsHolding(true);
+          startListening();
+        } else {
+          isHoldMode.current = false;
+          voiceTarget.current = null;
+          setIsHolding(false);
+          stopListening();
+        }
+      };
+
+      const handleTouchEnd = (e: TouchEvent) => {
+        e.preventDefault();
+        handleVoiceRelease();
+      };
+
+      node.addEventListener('touchstart', handleTouchStart, { passive: false });
+      node.addEventListener('touchend', handleTouchEnd, { passive: false });
+      node.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
+      (node as any)._cleanup = () => {
+        node.removeEventListener('touchstart', handleTouchStart);
+        node.removeEventListener('touchend', handleTouchEnd);
+        node.removeEventListener('touchcancel', handleTouchEnd);
+      };
+    }
+  }, [setIsHolding, startListening, stopListening, handleVoiceRelease]);
+
+  const quickVoiceButtonRef = useCallback((node: HTMLButtonElement | null) => {
+    if (node) {
+      if ((node as any)._cleanup) {
+        (node as any)._cleanup();
+      }
+
+      const handleTouchStart = (e: TouchEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        voiceStartTime.current = Date.now();
+        isHoldMode.current = true;
+        voiceTarget.current = 'quick';
+        setIsHolding(true);
+        setQuickCaptureMode('voice');
+        startListening();
+      };
+
+      const handleTouchEnd = (e: TouchEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        handleVoiceRelease();
+      };
+
+      node.addEventListener('touchstart', handleTouchStart, { passive: false });
+      node.addEventListener('touchend', handleTouchEnd, { passive: false });
+      node.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
+      (node as any)._cleanup = () => {
+        node.removeEventListener('touchstart', handleTouchStart);
+        node.removeEventListener('touchend', handleTouchEnd);
+        node.removeEventListener('touchcancel', handleTouchEnd);
+      };
+    }
+  }, [setIsHolding, startListening, handleVoiceRelease]);
+
   const handleVoiceReleaseRef = useRef(handleVoiceRelease);
   useEffect(() => {
     handleVoiceReleaseRef.current = handleVoiceRelease;
@@ -4195,14 +4269,12 @@ export default function App() {
              </div>
 
              <motion.button 
+               ref={micButtonRef}
                whileHover={{ scale: 1.05 }}
                whileTap={{ scale: 0.95 }}
                onMouseDown={handleMicPressStart}
                onMouseUp={handleMicPressEnd}
                onMouseLeave={handleMicPressEnd}
-               onTouchStart={handleMicPressStart}
-               onTouchEnd={handleMicPressEnd}
-               onTouchCancel={handleMicPressEnd}
                onContextMenu={(e) => e.preventDefault()}
                style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                className={`mic-button-gesture w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all shadow-2xl shrink-0 select-none ${isListening ? 'bg-red-500 ring-8 ring-red-100 cursor-grabbing' : 'bg-gradient-to-br from-[#007AFF] to-[#00C6FF] cursor-pointer'}`}
@@ -4257,14 +4329,12 @@ export default function App() {
                   </div>
                   
                   <button
+                    ref={quickVoiceButtonRef}
                     type="button"
                     title="Quick voice capture"
                     onMouseDown={handleQuickVoiceStart}
                     onMouseUp={handleQuickVoiceEnd}
                     onMouseLeave={handleQuickVoiceEnd}
-                    onTouchStart={handleQuickVoiceStart}
-                    onTouchEnd={handleQuickVoiceEnd}
-                    onTouchCancel={handleQuickVoiceEnd}
                     onContextMenu={(e) => e.preventDefault()}
                     style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                     className="quick-voice-gesture flex items-center gap-1.5 px-4 py-2 rounded-full hover:bg-white/10 active:scale-95 transition-all cursor-pointer text-white font-black tracking-tight select-none"
