@@ -68,7 +68,7 @@ Deno.serve(async (_req) => {
   const dueCapsules = capsules.filter((c: any) => {
     if (!c.reminder?.date) return false;
     const d = Number(c.reminder.date);
-    return d > 0 && d <= now && now - d < 70000;
+    return d > 0 && d <= now;
   });
   console.log("[send-reminders] Due:", dueCapsules.length);
 

@@ -2186,7 +2186,9 @@ export default function App() {
   }, [handleVoiceRelease]);
 
   const handleMicPressStart = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
+    if (!e.type.startsWith('touch')) {
+      e.preventDefault();
+    }
     if (!isListening) {
       voiceStartTime.current = Date.now();
       isHoldMode.current = true;
@@ -2202,12 +2204,16 @@ export default function App() {
   };
 
   const handleMicPressEnd = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
+    if (!e.type.startsWith('touch')) {
+      e.preventDefault();
+    }
   };
 
   const handleQuickVoiceStart = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
-    e.preventDefault();
+    if (!e.type.startsWith('touch')) {
+      e.preventDefault();
+    }
     voiceStartTime.current = Date.now();
     isHoldMode.current = true;
     voiceTarget.current = 'quick';
@@ -2218,7 +2224,9 @@ export default function App() {
 
   const handleQuickVoiceEnd = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
-    e.preventDefault();
+    if (!e.type.startsWith('touch')) {
+      e.preventDefault();
+    }
   };
 
   const renameCategory = (oldCat: string) => {
