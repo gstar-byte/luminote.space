@@ -20,7 +20,7 @@ async function scheduleReminder(reminder) {
     body: reminder.body || '',
     tag: reminder.id,
     icon: '/favicon-192-v18.png',
-    badge: '/favicon-48-v18.png',
+    badge: '/favicon.svg',
     data: { id: reminder.id },
     requireInteraction: true // Keep the notification visible until user clicks it
   };
@@ -145,7 +145,7 @@ self.addEventListener('push', (event) => {
     body: data.body || '',
     tag: tag,
     icon: data.icon || '/favicon-192-v18.png',
-    badge: data.badge || '/favicon-48-v18.png',
+    badge: data.badge || '/favicon.svg',
     data: data.data || {},
     requireInteraction: true
   };
