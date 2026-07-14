@@ -2186,7 +2186,8 @@ export default function App() {
   }, [handleVoiceRelease]);
 
   const handleMicPressStart = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!e.type.startsWith('touch')) {
+    const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+    if (!e.type.startsWith('touch') || isAndroid) {
       e.preventDefault();
     }
     if (!isListening) {
@@ -2204,14 +2205,16 @@ export default function App() {
   };
 
   const handleMicPressEnd = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!e.type.startsWith('touch')) {
+    const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+    if (!e.type.startsWith('touch') || isAndroid) {
       e.preventDefault();
     }
   };
 
   const handleQuickVoiceStart = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
-    if (!e.type.startsWith('touch')) {
+    const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+    if (!e.type.startsWith('touch') || isAndroid) {
       e.preventDefault();
     }
     voiceStartTime.current = Date.now();
@@ -2224,7 +2227,8 @@ export default function App() {
 
   const handleQuickVoiceEnd = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
-    if (!e.type.startsWith('touch')) {
+    const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+    if (!e.type.startsWith('touch') || isAndroid) {
       e.preventDefault();
     }
   };
