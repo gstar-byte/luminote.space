@@ -1,3 +1,12 @@
+// Force immediate activation of new Service Worker versions
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 // Service Worker Notification Scheduler (Plan 1)
 // Handles native Notification Triggers & memory fallback timers when page is closed/backgrounded.
 
@@ -20,7 +29,7 @@ async function scheduleReminder(reminder) {
     body: reminder.body || '',
     tag: reminder.id,
     icon: '/favicon-192-v18.png',
-    badge: '/favicon.svg',
+    badge: '/favicon-192-v18.png',
     data: { id: reminder.id },
     requireInteraction: true // Keep the notification visible until user clicks it
   };
@@ -145,7 +154,7 @@ self.addEventListener('push', (event) => {
     body: data.body || '',
     tag: tag,
     icon: data.icon || '/favicon-192-v18.png',
-    badge: data.badge || '/favicon.svg',
+    badge: data.badge || '/favicon-192-v18.png',
     data: data.data || {},
     requireInteraction: true
   };
