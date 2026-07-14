@@ -854,12 +854,83 @@ export default function App() {
       setAuthLoading(false);
     }
 
+    // 统一处理登录成功的核心逻辑
+    const handleLoginSuccess = (authUser: any) => {
+      if (!authUser) return;
+
+      // 已经登录：更新用户信息与静默长连接监听
+      const cachedRaw = safeLocalStorageGet('luminote_auth_user');
+      let quickUser = null;
+      if (cachedRaw) {
+        try {
+          quickUser = JSON.parse(cachedRaw);
+        } catch { /* ignore */ }
+      }
+      if (!quickUser || quickUser.uid !== authUser.uid) {
+        quickUser = {
+          uid: authUser.uid,
+          email: authUser.email,
+          displayName: authUser.displayName || authUser.email?.split('@')[0] || 'Lumi User',
+          photoURL: authUser.photoURL,
+          onboarded: true
+        };
+      }
+      setUser(quickUser);
+      setAuthLoading(false);
+
+      // 启动后台静默实时监听
+      if (userDocUnsubscribe) {
+        userDocUnsubscribe();
+      }
+      const userDocRef = doc(getDb(), 'users', authUser.uid);
+      userDocUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
+        if (isCancelled) return;
+        if (docSnap.exists()) {
+          const userData = {
+            uid: authUser.uid,
+            email: authUser.email,
+            displayName: docSnap.data().displayName || authUser.displayName,
+            photoURL: docSnap.data().photoURL || authUser.photoURL,
+            onboarded: docSnap.data().onboarded || false,
+            hasNotesCreatedOrSeeded: docSnap.data().hasNotesCreatedOrSeeded || false
+          };
+          setUser(userData);
+          safeLocalStorageSet('luminote_auth_user', JSON.stringify(userData));
+        } else {
+          const userData = {
+            uid: authUser.uid,
+            email: authUser.email,
+            displayName: authUser.displayName,
+            photoURL: authUser.photoURL,
+            onboarded: false,
+            hasNotesCreatedOrSeeded: false
+          };
+          setUser(userData);
+          safeLocalStorageSet('luminote_auth_user', JSON.stringify(userData));
+          setDoc(userDocRef, {
+            uid: authUser.uid,
+            email: authUser.email,
+            displayName: authUser.displayName,
+            photoURL: authUser.photoURL,
+            onboarded: false,
+            hasNotesCreatedOrSeeded: false,
+            updatedAt: Date.now()
+          }, { merge: true }).catch((e) => {
+            console.error('Firestore setDoc user error (silenced):', e);
+          });
+        }
+      }, (error) => {
+        console.error("user doc snapshot background error (silenced):", error);
+      });
+    };
+
     // Active extraction of redirect authentication credentials (critical for mobile browser compatibility)
     const handleRedirectResult = async () => {
       try {
         const result = await getRedirectResult(getAuth());
         if (result && result.user) {
           console.log("[GoogleSignIn] Google Redirect sign-in success:", result.user.email);
+          handleLoginSuccess(result.user);
         }
       } catch (err: any) {
         console.error("[GoogleSignIn] Error retrieving Redirect result:", err);
@@ -882,66 +953,7 @@ export default function App() {
 
       unsubscribe = onAuthStateChanged(getAuth(), (authUser: User | null) => {
         if (authUser) {
-          // 已经登录：更新用户信息与静默长连接监听
-          const cachedRaw = safeLocalStorageGet('luminote_auth_user');
-          let quickUser = null;
-          if (cachedRaw) {
-            try {
-              quickUser = JSON.parse(cachedRaw);
-            } catch { /* ignore */ }
-          }
-          if (!quickUser || quickUser.uid !== authUser.uid) {
-            quickUser = {
-              uid: authUser.uid,
-              email: authUser.email,
-              displayName: authUser.displayName || authUser.email?.split('@')[0] || 'Lumi User',
-              photoURL: authUser.photoURL,
-              onboarded: true
-            };
-          }
-          setUser(quickUser);
-          setAuthLoading(false);
-
-          // 启动后台静默实时监听
-          const userDocRef = doc(getDb(), 'users', authUser.uid);
-          userDocUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-              const userData = {
-                uid: authUser.uid,
-                email: authUser.email,
-                displayName: docSnap.data().displayName || authUser.displayName,
-                photoURL: docSnap.data().photoURL || authUser.photoURL,
-                onboarded: docSnap.data().onboarded || false,
-                hasNotesCreatedOrSeeded: docSnap.data().hasNotesCreatedOrSeeded || false
-              };
-              setUser(userData);
-              safeLocalStorageSet('luminote_auth_user', JSON.stringify(userData));
-            } else {
-              const userData = {
-                uid: authUser.uid,
-                email: authUser.email,
-                displayName: authUser.displayName,
-                photoURL: authUser.photoURL,
-                onboarded: false,
-                hasNotesCreatedOrSeeded: false
-              };
-              setUser(userData);
-              safeLocalStorageSet('luminote_auth_user', JSON.stringify(userData));
-              setDoc(userDocRef, {
-                uid: authUser.uid,
-                email: authUser.email,
-                displayName: authUser.displayName,
-                photoURL: authUser.photoURL,
-                onboarded: false,
-                hasNotesCreatedOrSeeded: false,
-                updatedAt: Date.now()
-              }, { merge: true }).catch((e) => {
-                console.error('Firestore setDoc user error (silenced):', e);
-              });
-            }
-          }, (error) => {
-            console.error("user doc snapshot background error (silenced):", error);
-          });
+          handleLoginSuccess(authUser);
         } else {
           // 未登录
           if (userDocUnsubscribe) {
@@ -4272,28 +4284,32 @@ export default function App() {
                 </button>
              </div>
 
-             <motion.button 
+             <button 
                ref={micButtonRef}
-               whileHover={{ scale: 1.05 }}
-               whileTap={{ scale: 0.95 }}
                onMouseDown={handleMicPressStart}
                onMouseUp={handleMicPressEnd}
                onMouseLeave={handleMicPressEnd}
                onContextMenu={(e) => e.preventDefault()}
                style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-               className={`mic-button-gesture w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all shadow-2xl shrink-0 select-none ${isListening ? 'bg-red-500 ring-8 ring-red-100 cursor-grabbing' : 'bg-gradient-to-br from-[#007AFF] to-[#00C6FF] cursor-pointer'}`}
+               className={`mic-button-gesture w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl shrink-0 select-none hover:scale-105 active:scale-95 ${
+                 isListening ? 'bg-red-500 ring-8 ring-red-100 cursor-grabbing' : 'bg-gradient-to-br from-[#007AFF] to-[#00C6FF] cursor-pointer'
+               }`}
                title="Hold to speak, release to save"
              >
-               {isListening ? (
-                 <div className="flex gap-1 items-center">
+               <div className="relative w-full h-full flex items-center justify-center">
+                 {/* 录音中的呼吸条 - 通过 opacity 和 scale 控制显隐，不破坏 DOM 结构 */}
+                 <div className={`absolute flex gap-1 items-center transition-all duration-300 ${isListening ? 'opacity-100 scale-100 animate-pulse' : 'opacity-0 scale-75 pointer-events-none'}`}>
                    <motion.div animate={{ height: [8, 20, 8] }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-1 bg-white rounded-full" />
                    <motion.div animate={{ height: [12, 30, 12] }} transition={{ repeat: Infinity, duration: 0.5, delay: 0.1 }} className="w-1 bg-white rounded-full" />
                    <motion.div animate={{ height: [8, 20, 8] }} transition={{ repeat: Infinity, duration: 0.5, delay: 0.2 }} className="w-1 bg-white rounded-full" />
                  </div>
-               ) : (
-                 <Mic size={28} className="text-white" />
-               )}
-             </motion.button>
+                 
+                 {/* 静态麦克风图标 - 通过 opacity 和 scale 控制显隐，不破坏 DOM 结构 */}
+                 <div className={`absolute transition-all duration-300 ${isListening ? 'opacity-0 scale-75 pointer-events-none' : 'opacity-100 scale-100'}`}>
+                   <Mic size={28} className="text-white" />
+                 </div>
+               </div>
+             </button>
           </div>
         </footer>
 
