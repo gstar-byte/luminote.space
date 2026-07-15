@@ -1477,7 +1477,12 @@ export default function IdeaCapsuleApp() {
         console.error("EAS setDoc failed:", e);
       });
 
-      // 3. 管理澄清状态
+      // 3. 立即调度本地提醒通知（创建后即刻生效，无需等待App重启）
+      if (norm && norm.type !== 'none' && Platform.OS !== 'web') {
+        void scheduleCapsuleNotification(newNote);
+      }
+
+      // 4. 管理澄清状态
       if (shouldShowPill) {
         setTemporaryPendingCapsule(newNote);
         setPendingClarificationCapsuleId(docRef.id);

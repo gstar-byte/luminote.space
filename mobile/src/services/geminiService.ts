@@ -81,9 +81,9 @@ export async function categorizeThoughtFromAudio(
           hour12: false,
         }),
       ).replace('{{CURRENT_TIME_ISO}}', now.toISOString()) +
-      '\n\nListen to the attached short voice note. Transcribe the speech as the main idea text. ' +
-      'Then produce the same JSON object as for typed input: refinedContent must be the transcribed plain text; ' +
-      'fill category, tags, isTodo, and reminder when appropriate.';
+      '\n\nThe input above is a short voice note. Listen to it carefully and apply ALL the rules above exactly as you would for typed text input. ' +
+      'Transcribe the speech first, then transform it: strip time/date phrases from refinedContent so it contains ONLY the core task or idea name (e.g. "明天上午九点提醒我开会" → refinedContent "开会"). ' +
+      'Set isTodo, reminder, countdownTarget, title, category, tags exactly as specified in the rules above.';
 
     const timeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('Gemini API timeout')), 30000),

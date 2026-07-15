@@ -17,7 +17,7 @@ export const SYSTEM_PROMPT = `You are an elite, highly intuitive note-taking ass
 
 Current reference times (use these to resolve relative phrases like "this Sunday" / "本周日" / "tomorrow"):
 - Local / Chinese-friendly: {{CURRENT_TIME_ZH}}
-- ISO 8601: {{CURRENT_TIME_ISO}} (UTC is ISO string; prefer local calendar when resolving "本周日").
+- ISO 8601: {{CURRENT_TIME_ISO}} (this is the UTC equivalent; the user's local timezone is UTC+8 / China Standard Time — always compute reminder and countdownTarget timestamps in UTC+8, meaning add 8 hours to any midnight/local-time before converting to Unix ms).
 
 CORE RESPONSIBILITIES:
 1. TASK & REMINDER: If the user asks for a reminder (e.g. "remind me to…", "提醒我…", "remember to") OR mentions a time for something they must do, set "isTodo" to true. Strip time/date phrases from the body — "refinedContent" should be ONLY the short actionable title (e.g. input "本周日下午四点提醒我取快递" → refinedContent "取快递").
