@@ -6,8 +6,10 @@ import {
   View,
   Animated,
   Easing,
+  Platform,
 } from 'react-native';
-import { Clock, CheckSquare, FileText, Settings, Star, Pin, RefreshCw } from 'lucide-react-native';
+import { Clock, CheckSquare, FileText, Settings, Star, Pin, RefreshCw, Timer } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import type { Capsule } from '../types';
 import * as Haptics from 'expo-haptics';
 
@@ -30,7 +32,7 @@ function getNextDayOfWeekAndTime(dayOfWeek: number, hours: number): Date {
   return result;
 }
 
-type QuickType = 'today' | 'tomorrow' | 'dayafter' | 'sat-am' | 'sat-pm' | 'sun-am' | 'sun-pm' | 'todo' | 'everyday' | 'everyweek' | 'justnote';
+type QuickType = 'today' | 'tomorrow' | 'dayafter' | 'sat-am' | 'sat-pm' | 'sun-am' | 'sun-pm' | 'todo' | 'everyday' | 'everyweek' | 'justnote' | 'countdown';
 
 export function ClarificationPillMobile({ capsule, onResolve, onCustomPress }: Props) {
   if (!capsule.isAmbiguous) return null;
@@ -59,6 +61,14 @@ export function ClarificationPillMobile({ capsule, onResolve, onCustomPress }: P
 
   const [withStar, setWithStar] = useState(!!capsule.isStarred);
   const [withPin, setWithPin] = useState(!!capsule.isPinned);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [countdownDate, setCountdownDate] = useState<Date>(() => {
+    // 默认为一个月后
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
 
   const handleQuickSelect = (type: QuickType) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -72,6 +82,13 @@ export function ClarificationPillMobile({ capsule, onResolve, onCustomPress }: P
 
     if (type === 'justnote') {
       onResolve({ ...baseUpdates, isTodo: false, reminder: { type: 'none' } });
+      return;
+    }
+
+    if (type === 'countdown') {
+      // 开启日期选择器
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setShowDatePicker(true);
       return;
     }
 
@@ -146,6 +163,7 @@ export function ClarificationPillMobile({ capsule, onResolve, onCustomPress }: P
   };
 
   const chipData: { type: QuickType; label: string; color: string; borderColor: string; icon?: React.ReactNode }[] = [
+    { type: 'countdown', label: 'Countdown', color: '#FF9500', borderColor: 'rgba(255,149,0,0.18)', icon: <Timer size={9} color="#FF9500" style={{ marginRight: 2 }} /> },
     { type: 'today', label: 'Today 6 PM', color: '#007AFF', borderColor: '#E5E5EA' },
     { type: 'tomorrow', label: 'Tomorrow 9 AM', color: '#007AFF', borderColor: '#E5E5EA' },
     { type: 'dayafter', label: 'Day After 9 AM', color: '#007AFF', borderColor: '#E5E5EA' },
@@ -230,6 +248,66 @@ export function ClarificationPillMobile({ capsule, onResolve, onCustomPress }: P
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Countdown Date Picker */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={countdownDate}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          minimumDate={new Date()}
+          onChange={(event, selectedDate) => {
+            if (Platform.OS === 'android') {
+              setShowDatePicker(false);
+            }
+            if (event.type === 'dismissed') {
+              setShowDatePicker(false);
+              return;
+            }
+            if (selectedDate) {
+              const target = new Date(selectedDate);
+              target.setHours(0, 0, 0, 0);
+              setCountdownDate(target);
+              if (Platform.OS === 'android') {
+                // Android在onChange里直接确认
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                onResolve({
+                  isAmbiguous: false,
+                  clarificationPrompt: null,
+                  countdownTarget: target.getTime(),
+                  isTodo: false,
+                  reminder: { type: 'none' },
+                  ...(withStar ? { isStarred: true } : {}),
+                  ...(withPin ? { isPinned: true } : {}),
+                });
+              }
+            }
+          }}
+        />
+      )}
+      {/* iOS Confirm Button for DatePicker */}
+      {showDatePicker && Platform.OS === 'ios' && (
+        <TouchableOpacity
+          style={styles.datePickerConfirmBtn}
+          onPress={() => {
+            setShowDatePicker(false);
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            const target = new Date(countdownDate);
+            target.setHours(0, 0, 0, 0);
+            onResolve({
+              isAmbiguous: false,
+              clarificationPrompt: null,
+              countdownTarget: target.getTime(),
+              isTodo: false,
+              reminder: { type: 'none' },
+              ...(withStar ? { isStarred: true } : {}),
+              ...(withPin ? { isPinned: true } : {}),
+            });
+          }}
+        >
+          <Text style={styles.datePickerConfirmTxt}>Set Countdown Date ✓</Text>
+        </TouchableOpacity>
+      )}
     </Animated.View>
   );
 }
@@ -305,5 +383,20 @@ const styles = StyleSheet.create({
   chipPinActive: {
     backgroundColor: 'rgba(0, 122, 255, 0.1)',
     borderColor: 'rgba(0, 122, 255, 0.25)',
+  },
+  datePickerConfirmBtn: {
+    marginTop: 8,
+    backgroundColor: 'rgba(255, 149, 0, 0.12)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 149, 0, 0.3)',
+  },
+  datePickerConfirmTxt: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FF9500',
   },
 });

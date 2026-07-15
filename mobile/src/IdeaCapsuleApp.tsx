@@ -1472,6 +1472,13 @@ export default function IdeaCapsuleApp() {
         return [newNote, ...prev];
       });
 
+      // 1b. 新卡片插入列表顶部，立刻滚动到顶部使其可见
+      if (Platform.OS !== 'web') {
+        setTimeout(() => {
+          scrollViewRef.current?.scrollTo({ y: 70, animated: true });
+        }, 80);
+      }
+
       // 2. 后台静默发送（即使离线，Firestore offline cache 也会保存并会在设备重连时自动推送）
       setDoc(docRef, newNote).catch(e => {
         console.error("EAS setDoc failed:", e);
