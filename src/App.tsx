@@ -1606,10 +1606,8 @@ export default function App() {
     }
     
     setIsProcessing(true);
+    setIsProcessing(true);
     setInputText('');
-    
-    // Immediately focus back to input for potential next input
-    inputRef.current?.focus();
     
     try {
       // Use NLP router (DeepSeek -> Local fallback)
@@ -1686,6 +1684,16 @@ export default function App() {
         return [createdCapsule, ...prev];
       });
 
+      // 确保 Viewport 自动平滑滚动到顶端，使用户立刻聚焦在最新创建的卡片上
+      requestAnimationFrame(() => {
+        const container = document.getElementById('scroll-container');
+        if (container) {
+          container.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+
       // 在后台静默运行保存，即使离线，Firestore localCache 也会安全接管数据并在重连时自动推送
       setDoc(docRef, newCapsuleData).then(() => {
         console.log('[handleCreate] saved successfully to Firestore:', docRef.id);
@@ -1731,6 +1739,16 @@ export default function App() {
         return [{ id: docRef.id, ...fallbackDoc } as Capsule, ...prev];
       });
 
+      // 自动平滑置顶
+      requestAnimationFrame(() => {
+        const container = document.getElementById('scroll-container');
+        if (container) {
+          container.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+
       // 后台静默发送 fallback
       setDoc(docRef, fallbackDoc).then(() => {
         console.log('[handleCreate] fallback saved successfully');
@@ -1745,7 +1763,8 @@ export default function App() {
       }
     } finally {
       setIsProcessing(false);
-      setTimeout(() => inputRef.current?.focus(), 10);
+      // 模糊输入框焦点，使 Viewport 留在顶端视觉中心展现最新卡片，绝不强行自动滑到底部
+      inputRef.current?.blur();
     }
   };
 
@@ -2169,30 +2188,23 @@ export default function App() {
       isHoldMode.current = false; // 立即重置，防止重复触发
       const duration = Date.now() - voiceStartTime.current;
       
-      // 1. 长按释放（大于等于 400ms）或者在录制中轻点（wasListeningOnPress 为 true，代表原本就是在录音，轻点想关闭并保存）
-      // 这两种情况下都应该立刻停止录音并保存创建
+      // 1. 长按释放（大于等于 400ms）或者在录制中轻点（wasListeningOnPress 为 true）
       if (duration >= 400 || wasListeningOnPress.current) {
+        // 调用 stopListening() 会标记 stoppedByUserRef.current = true。
+        // 引擎异步停止后会触发 onend，在 onend 里会在最后一段 isFinal 结果吐完后统一精准创建 Capsule，
+        // 彻底解决过早提取导致末尾语音文字断尾丢失的问题。
         stopListening();
-        
-        // 关键：在松手/轻点保存瞬间同步提取文本直接创建便签，实现0延迟体验
-        const text = (inputTextRef.current || transcriptRef.current || '').trim();
-        if (text) {
-          handleCreateCapsule(text);
-          hasCreatedOnRelease.current = true; // 互斥锁：防止 onend 里二次保存
-          setInputText('');
-          inputTextRef.current = '';
-          transcriptRef.current = '';
-        }
 
-        // 立刻重置/折叠 UI
-        if (voiceTarget.current === 'quick') {
-          setQuickCaptureMode('buttons');
-        } else if (voiceTarget.current === 'main') {
-          setIsCaptureCollapsed(true);
-        }
+        // 延迟安全收尾 UI
+        setTimeout(() => {
+          if (voiceTarget.current === 'quick') {
+            setQuickCaptureMode('buttons');
+          } else if (voiceTarget.current === 'main') {
+            setIsCaptureCollapsed(true);
+          }
+        }, 150);
       } else {
         // 2. 没在录音时轻点（小于 400ms 且 wasListeningOnPress 为 false）
-        // 保持 isListening 开启，供用户持续说话，直到再次轻点或点击Check
         isHoldMode.current = false;
       }
     }
@@ -2421,9 +2433,9 @@ export default function App() {
         if (reminderTime > now) return;
 
         // For past reminders (reminderTime <= now):
-        // If it's a historical reminder (expired more than 60 seconds ago),
-        // we silently mark it as notified and update its status without popping any alert.
-        const isHistorical = now - reminderTime > 60000;
+        // 如果离到期时间已经过去超过 24 小时（例如很久以前的老卡片），才静默升级重置。
+        // 24 小时以内的提醒（包括手机息屏/后台挂起导致的几十秒到几小时延后），在切回应用时均如实为用户补发提醒与音效。
+        const isHistorical = now - reminderTime > 24 * 60 * 60 * 1000;
         
         if (isHistorical) {
           if (!notifiedIdsRef.current.has(cap.id)) {
