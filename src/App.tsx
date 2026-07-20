@@ -74,6 +74,7 @@ import {
 import { Capsule, FilterType, ReminderConfig, ReminderType, UserProfile } from './types';
 import { PRESET_COLORS } from './constants';
 import { categorizeThought } from './services/nlpRouter';
+import { categorizeThoughtFromAudio } from './services/geminiService';
 import {
   getDb,
   getAuth,
@@ -1331,7 +1332,8 @@ export default function App() {
   }, [user, authLoading, dataLoading, allCapsules.length, hasSeenTutorial, hasSeededOrCreated, isSyncFinished, isDbReady]);
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const recognition = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const quickVoiceStartTime = useRef<number>(0);
   const isHoldMode = useRef<boolean>(false);
   const micStartTime = useRef<number>(0);
@@ -1427,7 +1429,7 @@ export default function App() {
 
   const transcriptRef = useRef('');
   // 用 ref 保存最新的 handleCreateCapsule，避免 SpeechRecognition onend 闭包陈旧
-  const handleCreateCapsuleRef = useRef<(text: string) => void>(() => {});
+  const handleCreateCapsuleRef = useRef<(text: string, audioData?: { base64: string, mimeType: string }) => void>(() => {});
 
   // stoppedByUserRef: true = 用户主动点击停止（应创建笔记），false = 超时/错误自动停止（应重启）
   const stoppedByUserRef = useRef(false);
@@ -1435,77 +1437,6 @@ export default function App() {
   useEffect(() => { showToastRef.current = showToast; }, [showToast]);
 
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognition.current = new SpeechRecognition();
-      recognition.current.continuous = true;
-      recognition.current.interimResults = true;
-      recognition.current.lang = 'zh-CN';
-
-      recognition.current.onresult = (event: any) => {
-        let interim = '';
-        let final = '';
-        for (let i = 0; i < event.results.length; i++) {
-          const t = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            final += t;
-          } else {
-            interim += t;
-          }
-        }
-        transcriptRef.current = final + interim;
-        setInputText(final + interim);
-        inputTextRef.current = final + interim;
-      };
-
-      recognition.current.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        // 'no-speech' 和 'aborted' 不算致命错误，不关闭
-        if (event.error === 'no-speech' || event.error === 'aborted') return;
-        setIsListening(false);
-      };
-
-      recognition.current.onstart = () => {
-        console.log('Speech recognition started');
-      };
-
-      recognition.current.onend = () => {
-        if (stoppedByUserRef.current) {
-          stoppedByUserRef.current = false;
-          setIsListening(false);
-          if (hasCreatedOnRelease.current) {
-            // 互斥控制：已在松手瞬间直接同步保存，在此仅静默收尾重置锁
-            hasCreatedOnRelease.current = false;
-          } else {
-            const text = (inputTextRef.current || transcriptRef.current || '').trim();
-            if (text) {
-              handleCreateCapsuleRef.current(text);
-              transcriptRef.current = '';
-              setInputText('');
-              inputTextRef.current = '';
-              if (voiceTarget.current === 'main') {
-                setIsCaptureCollapsed(true);
-              }
-            } else {
-              setInputText('');
-              inputTextRef.current = '';
-              showToastRef.current('🎙️ No speech detected. Tap the mic and try again.', 'info');
-            }
-          }
-          voiceTarget.current = null;
-        } else {
-          // 超时自动停止：如果还在录音状态，自动重启
-          if (isListeningRef.current) {
-            try {
-              recognition.current?.start();
-            } catch {
-              setIsListening(false);
-            }
-          }
-        }
-      };
-    }
-
     // 注册全局静态触摸/鼠标释放监听器，100% 捕获松手和被打断事件，彻底跳出移动端手势屏蔽限制
     const handleGlobalRelease = () => {
       if (isHoldMode.current) {
@@ -1582,7 +1513,7 @@ export default function App() {
     }
   };
 
-  const handleCreateCapsule = async (text: string) => {
+  const handleCreateCapsule = async (text: string, audioData?: { base64: string, mimeType: string }) => {
     if (!text.trim()) return;
     // 每次调用时 ref 已指向当前最新版本（在下方 useEffect 中同步更新）
     
@@ -1610,8 +1541,14 @@ export default function App() {
     setInputText('');
     
     try {
-      // Use NLP router (DeepSeek -> Local fallback)
-      const parsed = await categorizeThought(text);
+      
+      let parsed;
+      if (audioData) {
+        parsed = await categorizeThoughtFromAudio(audioData.base64, audioData.mimeType);
+      } else {
+        parsed = await categorizeThought(text);
+      }
+
       console.log('[handleCreate] parsed result:', JSON.stringify(parsed));
       const { title, category, tags, refinedContent, isTodo, reminder, isStarred, isPinned, countdownTarget } = parsed;
       
@@ -2130,45 +2067,62 @@ export default function App() {
     }
   };
 
-  const startListening = () => {
-    if (recognition.current) {
-      try {
-        recognition.current.lang = 'zh-CN'; // 固定为中文识别引擎，兼容中英混输，由 AI 自动做最后的纠错与整理
-        stoppedByUserRef.current = false;
-        transcriptRef.current = '';
-        setInputText('');
-        setIsListening(true);
-        recognition.current.start();
-      } catch (e) {
-        // Already started or other error; try restart
-        try {
-          recognition.current.stop();
-          setTimeout(() => {
-            if (recognition.current) recognition.current.lang = 'zh-CN';
-            stoppedByUserRef.current = false;
-            transcriptRef.current = '';
-            setInputText('');
-            setIsListening(true);
-            recognition.current?.start();
-          }, 100);
-        } catch (inner) {
-          console.log('Speech recognition restart failed', inner);
+  const startListening = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
         }
-      }
-    } else {
-      showToast('Your browser does not support speech recognition.', 'error');
+      };
+      
+      mediaRecorder.start(100);
+      stoppedByUserRef.current = false;
+      setIsListening(true);
+    } catch (e) {
+      console.error('Microphone access denied or error:', e);
+      showToast('⚠️ Microphone permission required for voice notes.', 'error');
+      setIsListening(false);
     }
   };
 
   const stopListening = () => {
-    if (recognition.current && isListeningRef.current) {
-      try {
-        stoppedByUserRef.current = true; // 标记：用户主动停止，onend 回调中将创建笔记
-        setIsListening(false); // 同步且立即执行，使界面在多次点击时能 100% 恢复正常
-        recognition.current.stop();
-      } catch (e) {
-        console.log('Speech recognition stop error', e);
-      }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      stoppedByUserRef.current = true;
+      setIsListening(false);
+      
+      mediaRecorderRef.current.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+        
+        if (hasCreatedOnRelease.current) {
+          hasCreatedOnRelease.current = false;
+          return;
+        }
+        
+        if (audioChunksRef.current.length > 0) {
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = () => {
+            const base64data = reader.result as string;
+            const base64String = base64data.split(',')[1];
+            handleCreateCapsuleRef.current('', { base64: base64String, mimeType: 'audio/webm' });
+            if (voiceTarget.current === 'main') {
+              setIsCaptureCollapsed(true);
+            }
+            voiceTarget.current = null;
+          };
+        } else {
+          showToast('🎙️ No speech detected.', 'info');
+        }
+      };
+      mediaRecorderRef.current.stop();
+    } else {
+      setIsListening(false);
     }
   };
 

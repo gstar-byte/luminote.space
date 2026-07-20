@@ -156,37 +156,53 @@ export function SettingsModal({
                 System Notifications
               </span>
               {permission === 'granted' ? (
-                <div className="flex flex-col gap-2 w-full">
+                <div className="flex flex-col gap-3 w-full bg-[#F2F2F7] p-3 rounded-xl border border-[rgba(0,0,0,0.05)]">
+                  {/* Row 1: Alerts Active */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#34C759] animate-pulse" />
-                      <span className="text-sm font-bold text-[#1D1D1F]">Alerts active</span>
+                      <div className="w-2 h-2 rounded-full bg-[#34C759] shadow-[0_0_8px_rgba(52,199,89,0.8)]" />
+                      <span className="text-xs font-bold text-[#1D1D1F]">Alerts active</span>
                     </div>
-                    <div className="flex gap-1.5">
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (user) {
-                            const ok = await subscribeToPush(user.uid);
-                            if (ok) {
-                              alert('✅ System notification synchronized successfully!');
-                            } else {
-                              alert('❌ Failed to synchronize. Check your connection or system permission settings.');
-                            }
+                    <span className="text-[10px] font-black text-[#34C759] bg-[#34C759]/10 px-2 py-0.5 rounded-md">OK</span>
+                  </div>
+                  
+                  {/* Row 2: Sync Push */}
+                  <div className="flex items-center justify-between gap-2 border-t border-[#E5E5EA] pt-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#34C759] shadow-[0_0_8px_rgba(52,199,89,0.8)]" />
+                      <span className="text-xs font-bold text-[#1D1D1F]">Sync push</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (user) {
+                          const ok = await subscribeToPush(user.uid);
+                          if (ok) {
+                            alert('✅ System notification synchronized successfully!');
+                          } else {
+                            alert('❌ Failed to synchronize. Check your connection or system permission settings.');
                           }
-                        }}
-                        className="px-2.5 py-1.5 bg-[#E8F5E9] hover:bg-[#C8E6C9] text-[#2E7D32] text-xs font-black rounded-lg transition-colors cursor-pointer"
-                      >
-                        Sync Push
-                      </button>
-                      <button
-                        type="button"
-                        onClick={sendTestNotification}
-                        className="px-2.5 py-1.5 bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#007AFF] text-xs font-black rounded-lg transition-colors cursor-pointer"
-                      >
-                        Send Test
-                      </button>
+                        }
+                      }}
+                      className="px-2.5 py-1 bg-white border border-[#E5E5EA] hover:bg-[#E5E5EA] text-[#2E7D32] text-xs font-black rounded-lg transition-colors cursor-pointer"
+                    >
+                      Sync Now
+                    </button>
+                  </div>
+                  
+                  {/* Row 3: Send Test */}
+                  <div className="flex items-center justify-between gap-2 border-t border-[#E5E5EA] pt-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#34C759] shadow-[0_0_8px_rgba(52,199,89,0.8)]" />
+                      <span className="text-xs font-bold text-[#1D1D1F]">Send test</span>
                     </div>
+                    <button
+                      type="button"
+                      onClick={sendTestNotification}
+                      className="px-2.5 py-1 bg-white border border-[#E5E5EA] hover:bg-[#E5E5EA] text-[#007AFF] text-xs font-black rounded-lg transition-colors cursor-pointer"
+                    >
+                      Test
+                    </button>
                   </div>
                 </div>
               ) : permission === 'denied' ? (
