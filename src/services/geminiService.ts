@@ -69,6 +69,17 @@ export async function categorizeThoughtFromAudio(audioBase64: string, mimeType: 
       }
     }
 
+    let finalCountdown = result.countdownTarget || undefined;
+    if (finalCountdown != null) {
+      if (typeof finalCountdown === 'string') {
+        const parsed = new Date(finalCountdown).getTime();
+        if (!isNaN(parsed)) finalCountdown = parsed;
+      } else if (typeof finalCountdown === 'number') {
+        if (finalCountdown < 9999999999) finalCountdown = finalCountdown * 1000;
+      }
+      if (typeof finalCountdown !== 'number' || isNaN(finalCountdown)) finalCountdown = undefined;
+    }
+
     return {
       title: result.title || null,
       category: result.category || undefined,
@@ -80,7 +91,7 @@ export async function categorizeThoughtFromAudio(audioBase64: string, mimeType: 
       clarificationPrompt: result.clarificationPrompt || undefined,
       isStarred: typeof result.isStarred === 'boolean' ? result.isStarred : undefined,
       isPinned: typeof result.isPinned === 'boolean' ? result.isPinned : undefined,
-      countdownTarget: typeof result.countdownTarget === 'number' ? result.countdownTarget : undefined,
+      countdownTarget: finalCountdown,
     };
   } catch (error) {
     console.error("Failed to categorize thought from audio:", error);
@@ -166,6 +177,17 @@ export async function categorizeThought(text: string): Promise<{ title?: string 
       }
     }
 
+    let finalCountdown = result.countdownTarget || undefined;
+    if (finalCountdown != null) {
+      if (typeof finalCountdown === 'string') {
+        const parsed = new Date(finalCountdown).getTime();
+        if (!isNaN(parsed)) finalCountdown = parsed;
+      } else if (typeof finalCountdown === 'number') {
+        if (finalCountdown < 9999999999) finalCountdown = finalCountdown * 1000;
+      }
+      if (typeof finalCountdown !== 'number' || isNaN(finalCountdown)) finalCountdown = undefined;
+    }
+
     return {
       title: result.title || null,
       category: result.category || undefined,
@@ -177,7 +199,7 @@ export async function categorizeThought(text: string): Promise<{ title?: string 
       clarificationPrompt: result.clarificationPrompt || undefined,
       isStarred: typeof result.isStarred === 'boolean' ? result.isStarred : undefined,
       isPinned: typeof result.isPinned === 'boolean' ? result.isPinned : undefined,
-      countdownTarget: typeof result.countdownTarget === 'number' ? result.countdownTarget : undefined,
+      countdownTarget: finalCountdown,
     };
   } catch (error) {
     console.error("Failed to categorize thought:", error);
