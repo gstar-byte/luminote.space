@@ -23,6 +23,22 @@ export function SettingsModal({
   const [permission, setPermission] = useState<NotificationPermission>(
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
   );
+  
+  const [isPushActive, setIsPushActive] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg && reg.active) {
+          reg.pushManager.getSubscription().then(sub => {
+            setIsPushActive(!!sub);
+          }).catch(() => setIsPushActive(false));
+        } else {
+          setIsPushActive(false);
+        }
+      }).catch(() => setIsPushActive(false));
+    }
+  }, [isOpen]);
 
   const [provider, setProvider] = useState<'deepseek' | 'gemini' | 'local'>(() => {
     try {
@@ -169,7 +185,7 @@ export function SettingsModal({
                   {/* Row 2: Sync Push */}
                   <div className="flex items-center justify-between gap-2 border-t border-[#E5E5EA] pt-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[#34C759] shadow-[0_0_8px_rgba(52,199,89,0.8)]" />
+                      <div className={`w-2 h-2 rounded-full ${isPushActive ? 'bg-[#34C759] shadow-[0_0_8px_rgba(52,199,89,0.8)]' : 'bg-[#FF3B30] shadow-[0_0_8px_rgba(255,59,48,0.8)]'}`} />
                       <span className="text-xs font-bold text-[#1D1D1F]">Sync push</span>
                     </div>
                     <button
@@ -178,9 +194,11 @@ export function SettingsModal({
                         if (user) {
                           const ok = await subscribeToPush(user.uid);
                           if (ok) {
+                            setIsPushActive(true);
                             alert('✅ System notification synchronized successfully!');
                           } else {
-                            alert('❌ Failed to synchronize. Check your connection or system permission settings.');
+                            setIsPushActive(false);
+                            alert('❌ Failed to synchronize. Check your connection (VPN may be required in some regions).');
                           }
                         }
                       }}
@@ -193,7 +211,7 @@ export function SettingsModal({
                   {/* Row 3: Send Test */}
                   <div className="flex items-center justify-between gap-2 border-t border-[#E5E5EA] pt-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[#34C759] shadow-[0_0_8px_rgba(52,199,89,0.8)]" />
+                      <div className={`w-2 h-2 rounded-full ${isPushActive ? 'bg-[#34C759] shadow-[0_0_8px_rgba(52,199,89,0.8)]' : 'bg-[#E5E5EA]'}`} />
                       <span className="text-xs font-bold text-[#1D1D1F]">Send test</span>
                     </div>
                     <button

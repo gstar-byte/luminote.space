@@ -1514,7 +1514,7 @@ export default function App() {
   };
 
   const handleCreateCapsule = async (text: string, audioData?: { base64: string, mimeType: string }) => {
-    if (!text.trim()) return;
+    if (!text.trim() && !audioData) return;
     // 每次调用时 ref 已指向当前最新版本（在下方 useEffect 中同步更新）
     
     // Request notification permission IMMEDIATELY, while still in the synchronous
