@@ -44,8 +44,8 @@ export async function categorizeThoughtFromAudio(audioBase64: string, mimeType: 
     const fetchPromise = ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [
-        { text: prompt },
-        { inlineData: { mimeType, data: audioBase64 } }
+        { inlineData: { mimeType, data: audioBase64 } },
+        { text: prompt }
       ],
       config: {
         responseMimeType: "application/json",
@@ -53,7 +53,15 @@ export async function categorizeThoughtFromAudio(audioBase64: string, mimeType: 
     });
 
     const response = await Promise.race([fetchPromise, timeoutPromise]);
-    const result = JSON.parse(response.text || "{}");
+    let rawText = "{}";
+    try {
+      rawText = response.text || "{}";
+    } catch (e) {
+      console.warn("Gemini text getter threw an error (likely blocked or no content):", e);
+      rawText = "{}";
+    }
+    rawText = rawText.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();
+    const result = JSON.parse(rawText);
     
     let finalReminder = result.reminder || undefined;
     if (finalReminder && typeof finalReminder === 'object') {
@@ -150,8 +158,9 @@ export async function categorizeThought(text: string): Promise<{ title?: string 
     });
 
     const response = await Promise.race([fetchPromise, timeoutPromise]);
-
-    const result = JSON.parse(response.text || "{}");
+    let rawText = response.text || "{}";
+    rawText = rawText.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();
+    const result = JSON.parse(rawText);
     
     let finalReminder = result.reminder || undefined;
     if (finalReminder && typeof finalReminder === 'object') {

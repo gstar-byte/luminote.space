@@ -1550,6 +1550,13 @@ export default function App() {
       }
 
       console.log('[handleCreate] parsed result:', JSON.stringify(parsed));
+      
+      if (parsed.error === 'API_ERROR' || (audioData && !parsed.refinedContent.trim())) {
+        showToast('🎙️ Sorry, couldn\'t transcribe the audio. Please speak clearly or try again.', 'error');
+        setIsProcessing(false);
+        return;
+      }
+      
       const { title, category, tags, refinedContent, isTodo, reminder, isStarred, isPinned, countdownTarget } = parsed;
       
       // 从洗牌队列中取下一个颜色，12个内不重复
@@ -2110,7 +2117,8 @@ export default function App() {
           reader.onloadend = () => {
             const base64data = reader.result as string;
             const base64String = base64data.split(',')[1];
-            handleCreateCapsuleRef.current('', { base64: base64String, mimeType: 'audio/webm' });
+            const actualMimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+            handleCreateCapsuleRef.current('', { base64: base64String, mimeType: actualMimeType });
             if (voiceTarget.current === 'main') {
               setIsCaptureCollapsed(true);
             }
